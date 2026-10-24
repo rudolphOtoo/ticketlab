@@ -1,0 +1,14 @@
+# Mago Configuration for TicketLab
+# Documentation: https://mago.carthage.software
+
+php-version = "8.5"
+
+[source]
+paths = ["app", "bootstrap", "config", "database", "routes", "tests"]
+
+[formatter]
+print-width = 120
+tab-width = 4
+use-tabs = false
+single-quote = true
+trailing-comma = true
