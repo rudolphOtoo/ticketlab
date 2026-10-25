@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Admin\DailySessionLedger;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,7 +29,8 @@ Route::middleware(['auth'])
     ->name('admin.')
     ->group(function () {
         // Daily session ledger declaration & lockdown
-        // Route::get('sessions', DailySessionLedger::class)->name('sessions');
+        Route::get('sessions', DailySessionLedger::class)->name('sessions');
+
         // Scoped attendee rosters & Excel export
         // Route::get('attendees', AttendeeRoster::class)->name('attendees');
     });

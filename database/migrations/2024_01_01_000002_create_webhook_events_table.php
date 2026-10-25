@@ -12,7 +12,7 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create(config('payments.webhook.events.table', 'webhook_events'), function (Blueprint $table) {
+        Schema::create(config('payments.webhook.events.table', 'webhook_events'), static function (Blueprint $table) {
             $table->id();
             $table->string('provider')->index();
             $table->string('event_key');

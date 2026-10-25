@@ -26,7 +26,7 @@ return new class extends Migration {
             return;
         }
 
-        Schema::table($table, function (Blueprint $table) {
+        Schema::table($table, static function (Blueprint $table) {
             $table->index(['provider', 'created_at'], self::INDEX);
         });
     }
@@ -39,7 +39,7 @@ return new class extends Migration {
             return;
         }
 
-        Schema::table($table, function (Blueprint $table) {
+        Schema::table($table, static function (Blueprint $table) {
             $table->dropIndex(self::INDEX);
         });
     }

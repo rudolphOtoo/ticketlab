@@ -15,11 +15,11 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('email_verification_codes', function (Blueprint $table) {
+        Schema::table('email_verification_codes', static function (Blueprint $table) {
             $table->renameColumn('code_hash', 'code');
         });
 
-        Schema::table('email_verification_codes', function (Blueprint $table) {
+        Schema::table('email_verification_codes', static function (Blueprint $table) {
             // Encrypted payloads outgrow the default 255.
             $table->text('code')->change();
         });
@@ -27,11 +27,11 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::table('email_verification_codes', function (Blueprint $table) {
+        Schema::table('email_verification_codes', static function (Blueprint $table) {
             $table->renameColumn('code', 'code_hash');
         });
 
-        Schema::table('email_verification_codes', function (Blueprint $table) {
+        Schema::table('email_verification_codes', static function (Blueprint $table) {
             $table->string('code_hash')->change();
         });
     }

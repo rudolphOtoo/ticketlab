@@ -32,7 +32,8 @@ class SecurityTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)
+        $response = $this
+            ->actingAs($user)
             ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'));
 
@@ -48,8 +49,7 @@ class SecurityTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)
-            ->get(route('security.edit'));
+        $response = $this->actingAs($user)->get(route('security.edit'));
 
         $response->assertRedirect(route('password.confirm'));
     }
@@ -60,7 +60,8 @@ class SecurityTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->actingAs($user)
+        $this
+            ->actingAs($user)
             ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('security.edit'))
             ->assertOk()

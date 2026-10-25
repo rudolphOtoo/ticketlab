@@ -10,7 +10,7 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create(config('payments.logging.table', 'payment_transactions'), function (Blueprint $table) {
+        Schema::create(config('payments.logging.table', 'payment_transactions'), static function (Blueprint $table) {
             $table->id();
             $table->string('reference')->unique()->index();
             $table->string('provider')->index();
