@@ -51,6 +51,12 @@
   - CSV export button.
   - 3 dedicated Pest feature tests passed.
 
+- [x] **T2-09: Purge Zombie Flux UI & Operations Hub Rebuild** (`GET /dashboard`)
+  - Deleted zombie Flux UI starter kit templates (`app/sidebar.blade.php`, `app/header.blade.php`, `desktop-user-menu.blade.php`).
+  - Rebuilt `/dashboard` as a Serene Studio Operations Hub using Sheaf UI primitives (`<x-ui.badge>`, `<x-ui.button>`).
+  - Linked to all 4 Ground Operations portals.
+  - All 40 Pest feature tests passed (100% green).
+
 ---
 
 ## 🟡 In Progress: UI Review & Polish
