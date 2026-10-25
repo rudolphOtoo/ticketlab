@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Admin\AttendeeRoster;
 use App\Livewire\Admin\DailySessionLedger;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
@@ -35,5 +36,5 @@ Route::middleware(['auth'])
         Route::get('sessions', DailySessionLedger::class)->name('sessions');
 
         // Scoped attendee rosters & Excel export
-        // Route::get('attendees', AttendeeRoster::class)->name('attendees');
+        Route::get('attendees', AttendeeRoster::class)->name('attendees');
     });
