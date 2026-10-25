@@ -1,24 +1,72 @@
-/* By Sheaf.dev */
+/* ==========================================================================
+   TICKETLAB SERENE STUDIO DESIGN SYSTEM
+   Customizable semantic tokens for Light and Dark modes.
+   ========================================================================== */
+
 @theme inline {
-    /* base color variables */
+    /* Core Semantic Brand Tokens */
+    --color-primary: #18181b;
+    --color-primary-content: #18181b;
+    --color-primary-fg: #fafafa;
 
-    /* --color-neutral-900: var(--color-neutral-950); */
-
-    /* primary color varibles */
-    --color-primary: var(--color-neutral-800);
-    --color-primary-content: var(--color-neutral-800);
-    --color-primary-fg: var(--color-white);
-
-    /* radius variables */
-    --radius-field: 0.25rem;
-    --radius-box: 0.5rem;
+    /* Geometry & Radii */
+    --radius-field: 0.5rem;   /* 8px for form controls */
+    --radius-box: 0.875rem;   /* 14px for elevated cards & modals */
 }
 
+:root {
+    /* Canvas & Surfaces (Warm Linen & Porcelain) */
+    --bg-canvas: #faf9f6;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f3f1ec;
+    --bg-hover: #efece6;
+
+    /* Text & Typography */
+    --text-primary: #18181b;
+    --text-secondary: #71717a;
+    --text-tertiary: #a1a1aa;
+
+    /* Hairline Structure */
+    --border-hairline: #e4e2dc;
+    --border-focused: #18181b;
+
+    /* Soothing Semantic Accents (Anti-Neon) */
+    --status-success: #15803d;        /* Calming Nordic Pine */
+    --status-success-bg: #f0fdf4;
+    --status-warning: #b45309;        /* Warm Amber Ochre */
+    --status-warning-bg: #fffbeb;
+    --status-danger: #b91c1c;         /* Subdued Brick Red */
+    --status-danger-bg: #fef2f2;
+}
 
 @layer theme {
     .dark {
-        --color-primary: var(--color-white);
-        --color-primary-content: var(--color-white);
-        --color-primary-fg:  var(--color-neutral-800);
+        /* Primary Inversion */
+        --color-primary: #f4f4f5;
+        --color-primary-content: #f4f4f5;
+        --color-primary-fg: #121316;
+
+        /* Canvas & Surfaces (Velvet Basalt - Warm Charcoal) */
+        --bg-canvas: #121316;
+        --bg-surface: #181a1f;
+        --bg-subtle: #20232b;
+        --bg-hover: #282c36;
+
+        /* Text & Typography */
+        --text-primary: #f4f4f5;
+        --text-secondary: #9ca3af;
+        --text-tertiary: #6b7280;
+
+        /* Hairline Structure */
+        --border-hairline: rgba(255, 255, 255, 0.08);
+        --border-focused: #f4f4f5;
+
+        /* Soothing Semantic Accents in Dark */
+        --status-success: #34d399;    /* Gentle Sage */
+        --status-success-bg: rgba(52, 211, 153, 0.12);
+        --status-warning: #fbbf24;
+        --status-warning-bg: rgba(251, 191, 36, 0.12);
+        --status-danger: #f87171;
+        --status-danger-bg: rgba(248, 113, 113, 0.12);
     }
 }
