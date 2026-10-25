@@ -32,13 +32,14 @@ class DailySessionLedger extends Component
         $subdivisions = Subdivision::all();
 
         // Calculate actual totals or fallback for design view
-        $totalOnlinePaystack = (float) Order::where('payment_method', '!=', 'cash')
-            ->where('payment_status', 'paid')
-            ->sum('gross_amount');
+        $totalOnlinePaystack = (float) Order::where('payment_method', '!=', 'cash')->where(
+            'payment_status',
+            'paid',
+        )->sum('gross_amount');
 
-        $totalGateCash = (float) Order::where('payment_method', 'cash')
-            ->where('payment_status', 'paid')
-            ->sum('gross_amount');
+        $totalGateCash = (float) Order::where('payment_method', 'cash')->where('payment_status', 'paid')->sum(
+            'gross_amount',
+        );
 
         $grossRevenue = $totalOnlinePaystack + $totalGateCash;
 

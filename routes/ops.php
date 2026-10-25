@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Livewire\Admin\DailySessionLedger;
+use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
 use Illuminate\Support\Facades\Route;
 
@@ -23,7 +24,7 @@ Route::middleware(['auth'])
         Route::get('scanner', ScannerTerminal::class)->name('scanner');
 
         // On-site walk-in cash desk portal
-        // Route::get('cash-desk', CashDeskTerminal::class)->name('cash-desk');
+        Route::get('cash-desk', CashDeskTerminal::class)->name('cash-desk');
     });
 
 Route::middleware(['auth'])

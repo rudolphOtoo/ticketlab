@@ -1,15 +1,15 @@
-<div class="flex flex-col gap-8">
+<div class="flex flex-col gap-4 sm:gap-5">
     <!-- Page Header & Actions -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div class="flex flex-col gap-1">
-            <span class="text-xs font-semibold tracking-wider uppercase text-[var(--text-tertiary)]">Operations Ledger</span>
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)]">Financial Closeout & Attendance</h1>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex flex-col gap-0.5">
+            <span class="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-[var(--text-tertiary)]">Operations Ledger</span>
+            <h1 class="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-[var(--text-primary)]">Financial Closeout & Attendance</h1>
             <p class="text-xs sm:text-sm text-[var(--text-secondary)]">Live reconciliation of omni-channel gate collections, Mobile Money routing, and terminal turnout.</p>
         </div>
 
-        <div class="flex items-center gap-3">
-            <span class="text-xs text-[var(--text-tertiary)] hidden md:inline">Refreshed just now</span>
-            <button type="button" class="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] shadow-xs transition">
+        <div class="flex items-center gap-2.5">
+            <span class="text-[11px] text-[var(--text-tertiary)] hidden md:inline">Refreshed just now</span>
+            <button type="button" class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] shadow-xs transition">
                 <svg class="size-3.5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                 </svg>
@@ -19,44 +19,44 @@
     </div>
 
     <!-- 4 Top KPI Metric Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
         <!-- Card 1: Gross Revenue -->
-        <div class="flex flex-col justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xs">
+        <div class="flex flex-col justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3.5 sm:p-4 shadow-xs">
             <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
                 <span>Gross Revenue Today</span>
-                <svg class="size-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <svg class="size-3.5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v12.75m0-12.75h19.5m0 0v12.75M3.75 4.5h16.5M3.75 4.5A2.25 2.25 0 0 0 1.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25h16.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25" />
                 </svg>
             </div>
-            <div class="mt-4 flex flex-col gap-1.5">
-                <span class="text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($grossRevenue, 2) }}</span>
+            <div class="mt-3 flex flex-col gap-1">
+                <span class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($grossRevenue, 2) }}</span>
                 <div class="flex items-center gap-1.5 text-xs">
-                    <span class="inline-flex items-center rounded-md bg-[var(--status-success-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--status-success)]">
+                    <span class="inline-flex items-center rounded-md bg-[var(--status-success-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-success)]">
                         +12% vs Day 1
                     </span>
-                    <span class="text-[var(--text-tertiary)]">from all gates</span>
+                    <span class="text-[11px] text-[var(--text-tertiary)]">from all gates</span>
                 </div>
             </div>
         </div>
 
         <!-- Card 2: Gate Turnout -->
-        <div class="flex flex-col justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xs">
+        <div class="flex flex-col justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3.5 sm:p-4 shadow-xs">
             <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
                 <span>Gate Turnout</span>
-                <span class="inline-flex items-center rounded-md bg-[var(--status-success-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--status-success)]">
+                <span class="inline-flex items-center rounded-md bg-[var(--status-success-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-success)]">
                     {{ $turnoutRate }}% admitted
                 </span>
             </div>
-            <div class="mt-4 flex flex-col gap-2">
+            <div class="mt-3 flex flex-col gap-1.5">
                 <div class="flex items-baseline gap-1 font-mono">
-                    <span class="text-2xl font-bold tracking-tight text-[var(--text-primary)]">{{ number_format($turnoutCount) }}</span>
+                    <span class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">{{ number_format($turnoutCount) }}</span>
                     <span class="text-xs text-[var(--text-tertiary)]">/ {{ number_format($capacityTotal) }}</span>
                 </div>
                 <!-- Progress Line -->
                 <div class="h-1.5 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden">
                     <div class="h-full rounded-full bg-[var(--status-success)]" style="width: {{ $turnoutRate }}%"></div>
                 </div>
-                <div class="flex items-center justify-between text-[11px] text-[var(--text-tertiary)]">
+                <div class="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
                     <span>Verified Check-ins</span>
                     <span>{{ $capacityTotal - $turnoutCount }} remaining</span>
                 </div>
@@ -64,40 +64,40 @@
         </div>
 
         <!-- Card 3: Online Paystack -->
-        <div class="flex flex-col justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xs">
+        <div class="flex flex-col justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3.5 sm:p-4 shadow-xs">
             <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
                 <span>Online Paystack</span>
-                <svg class="size-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <svg class="size-3.5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
                 </svg>
             </div>
-            <div class="mt-4 flex flex-col gap-1.5">
-                <span class="text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($totalOnlinePaystack, 2) }}</span>
-                <span class="text-xs text-[var(--text-secondary)]">(82% Mobile Money, 18% Card)</span>
-                <span class="text-[11px] text-[var(--text-tertiary)]">Automated settlement cleared</span>
+            <div class="mt-3 flex flex-col gap-1">
+                <span class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($totalOnlinePaystack, 2) }}</span>
+                <span class="text-[11px] text-[var(--text-secondary)]">(82% Mobile Money, 18% Card)</span>
+                <span class="text-[10px] text-[var(--text-tertiary)]">Automated settlement cleared</span>
             </div>
         </div>
 
         <!-- Card 4: Cash Desk Tender -->
-        <div class="flex flex-col justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xs">
+        <div class="flex flex-col justify-between rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3.5 sm:p-4 shadow-xs">
             <div class="flex items-center justify-between text-xs text-[var(--text-secondary)]">
                 <span>Cash Desk Tender</span>
-                <svg class="size-4 text-[var(--status-warning)]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <svg class="size-3.5 text-[var(--status-warning)]" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
             </div>
-            <div class="mt-4 flex flex-col gap-1.5">
-                <span class="text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($totalGateCash, 2) }}</span>
-                <span class="text-xs text-[var(--text-secondary)]">(184 walk-in cash orders)</span>
-                <span class="text-[11px] text-[var(--text-tertiary)]">Physical vault drawer locked</span>
+            <div class="mt-3 flex flex-col gap-1">
+                <span class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($totalGateCash, 2) }}</span>
+                <span class="text-[11px] text-[var(--text-secondary)]">(184 walk-in cash orders)</span>
+                <span class="text-[10px] text-[var(--text-tertiary)]">Physical vault drawer locked</span>
             </div>
         </div>
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         <!-- Left: Zone Financials & Gate Throughput (2 Columns) -->
-        <div class="lg:col-span-2 flex flex-col gap-4 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-xs">
+        <div class="lg:col-span-2 flex flex-col gap-3.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-xs">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex flex-col">
                     <h2 class="text-base font-semibold text-[var(--text-primary)]">Zone Financials & Gate Throughput</h2>
@@ -204,28 +204,28 @@
         </div>
 
         <!-- Right Rail: Fast Operations & Live Feed (1 Column) -->
-        <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-4">
             <!-- Fast Lane Operations -->
-            <div class="flex flex-col gap-4 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-xs">
-                <span class="text-xs font-semibold tracking-wider uppercase text-[var(--text-tertiary)]">Fast Lane Operations</span>
+            <div class="flex flex-col gap-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 sm:p-4.5 shadow-xs">
+                <span class="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-[var(--text-tertiary)]">Fast Lane Operations</span>
 
-                <div class="flex flex-col gap-3">
-                    <a href="{{ url('/ops/scanner') }}" class="cursor-pointer flex items-center justify-center gap-2.5 rounded-lg bg-[var(--accent-brand)] py-3 px-4 text-xs font-medium text-[var(--accent-brand-fg)] shadow-xs transition hover:opacity-90 active:scale-[0.98]" wire:navigate>
-                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                <div class="flex flex-col gap-2.5">
+                    <a href="{{ url('/ops/scanner') }}" class="cursor-pointer flex items-center justify-center gap-2 rounded-lg bg-[var(--accent-brand)] py-2.5 px-3.5 text-xs font-medium text-[var(--accent-brand-fg)] shadow-xs transition hover:opacity-90 active:scale-[0.98]" wire:navigate>
+                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
                         </svg>
                         [ Open Gate Scanner ]
                     </a>
 
-                    <a href="{{ url('/ops/cash-desk') }}" class="cursor-pointer flex items-center justify-center gap-2.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] py-3 px-4 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition active:scale-[0.98]" wire:navigate>
-                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                    <a href="{{ url('/ops/cash-desk') }}" class="cursor-pointer flex items-center justify-center gap-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] py-2.5 px-3.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition active:scale-[0.98]" wire:navigate>
+                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v12.75m0-12.75h19.5m0 0v12.75M3.75 4.5h16.5M3.75 4.5A2.25 2.25 0 0 0 1.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25h16.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25" />
                         </svg>
                         [ Cash Desk Register ]
                     </a>
                 </div>
 
-                <div class="mt-1 flex items-center justify-between text-[11px] text-[var(--text-tertiary)] border-t border-[var(--border-hairline)] pt-3">
+                <div class="mt-0.5 flex items-center justify-between text-[10px] sm:text-[11px] text-[var(--text-tertiary)] border-t border-[var(--border-hairline)] pt-2.5">
                     <span class="flex items-center gap-1.5">
                         <span class="size-1.5 rounded-full bg-[var(--status-success)]"></span>
                         4 Gate Terminals Active
@@ -235,9 +235,9 @@
             </div>
 
             <!-- Live Gate Feed -->
-            <div class="flex flex-col gap-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-xs">
+            <div class="flex flex-col gap-2.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 sm:p-4.5 shadow-xs">
                 <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold tracking-wider uppercase text-[var(--text-tertiary)]">Live Gate Feed</span>
+                    <span class="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-[var(--text-tertiary)]">Live Gate Feed</span>
                     <span class="text-[10px] text-[var(--status-success)] flex items-center gap-1">
                         <span class="size-1.5 rounded-full bg-[var(--status-success)] animate-pulse"></span>
                         Real-time
