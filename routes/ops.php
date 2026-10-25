@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Livewire\Admin\DailySessionLedger;
+use App\Livewire\Ops\ScannerTerminal;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,7 +20,8 @@ Route::middleware(['auth'])
     ->name('ops.')
     ->group(function () {
         // Mobile camera door scanner terminal
-        // Route::get('scanner', ScannerTerminal::class)->name('scanner');
+        Route::get('scanner', ScannerTerminal::class)->name('scanner');
+
         // On-site walk-in cash desk portal
         // Route::get('cash-desk', CashDeskTerminal::class)->name('cash-desk');
     });
