@@ -77,7 +77,7 @@
 
                     <!-- Theme Switcher Button -->
                     <button type="button"
-                            onclick="document.documentElement.classList.toggle('dark')"
+                            onclick="toggleStudioTheme(event)"
                             class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition"
                             title="Toggle Light / Dark">
                         <svg class="size-3.5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
@@ -130,5 +130,43 @@
             </main>
         </div>
     </div>
+
+    <!-- Fluid Theme View Transition Script -->
+    <script>
+        function toggleStudioTheme(event) {
+            if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.documentElement.classList.toggle('dark');
+                return;
+            }
+
+            const rect = event.currentTarget.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            const endRadius = Math.hypot(
+                Math.max(x, window.innerWidth - x),
+                Math.max(y, window.innerHeight - y)
+            );
+
+            const transition = document.startViewTransition(() => {
+                document.documentElement.classList.toggle('dark');
+            });
+
+            transition.ready.then(() => {
+                document.documentElement.animate(
+                    {
+                        clipPath: [
+                            `circle(0px at ${x}px ${y}px)`,
+                            `circle(${endRadius}px at ${x}px ${y}px)`
+                        ]
+                    },
+                    {
+                        duration: 320,
+                        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                        pseudoElement: '::view-transition-new(root)'
+                    }
+                );
+            });
+        }
+    </script>
 </body>
 </html>

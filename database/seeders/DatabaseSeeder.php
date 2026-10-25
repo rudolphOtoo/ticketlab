@@ -53,6 +53,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
             'organization_id' => $org->id,
             'subdivision_id' => null, // Superadmin access across all zones
+            'email_verified_at' => now(),
         ]);
 
         // Door Usher User (Scoped to Kumasi)
@@ -61,6 +62,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
             'organization_id' => $org->id,
             'subdivision_id' => $kumasi->id,
+            'email_verified_at' => now(),
         ]);
 
         // 4. Create Active Event

@@ -234,7 +234,7 @@
     <!-- Attendee Inspect Drawer Popover -->
     @if($selectedAttendee)
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-            <div class="relative w-full max-w-md rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-2xl flex flex-col gap-4 text-xs">
+            <div class="relative w-full max-w-md rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-2xl flex flex-col gap-4 text-xs animate-physical-modal">
                 
                 <div class="flex items-center justify-between border-b border-[var(--border-hairline)] pb-3">
                     <div class="flex items-center gap-2">
