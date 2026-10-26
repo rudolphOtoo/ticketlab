@@ -77,7 +77,7 @@
 
                     <!-- Theme Switcher Button -->
                     <button type="button"
-                            onclick="toggleStudioTheme(event)"
+                            onclick="toggleStudioTheme(event, null, this)"
                             class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] active:scale-90 transition-transform duration-100"
                             title="Toggle Light / Dark">
                         <svg class="size-3.5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
@@ -120,7 +120,7 @@
 
                     <!-- Theme Toggle Button (Mobile & Desktop Header) -->
                     <button type="button"
-                            onclick="toggleStudioTheme(event)"
+                            onclick="toggleStudioTheme(event, null, this)"
                             class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] active:scale-90 transition-transform duration-100"
                             title="Toggle Light / Dark">
                         <svg class="size-3.5 sm:size-4 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
@@ -142,7 +142,13 @@
 
     <!-- Fluid Theme View Transition Script -->
     <script>
-        function toggleStudioTheme(event, targetTheme = null) {
+        function toggleStudioTheme(event, targetTheme = null, triggerEl = null) {
+            // Exact physical button center from explicit trigger element, event target, or currentTarget
+            const btn = triggerEl || event?.target?.closest('button') || event?.currentTarget;
+            const rect = btn?.getBoundingClientRect();
+            const x = rect ? Math.round(rect.left + rect.width / 2) : Math.round(event?.clientX ?? window.innerWidth / 2);
+            const y = rect ? Math.round(rect.top + rect.height / 2) : Math.round(event?.clientY ?? window.innerHeight / 2);
+
             const isDark = document.documentElement.classList.contains('dark');
             const nextTheme = targetTheme ?? (isDark ? 'light' : 'dark');
 
@@ -167,43 +173,31 @@
                 return;
             }
 
-            // Always anchor ripple to the exact physical center of the button pressed
-            const btn = event?.target?.closest('button') || event?.currentTarget;
-            const rect = btn?.getBoundingClientRect();
-            const x = rect ? (rect.left + rect.width / 2) : (event?.clientX ?? window.innerWidth / 2);
-            const y = rect ? (rect.top + rect.height / 2) : (event?.clientY ?? window.innerHeight / 2);
-
-            const endRadius = Math.hypot(
-                Math.max(x, window.innerWidth - x),
-                Math.max(y, window.innerHeight - y)
+            // Furthest distance to any viewport corner with 8% over-bleed buffer
+            const endRadius = Math.ceil(
+                Math.hypot(
+                    Math.max(x, window.innerWidth - x),
+                    Math.max(y, window.innerHeight - y)
+                ) * 1.08
             );
-
-            const isGoingDark = nextTheme === 'dark';
 
             const transition = document.startViewTransition(() => {
                 commitThemeChange();
             });
 
             transition.ready.then(() => {
-                const keyframes = isGoingDark
-                    ? [
+                // Outward wave expanding directly from the button center for both modes
+                document.documentElement.animate(
+                    [
                         { clipPath: `circle(0px at ${x}px ${y}px)` },
                         { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
-                      ]
-                    : [
-                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` },
-                        { clipPath: `circle(0px at ${x}px ${y}px)` }
-                      ];
-
-                const targetPseudo = isGoingDark
-                    ? '::view-transition-new(root)'
-                    : '::view-transition-old(root)';
-
-                document.documentElement.animate(keyframes, {
-                    duration: 440,
-                    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-                    pseudoElement: targetPseudo
-                });
+                    ],
+                    {
+                        duration: 500,
+                        easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+                        pseudoElement: '::view-transition-new(root)'
+                    }
+                );
             });
         }
         window.toggleStudioTheme = toggleStudioTheme;

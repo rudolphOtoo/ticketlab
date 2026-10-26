@@ -13,12 +13,12 @@ new #[Title('Appearance settings')] class extends Component {
     <x-pages::settings.layout :heading="__('Appearance')" :subheading="__('Update the appearance settings for your account')">
         <div class="flex items-center gap-2 rounded-xl bg-[var(--bg-subtle)] p-1 text-xs font-semibold w-fit">
             <button type="button"
-                    onclick="window.toggleStudioTheme(event, 'light')"
+                    onclick="window.toggleStudioTheme(event, 'light', this)"
                     class="cursor-pointer rounded-lg px-3 py-1.5 transition text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-transform duration-100">
                 Light
             </button>
             <button type="button"
-                    onclick="window.toggleStudioTheme(event, 'dark')"
+                    onclick="window.toggleStudioTheme(event, 'dark', this)"
                     class="cursor-pointer rounded-lg px-3 py-1.5 transition text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-transform duration-100">
                 Dark
             </button>
