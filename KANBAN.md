@@ -57,6 +57,12 @@
   - Linked to all 4 Ground Operations portals.
   - All 40 Pest feature tests passed (100% green).
 
+- [x] **T2-10: Auth Routing Alignment, Settings Cleanup & Custom Multi-size ICO**
+  - Removed lingering `verified` middleware from `routes/web.php` and `routes/settings.php`.
+  - Converted `resources/views/pages/settings/` (layout, appearance, profile) to Serene Studio tokens.
+  - Generated multi-resolution `public/favicon.ico` (16x16, 32x32, 48x48, 64x64) and `apple-touch-icon.png` matching the vector ticket pass.
+  - Performed `/vibesec` security audit pass (zero secret leakage, clean auth guardrails).
+
 ---
 
 ## 🟡 In Progress: UI Review & Polish
