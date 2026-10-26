@@ -78,7 +78,7 @@
                     <!-- Theme Switcher Button -->
                     <button type="button"
                             onclick="toggleStudioTheme(event)"
-                            class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition"
+                            class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] active:scale-90 transition-transform duration-100"
                             title="Toggle Light / Dark">
                         <svg class="size-3.5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                         <svg class="size-3.5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -112,13 +112,22 @@
                 </div>
 
                 <!-- Live Operational Telemetry -->
-                <div class="flex items-center gap-2.5">
+                <div class="flex items-center gap-2">
                     <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-hairline)] bg-[var(--status-success-bg)] px-2 py-0.5 text-[10px] sm:text-[11px] font-medium text-[var(--status-success)]">
                         <span class="size-1.5 rounded-full bg-[var(--status-success)] animate-pulse"></span>
                         Live Sync
                     </span>
 
-                    <a href="{{ url('/ops/scanner') }}" class="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--bg-hover)] transition" wire:navigate>
+                    <!-- Theme Toggle Button (Mobile & Desktop Header) -->
+                    <button type="button"
+                            onclick="toggleStudioTheme(event)"
+                            class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] active:scale-90 transition-transform duration-100"
+                            title="Toggle Light / Dark">
+                        <svg class="size-3.5 sm:size-4 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                        <svg class="size-3.5 sm:size-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    </button>
+
+                    <a href="{{ url('/ops/scanner') }}" class="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--bg-hover)] active:scale-95 transition" wire:navigate>
                         Scan Pass
                     </a>
                 </div>
@@ -158,19 +167,11 @@
                 return;
             }
 
-            // Precise client click position with button center fallback
-            let x, y;
-            if (event && typeof event.clientX === 'number' && event.clientX > 0) {
-                x = event.clientX;
-                y = event.clientY;
-            } else if (event?.currentTarget) {
-                const rect = event.currentTarget.getBoundingClientRect();
-                x = rect.left + rect.width / 2;
-                y = rect.top + rect.height / 2;
-            } else {
-                x = window.innerWidth / 2;
-                y = window.innerHeight / 2;
-            }
+            // Always anchor ripple to the exact physical center of the button pressed
+            const btn = event?.target?.closest('button') || event?.currentTarget;
+            const rect = btn?.getBoundingClientRect();
+            const x = rect ? (rect.left + rect.width / 2) : (event?.clientX ?? window.innerWidth / 2);
+            const y = rect ? (rect.top + rect.height / 2) : (event?.clientY ?? window.innerHeight / 2);
 
             const endRadius = Math.hypot(
                 Math.max(x, window.innerWidth - x),
@@ -199,8 +200,8 @@
                     : '::view-transition-old(root)';
 
                 document.documentElement.animate(keyframes, {
-                    duration: 650,
-                    easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
+                    duration: 440,
+                    easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
                     pseudoElement: targetPseudo
                 });
             });

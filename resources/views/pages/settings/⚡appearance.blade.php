@@ -14,12 +14,12 @@ new #[Title('Appearance settings')] class extends Component {
         <div class="flex items-center gap-2 rounded-xl bg-[var(--bg-subtle)] p-1 text-xs font-semibold w-fit">
             <button type="button"
                     onclick="window.toggleStudioTheme(event, 'light')"
-                    class="cursor-pointer rounded-lg px-3 py-1.5 transition text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+                    class="cursor-pointer rounded-lg px-3 py-1.5 transition text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-transform duration-100">
                 Light
             </button>
             <button type="button"
                     onclick="window.toggleStudioTheme(event, 'dark')"
-                    class="cursor-pointer rounded-lg px-3 py-1.5 transition text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+                    class="cursor-pointer rounded-lg px-3 py-1.5 transition text-[var(--text-secondary)] hover:text-[var(--text-primary)] active:scale-95 transition-transform duration-100">
                 Dark
             </button>
         </div>
