@@ -4,7 +4,7 @@
     @include('partials.head')
     <title>{{ $title ?? 'Operations' }} — TicketLab Studio</title>
 </head>
-<body class="min-h-screen antialiased bg-[var(--bg-canvas)] text-[var(--text-primary)] transition-colors duration-200">
+<body class="min-h-screen antialiased bg-[var(--bg-canvas)] text-[var(--text-primary)]">
     <div class="flex min-h-screen">
         <!-- Desktop Sidebar -->
         <aside class="hidden lg:flex w-56 xl:w-60 flex-col justify-between border-r border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shrink-0">
@@ -158,32 +158,51 @@
                 return;
             }
 
-            const rect = event?.currentTarget ? event.currentTarget.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
-            const x = rect.left + rect.width / 2;
-            const y = rect.top + rect.height / 2;
+            // Precise client click position with button center fallback
+            let x, y;
+            if (event && typeof event.clientX === 'number' && event.clientX > 0) {
+                x = event.clientX;
+                y = event.clientY;
+            } else if (event?.currentTarget) {
+                const rect = event.currentTarget.getBoundingClientRect();
+                x = rect.left + rect.width / 2;
+                y = rect.top + rect.height / 2;
+            } else {
+                x = window.innerWidth / 2;
+                y = window.innerHeight / 2;
+            }
+
             const endRadius = Math.hypot(
                 Math.max(x, window.innerWidth - x),
                 Math.max(y, window.innerHeight - y)
             );
+
+            const isGoingDark = nextTheme === 'dark';
 
             const transition = document.startViewTransition(() => {
                 commitThemeChange();
             });
 
             transition.ready.then(() => {
-                document.documentElement.animate(
-                    {
-                        clipPath: [
-                            `circle(0px at ${x}px ${y}px)`,
-                            `circle(${endRadius}px at ${x}px ${y}px)`
-                        ]
-                    },
-                    {
-                        duration: 400,
-                        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-                        pseudoElement: '::view-transition-new(root)'
-                    }
-                );
+                const keyframes = isGoingDark
+                    ? [
+                        { clipPath: `circle(0px at ${x}px ${y}px)` },
+                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
+                      ]
+                    : [
+                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` },
+                        { clipPath: `circle(0px at ${x}px ${y}px)` }
+                      ];
+
+                const targetPseudo = isGoingDark
+                    ? '::view-transition-new(root)'
+                    : '::view-transition-old(root)';
+
+                document.documentElement.animate(keyframes, {
+                    duration: 650,
+                    easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
+                    pseudoElement: targetPseudo
+                });
             });
         }
         window.toggleStudioTheme = toggleStudioTheme;

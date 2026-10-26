@@ -53,12 +53,20 @@
     display: block;
 }
 
-::view-transition-old(root) {
+/* Going dark: incoming dark view sits on top and expands */
+html.dark::view-transition-new(root) {
+    z-index: 9999;
+}
+html.dark::view-transition-old(root) {
     z-index: 1;
 }
 
-::view-transition-new(root) {
+/* Going light: outgoing dark view sits on top and contracts */
+html:not(.dark)::view-transition-old(root) {
     z-index: 9999;
+}
+html:not(.dark)::view-transition-new(root) {
+    z-index: 1;
 }
 
 @keyframes physical-modal-enter {
