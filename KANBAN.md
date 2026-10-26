@@ -72,17 +72,43 @@
 
 ---
 
-## 🟡 In Progress: UI Review & Polish
-
-- [ ] **Track 2 UI Scaffolding Review & Polish**
-  - Verify all 4 screens (`/admin/sessions`, `/ops/scanner`, `/ops/cash-desk`, `/admin/attendees`) in browser.
-  - Ensure cohesive light/dark physics, zero jitter, and responsive scaling.
+## 🟡 Queued for Wake-Up: Browser Visual Verification
+- [ ] **Track 2 UI Surface Visual Check (Wake-Up Review)**
+  - Hard refresh (`Ctrl + F5`) and check light/dark ripple on `/dashboard`, `/admin/sessions`, `/ops/scanner`, `/ops/cash-desk`, and `/admin/attendees`.
+  - Confirm mobile top app bar toggle and desktop sidebar toggle behavior.
 
 ---
 
-## 🔵 Backlog: Next Phase (Functional Integration on `feat/track-2-ground-ops`)
+## 🔵 Backlog: Next Phase — Functional Wiring (`feat/track-2-ground-ops`)
 
-- [ ] **T2-09: Live Camera QR Decoding** (`html5-qrcode` integration with back-camera priority).
-- [ ] **T2-10: Atomic Walk-In Cash Orders** (Persist orders, tickets, and attendees atomically into MySQL).
-- [ ] **T2-11: Daily Session Closure PDF Generation** (DomPDF formatted session closure declaration).
-- [ ] **T2-12: End-to-End Gate Turnout Rehearsal**.
+The following wiring roadmap is prepared and ready for execution upon wake-up:
+
+- [ ] **T2-W1: Live Camera QR Decoding & Instant Check-In (`GET /ops/scanner`)**
+  - Integrate `html5-qrcode` with back-facing camera priority.
+  - Wire `ScannerTerminal.php` action `validatePass($qrHash)` against MySQL `attendees`.
+  - First-time check-in stamps `checked_in_at = now()`, emits 🟢 chime, vibration, and attendee details.
+  - Duplicate scan emits 🔴 warning buzzer with exact prior scan timestamp.
+  - Feature test with Pest covering valid, duplicate, and invalid hash scenarios.
+
+- [ ] **T2-W2: Atomic Walk-In Cash Desk Transaction (`GET /ops/cash-desk`)**
+  - Wire `CashDeskTerminal.php` submit action inside `DB::transaction()`.
+  - Create `Order` (`payment_method = 'cash'`, `payment_status = 'paid'`, `gross_amount`).
+  - Create `Attendee` record with unique SHA-256 `qr_code_hash`.
+  - Decrement `TicketType::quantity_available` with concurrency guardrails.
+  - Return created pass for instant on-screen thermal/SVG printing.
+  - Feature test verifying inventory decrement and order creation.
+
+- [ ] **T2-W3: Daily Session Closeout & Tamper-Proof DomPDF Generator (`GET /admin/sessions`)**
+  - Wire `DailySessionLedger.php` to calculate real-time DB metrics (Gross Revenue, Paystack Online vs. Gate Cash Tender, Zone Turnout).
+  - Implement `SessionReportService` using `barryvdh/laravel-dompdf`.
+  - "Lock Session & Declare Figures" action freezes active tally into `session_ledgers`.
+  - Feature test validating ledger calculations and PDF creation.
+
+- [ ] **T2-W4: 3-Tier Multi-Zone RBAC & Streaming Roster Export (`GET /admin/attendees`)**
+  - Implement `EnsureSubdivisionAccess` middleware and Eloquent scoping (Zone Admin restricted to `subdivision_id`, Superadmin sees all).
+  - Wire `spatie/simple-excel` streaming CSV download in `AttendeeRoster.php`.
+  - Feature test verifying cross-zone access restrictions.
+
+- [ ] **T2-W5: End-to-End Ground Ops Simulation & Gate Rehearsal**
+  - Seed complete event scenario, simulate 50 walk-ins, scan 50 QR codes, lock session, export roster, and verify ledger consistency.
+
