@@ -156,8 +156,11 @@
                 return;
             }
 
+            const isGoingDark = nextTheme === 'dark';
+            document.documentElement.setAttribute('data-theme-transition', isGoingDark ? 'to-dark' : 'to-light');
+
             const commitThemeChange = () => {
-                if (nextTheme === 'dark') {
+                if (isGoingDark) {
                     document.documentElement.classList.add('dark');
                 } else {
                     document.documentElement.classList.remove('dark');
@@ -170,15 +173,16 @@
 
             if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 commitThemeChange();
+                document.documentElement.removeAttribute('data-theme-transition');
                 return;
             }
 
-            // Furthest distance to any viewport corner with 8% over-bleed buffer
+            // Furthest distance to any viewport corner with 5% over-bleed buffer
             const endRadius = Math.ceil(
                 Math.hypot(
                     Math.max(x, window.innerWidth - x),
                     Math.max(y, window.innerHeight - y)
-                ) * 1.08
+                ) * 1.05
             );
 
             const transition = document.startViewTransition(() => {
@@ -186,18 +190,37 @@
             });
 
             transition.ready.then(() => {
-                // Outward wave expanding directly from the button center for both modes
-                document.documentElement.animate(
-                    [
-                        { clipPath: `circle(0px at ${x}px ${y}px)` },
-                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
-                    ],
-                    {
-                        duration: 500,
-                        easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
-                        pseudoElement: '::view-transition-new(root)'
-                    }
-                );
+                if (isGoingDark) {
+                    // Outward wave: Dark wave expands smoothly outward from the button
+                    document.documentElement.animate(
+                        [
+                            { clipPath: `circle(0px at ${x}px ${y}px)` },
+                            { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
+                        ],
+                        {
+                            duration: 460,
+                            easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+                            pseudoElement: '::view-transition-new(root)'
+                        }
+                    );
+                } else {
+                    // Reverse animation: Dark sheet smoothly contracts back down into the button
+                    document.documentElement.animate(
+                        [
+                            { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` },
+                            { clipPath: `circle(0px at ${x}px ${y}px)` }
+                        ],
+                        {
+                            duration: 420,
+                            easing: 'cubic-bezier(0.5, 0, 0.75, 1)',
+                            pseudoElement: '::view-transition-old(root)'
+                        }
+                    );
+                }
+            });
+
+            transition.finished.finally(() => {
+                document.documentElement.removeAttribute('data-theme-transition');
             });
         }
         window.toggleStudioTheme = toggleStudioTheme;
