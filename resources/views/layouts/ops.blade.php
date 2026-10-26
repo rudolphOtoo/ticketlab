@@ -157,7 +157,6 @@
             }
 
             const isGoingDark = nextTheme === 'dark';
-            document.documentElement.setAttribute('data-theme-transition', isGoingDark ? 'to-dark' : 'to-light');
 
             const commitThemeChange = () => {
                 if (isGoingDark) {
@@ -173,7 +172,6 @@
 
             if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 commitThemeChange();
-                document.documentElement.removeAttribute('data-theme-transition');
                 return;
             }
 
@@ -198,8 +196,8 @@
                             { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
                         ],
                         {
-                            duration: 460,
-                            easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+                            duration: 450,
+                            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
                             pseudoElement: '::view-transition-new(root)'
                         }
                     );
@@ -211,16 +209,12 @@
                             { clipPath: `circle(0px at ${x}px ${y}px)` }
                         ],
                         {
-                            duration: 420,
-                            easing: 'cubic-bezier(0.5, 0, 0.75, 1)',
+                            duration: 450,
+                            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
                             pseudoElement: '::view-transition-old(root)'
                         }
                     );
                 }
-            });
-
-            transition.finished.finally(() => {
-                document.documentElement.removeAttribute('data-theme-transition');
             });
         }
         window.toggleStudioTheme = toggleStudioTheme;

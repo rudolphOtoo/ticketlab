@@ -46,32 +46,6 @@
    Emil Kowalski Motion Primitives & View Transitions
    ========================================================================== */
 
-::view-transition-image-pair(root) {
-    isolation: auto;
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
-    display: block;
-}
-
-/* Going dark: incoming dark view sits on top and expands */
-[data-theme-transition="to-dark"]::view-transition-new(root) {
-    z-index: 9999;
-}
-[data-theme-transition="to-dark"]::view-transition-old(root) {
-    z-index: 1;
-}
-
-/* Going light: outgoing dark view sits on top and contracts into switch */
-[data-theme-transition="to-light"]::view-transition-old(root) {
-    z-index: 9999;
-}
-[data-theme-transition="to-light"]::view-transition-new(root) {
-    z-index: 1;
-}
 
 @keyframes physical-modal-enter {
     from {
