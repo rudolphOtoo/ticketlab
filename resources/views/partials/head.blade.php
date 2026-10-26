@@ -11,4 +11,15 @@
 
 @fonts
 
+<script>
+    (() => {
+        const stored = localStorage.getItem('theme');
+        if (stored === 'light' || (!stored && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+            document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
+        }
+    })();
+</script>
+
 @vite(['resources/css/app.css', 'resources/js/app.js'])

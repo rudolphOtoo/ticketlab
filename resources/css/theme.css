@@ -39,34 +39,33 @@
     --status-danger-bg: #fef2f2;
 }
 
-@layer theme {
-    .dark {
-        /* Primary Inversion */
-        --color-primary: #f4f4f5;
-        --color-primary-content: #f4f4f5;
-        --color-primary-fg: #121316;
+html.dark,
+.dark {
+    /* Primary Inversion */
+    --color-primary: #f4f4f5;
+    --color-primary-content: #f4f4f5;
+    --color-primary-fg: #121316;
 
-        /* Canvas & Surfaces (Velvet Basalt - Warm Charcoal) */
-        --bg-canvas: #121316;
-        --bg-surface: #181a1f;
-        --bg-subtle: #20232b;
-        --bg-hover: #282c36;
+    /* Canvas & Surfaces (Velvet Basalt - Warm Charcoal) */
+    --bg-canvas: #121316;
+    --bg-surface: #181a1f;
+    --bg-subtle: #20232b;
+    --bg-hover: #282c36;
 
-        /* Text & Typography */
-        --text-primary: #f4f4f5;
-        --text-secondary: #9ca3af;
-        --text-tertiary: #6b7280;
+    /* Text & Typography */
+    --text-primary: #f4f4f5;
+    --text-secondary: #9ca3af;
+    --text-tertiary: #6b7280;
 
-        /* Hairline Structure */
-        --border-hairline: rgba(255, 255, 255, 0.08);
-        --border-focused: #f4f4f5;
+    /* Hairline Structure */
+    --border-hairline: rgba(255, 255, 255, 0.08);
+    --border-focused: #f4f4f5;
 
-        /* Soothing Semantic Accents in Dark */
-        --status-success: #34d399;    /* Gentle Sage */
-        --status-success-bg: rgba(52, 211, 153, 0.12);
-        --status-warning: #fbbf24;
-        --status-warning-bg: rgba(251, 191, 36, 0.12);
-        --status-danger: #f87171;
-        --status-danger-bg: rgba(248, 113, 113, 0.12);
-    }
+    /* Soothing Semantic Accents in Dark */
+    --status-success: #34d399;    /* Gentle Sage */
+    --status-success-bg: rgba(52, 211, 153, 0.12);
+    --status-warning: #fbbf24;
+    --status-warning-bg: rgba(251, 191, 36, 0.12);
+    --status-danger: #f87171;
+    --status-danger-bg: rgba(248, 113, 113, 0.12);
 }

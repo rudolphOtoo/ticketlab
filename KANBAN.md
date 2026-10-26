@@ -63,6 +63,12 @@
   - Generated multi-resolution `public/favicon.ico` (16x16, 32x32, 48x48, 64x64) and `apple-touch-icon.png` matching the vector ticket pass.
   - Performed `/vibesec` security audit pass (zero secret leakage, clean auth guardrails).
 
+- [x] **T2-11: Serene Studio Radial Wave View Transition & CSS Layer Fix**
+  - Resolved CSS cascade layer inversion in `theme.css` (`html.dark, .dark` declared unlayered so `--bg-canvas` and `--bg-surface` override `:root`).
+  - Implemented Emil Kowalski craft-compliant 400ms weighted curve (`cubic-bezier(0.22, 1, 0.36, 1)`) View Transition.
+  - Configured pseudo-element layering (`::view-transition-new(root) { z-index: 9999 }`) with origin-anchored WAAPI circular clip-path wave.
+  - Added early hydration script in `head.blade.php` to prevent theme flash and synchronized with `localStorage`.
+
 ---
 
 ## 🟡 In Progress: UI Review & Polish

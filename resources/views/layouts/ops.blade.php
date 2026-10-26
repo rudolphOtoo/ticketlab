@@ -133,13 +133,32 @@
 
     <!-- Fluid Theme View Transition Script -->
     <script>
-        function toggleStudioTheme(event) {
-            if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                document.documentElement.classList.toggle('dark');
+        function toggleStudioTheme(event, targetTheme = null) {
+            const isDark = document.documentElement.classList.contains('dark');
+            const nextTheme = targetTheme ?? (isDark ? 'light' : 'dark');
+
+            if (targetTheme && ((targetTheme === 'dark' && isDark) || (targetTheme === 'light' && !isDark))) {
                 return;
             }
 
-            const rect = event.currentTarget.getBoundingClientRect();
+            const commitThemeChange = () => {
+                if (nextTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                localStorage.setItem('theme', nextTheme);
+                document.dispatchEvent(new CustomEvent('theme-changed', {
+                    detail: { theme: nextTheme }
+                }));
+            };
+
+            if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                commitThemeChange();
+                return;
+            }
+
+            const rect = event?.currentTarget ? event.currentTarget.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
             const x = rect.left + rect.width / 2;
             const y = rect.top + rect.height / 2;
             const endRadius = Math.hypot(
@@ -148,7 +167,7 @@
             );
 
             const transition = document.startViewTransition(() => {
-                document.documentElement.classList.toggle('dark');
+                commitThemeChange();
             });
 
             transition.ready.then(() => {
@@ -160,13 +179,14 @@
                         ]
                     },
                     {
-                        duration: 320,
-                        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                        duration: 400,
+                        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
                         pseudoElement: '::view-transition-new(root)'
                     }
                 );
             });
         }
+        window.toggleStudioTheme = toggleStudioTheme;
     </script>
 </body>
 </html>
