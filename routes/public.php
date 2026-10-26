@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Payment\PaystackWebhookController;
+use App\Livewire\Public\EventShow;
+use App\Livewire\Public\TicketShow;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,16 +17,22 @@ use Illuminate\Support\Facades\Route;
  | and digital QR pass issuance.
  */
 
+Route::post('api/paystack/webhook', [PaystackWebhookController::class, 'handle'])
+    ->name('public.paystack.webhook')
+    ->withoutMiddleware([ValidateCsrfToken::class]);
+
+Route::post('api/payzephyr/webhook', [PaystackWebhookController::class, 'handle'])
+    ->name('public.payzephyr.webhook')
+    ->withoutMiddleware([ValidateCsrfToken::class]);
+
+Route::get('tickets/{order:reference}', TicketShow::class)->name('public.tickets.show');
+
 Route::prefix('{org_slug}')
     ->name('public.')
+    ->where([
+        'org_slug' => '(?!ops/|admin/|api/|livewire/|up/|dashboard/|settings/|tickets/)[A-Za-z0-9][A-Za-z0-9-]*',
+    ])
     ->group(function () {
-        // Event landing & ticket tier selection
-        // Route::get('{event_slug}', EventShow::class)->name('event.show');
-    });
-
-Route::prefix('tickets')
-    ->name('public.tickets.')
-    ->group(function () {
-        // Ticket confirmation & pass display
-        // Route::get('{order:reference}', TicketShow::class)->name('show');
+        // Event landing, ticket tier selection & Paystack checkout drawer
+        Route::get('{event_slug}', EventShow::class)->name('event.show');
     });

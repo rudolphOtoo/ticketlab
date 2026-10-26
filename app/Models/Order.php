@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Models\Concerns\BelongsToOrganization;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,7 @@ class Order extends Model
     protected $fillable = [
         'organization_id',
         'subdivision_id',
+        'reservation_id',
         'user_id',
         'reference',
         'customer_name',
@@ -28,6 +30,7 @@ class Order extends Model
         'gross_amount',
         'net_amount',
         'fee_amount',
+        'currency',
         'payment_method',
         'payment_status',
         'paid_at',
@@ -47,9 +50,22 @@ class Order extends Model
         ];
     }
 
+    /**
+     * @return Attribute<int, never>
+     */
+    protected function grossPesewas(): Attribute
+    {
+        return Attribute::get(fn(): int => (int) round((float) $this->gross_amount * 100));
+    }
+
     public function subdivision(): BelongsTo
     {
         return $this->belongsTo(Subdivision::class);
+    }
+
+    public function reservation(): BelongsTo
+    {
+        return $this->belongsTo(Reservation::class);
     }
 
     public function user(): BelongsTo
