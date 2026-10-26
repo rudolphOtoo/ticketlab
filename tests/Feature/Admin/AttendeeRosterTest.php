@@ -17,7 +17,27 @@ test('unauthenticated users cannot view attendee roster', function () {
     $this->get(route('admin.attendees'))->assertRedirect(route('login'));
 });
 
-test('authenticated user can view attendee roster with list of attendees', function () {
+test('door terminal usher is blocked by middleware from accessing administrative roster', function () {
+    $org = Organization::create([
+        'name' => 'Accra Summit Org',
+        'slug' => 'accra-summit-'.uniqid(),
+    ]);
+
+    $usher = User::create([
+        'name' => 'Gate Usher',
+        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'password' => Hash::make('password'),
+        'organization_id' => $org->id,
+        'role' => 'usher',
+    ]);
+
+    $this
+        ->actingAs($usher)
+        ->get(route('admin.attendees'))
+        ->assertForbidden();
+});
+
+test('authenticated admin can view attendee roster with list of attendees', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
         'slug' => 'accra-summit-'.uniqid(),
@@ -28,6 +48,7 @@ test('authenticated user can view attendee roster with list of attendees', funct
         'email' => 'admin_'.uniqid().'@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
+        'role' => 'admin',
     ]);
 
     $sub = Subdivision::create([
@@ -57,7 +78,7 @@ test('authenticated user can view attendee roster with list of attendees', funct
     $order = Order::create([
         'reference' => 'ORD-'.uniqid(),
         'organization_id' => $org->id,
-        'event_id' => $event->id,
+        'subdivision_id' => $sub->id,
         'customer_name' => 'Ama Serwah',
         'customer_email' => 'ama@example.com',
         'customer_phone' => '0241234567',
@@ -68,7 +89,7 @@ test('authenticated user can view attendee roster with list of attendees', funct
         'payment_method' => 'card',
     ]);
 
-    $attendee = Attendee::create([
+    Attendee::create([
         'order_id' => $order->id,
         'organization_id' => $org->id,
         'subdivision_id' => $sub->id,
@@ -88,6 +109,106 @@ test('authenticated user can view attendee roster with list of attendees', funct
         ->assertSee('VIP Gold Pass');
 });
 
+test('zone admin is strictly scoped to their assigned subdivision', function () {
+    $org = Organization::create([
+        'name' => 'Accra Summit Org',
+        'slug' => 'accra-summit-'.uniqid(),
+    ]);
+
+    $zoneA = Subdivision::create([
+        'organization_id' => $org->id,
+        'name' => 'Kumasi Zone',
+        'slug' => 'kumasi-'.uniqid(),
+    ]);
+
+    $zoneB = Subdivision::create([
+        'organization_id' => $org->id,
+        'name' => 'Accra Zone',
+        'slug' => 'accra-'.uniqid(),
+    ]);
+
+    $zoneAdminA = User::create([
+        'name' => 'Kumasi Head',
+        'email' => 'kumasi_'.uniqid().'@ticketlab.test',
+        'password' => Hash::make('password'),
+        'organization_id' => $org->id,
+        'subdivision_id' => $zoneA->id,
+        'role' => 'admin',
+    ]);
+
+    $event = Event::create([
+        'organization_id' => $org->id,
+        'title' => 'Kingdom Summit 2026',
+        'slug' => 'summit-'.uniqid(),
+        'venue' => 'Perez Dome',
+        'start_at' => now(),
+        'end_at' => now()->addDays(2),
+        'status' => 'published',
+    ]);
+
+    $tier = TicketType::create([
+        'event_id' => $event->id,
+        'name' => 'Standard Ticket',
+        'price' => 50.00,
+        'total_capacity' => 100,
+        'available_quantity' => 100,
+    ]);
+
+    $orderA = Order::create([
+        'reference' => 'ORD-A-'.uniqid(),
+        'organization_id' => $org->id,
+        'subdivision_id' => $zoneA->id,
+        'customer_name' => 'Kumasi Attendee',
+        'customer_email' => 'kumasi@test.gh',
+        'customer_phone' => '0241111111',
+        'gross_amount' => 50.00,
+        'net_amount' => 50.00,
+        'payment_status' => 'paid',
+        'payment_method' => 'cash',
+    ]);
+
+    $orderB = Order::create([
+        'reference' => 'ORD-B-'.uniqid(),
+        'organization_id' => $org->id,
+        'subdivision_id' => $zoneB->id,
+        'customer_name' => 'Accra Attendee',
+        'customer_email' => 'accra@test.gh',
+        'customer_phone' => '0242222222',
+        'gross_amount' => 50.00,
+        'net_amount' => 50.00,
+        'payment_status' => 'paid',
+        'payment_method' => 'cash',
+    ]);
+
+    Attendee::create([
+        'order_id' => $orderA->id,
+        'organization_id' => $org->id,
+        'subdivision_id' => $zoneA->id,
+        'ticket_type_id' => $tier->id,
+        'name' => 'Kumasi Attendee',
+        'email' => 'kumasi@test.gh',
+        'phone' => '0241111111',
+        'qr_code_hash' => 'HASH_KUMASI_'.uniqid(),
+    ]);
+
+    Attendee::create([
+        'order_id' => $orderB->id,
+        'organization_id' => $org->id,
+        'subdivision_id' => $zoneB->id,
+        'ticket_type_id' => $tier->id,
+        'name' => 'Accra Attendee',
+        'email' => 'accra@test.gh',
+        'phone' => '0242222222',
+        'qr_code_hash' => 'HASH_ACCRA_'.uniqid(),
+    ]);
+
+    // Kumasi Zone Admin sees only Kumasi Attendee
+    Livewire::actingAs($zoneAdminA)
+        ->test(AttendeeRoster::class)
+        ->assertSee('Kumasi Attendee')
+        ->assertDontSee('Accra Attendee');
+});
+
 test('attendee check-in status can be toggled', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
@@ -99,6 +220,7 @@ test('attendee check-in status can be toggled', function () {
         'email' => 'admin_'.uniqid().'@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
+        'role' => 'admin',
     ]);
 
     $event = Event::create([
@@ -122,7 +244,6 @@ test('attendee check-in status can be toggled', function () {
     $order = Order::create([
         'reference' => 'ORD-'.uniqid(),
         'organization_id' => $org->id,
-        'event_id' => $event->id,
         'customer_name' => 'Kofi Mensah',
         'customer_email' => 'kofi@example.com',
         'customer_phone' => '0241234568',
@@ -152,4 +273,64 @@ test('attendee check-in status can be toggled', function () {
     Livewire::actingAs($user)->test(AttendeeRoster::class)->call('toggleCheckIn', $attendee->id);
 
     expect($attendee->fresh()->isCheckedIn())->toBeFalse();
+});
+
+test('attendee roster exports streaming CSV with spatie simple excel', function () {
+    $org = Organization::create([
+        'name' => 'Accra Summit Org',
+        'slug' => 'accra-summit-'.uniqid(),
+    ]);
+
+    $user = User::create([
+        'name' => 'Super Admin',
+        'email' => 'super_'.uniqid().'@ticketlab.test',
+        'password' => Hash::make('password'),
+        'organization_id' => $org->id,
+        'role' => 'admin',
+    ]);
+
+    $event = Event::create([
+        'organization_id' => $org->id,
+        'title' => 'Kingdom Summit 2026',
+        'slug' => 'summit-'.uniqid(),
+        'venue' => 'Perez Dome',
+        'start_at' => now(),
+        'end_at' => now()->addDays(2),
+        'status' => 'published',
+    ]);
+
+    $tier = TicketType::create([
+        'event_id' => $event->id,
+        'name' => 'VIP Gold Pass',
+        'price' => 120.00,
+        'total_capacity' => 500,
+        'available_quantity' => 486,
+    ]);
+
+    $order = Order::create([
+        'reference' => 'ORD-EXP-'.uniqid(),
+        'organization_id' => $org->id,
+        'customer_name' => 'Export Guest',
+        'customer_email' => 'export@test.gh',
+        'customer_phone' => '0249999999',
+        'gross_amount' => 120.00,
+        'net_amount' => 120.00,
+        'payment_status' => 'paid',
+        'payment_method' => 'card',
+    ]);
+
+    Attendee::create([
+        'order_id' => $order->id,
+        'organization_id' => $org->id,
+        'ticket_type_id' => $tier->id,
+        'name' => 'Export Guest',
+        'email' => 'export@test.gh',
+        'phone' => '0249999999',
+        'qr_code_hash' => 'HASH_EXP_'.uniqid(),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AttendeeRoster::class)
+        ->call('exportCsv')
+        ->assertFileDownloaded();
 });

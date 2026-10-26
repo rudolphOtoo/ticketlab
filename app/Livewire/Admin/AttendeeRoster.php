@@ -15,6 +15,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Spatie\SimpleExcel\SimpleExcelWriter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('layouts.ops')]
@@ -96,44 +97,31 @@ class AttendeeRoster extends Component
     public function exportCsv(): StreamedResponse
     {
         $user = auth()->user();
-        $attendees = $this->buildQuery($user)->get();
+        $fileName = 'attendee_roster_'.now()->format('Y_m_d_His').'.csv';
 
         return response()->streamDownload(
-            static function () use ($attendees) {
-                $handle = fopen('php://output', 'w');
-                if ($handle === false) {
-                    return;
-                }
+            function () use ($user) {
+                $writer = SimpleExcelWriter::create('php://output', 'csv');
 
-                fputcsv($handle, [
-                    'ID',
-                    'Name',
-                    'Email',
-                    'Phone',
-                    'Zone',
-                    'Ticket Tier',
-                    'QR Code',
-                    'Checked In At',
-                    'Checked In By',
-                ]);
+                $this->buildQuery($user)->chunk(500, static function ($attendees) use ($writer) {
+                    foreach ($attendees as $att) {
+                        $writer->addRow([
+                            'ID' => $att->id,
+                            'Name' => $att->name,
+                            'Email' => $att->email,
+                            'Phone' => $att->phone ?? 'N/A',
+                            'Zone' => $att->subdivision ? $att->subdivision->name : 'General',
+                            'Ticket Tier' => $att->ticketType ? $att->ticketType->name : 'N/A',
+                            'QR Code' => $att->qr_code_hash,
+                            'Checked In At' => $att->checked_in_at ? $att->checked_in_at->format('Y-m-d H:i:s') : 'Pending',
+                            'Checked In By' => $att->checkedInByUser ? $att->checkedInByUser->name : 'N/A',
+                        ]);
+                    }
+                });
 
-                foreach ($attendees as $att) {
-                    fputcsv($handle, [
-                        $att->id,
-                        $att->name,
-                        $att->email,
-                        $att->phone ?? 'N/A',
-                        $att->subdivision ? $att->subdivision->name : 'General',
-                        $att->ticketType ? $att->ticketType->name : 'N/A',
-                        $att->qr_code_hash,
-                        $att->checked_in_at ? $att->checked_in_at->format('Y-m-d H:i:s') : 'Pending',
-                        $att->checkedInByUser ? $att->checkedInByUser->name : 'N/A',
-                    ]);
-                }
-
-                fclose($handle);
+                $writer->close();
             },
-            'attendee_roster_'.now()->format('Y_m_d_His').'.csv',
+            $fileName,
             [
                 'Content-Type' => 'text/csv',
             ],

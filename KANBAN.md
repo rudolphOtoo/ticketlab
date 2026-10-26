@@ -105,10 +105,11 @@ The following wiring roadmap is prepared and ready for execution upon wake-up:
   - "Lock Session & Declare Figures" action stamps `locked_at`, `locked_by`, freezes metrics into `session_ledgers`, generates tamper-proof PDF in storage, and provides one-click PDF streaming download.
   - 4 Pest feature tests in `tests/Feature/Admin/DailySessionLedgerTest.php` passing (100% green, 16 assertions).
 
-- [ ] **T2-W4: 3-Tier Multi-Zone RBAC & Streaming Roster Export (`GET /admin/attendees`)**
-  - Implement `EnsureSubdivisionAccess` middleware and Eloquent scoping (Zone Admin restricted to `subdivision_id`, Superadmin sees all).
-  - Wire `spatie/simple-excel` streaming CSV download in `AttendeeRoster.php`.
-  - Feature test verifying cross-zone access restrictions.
+- [x] **T2-W4: 3-Tier Multi-Zone RBAC & Streaming Roster Export (`GET /admin/attendees`)**
+  - Implemented `EnsureSubdivisionAccess` middleware restricting terminal ushers from administrative rosters and enforcing zone scoping for subdivision admins.
+  - Registered `subdivision.access` middleware alias in `bootstrap/app.php` and applied to `routes/ops.php`.
+  - Wired `spatie/simple-excel` (`SimpleExcelWriter::create('php://output', 'csv')`) with 500-record chunked streaming for $O(1)$ memory consumption.
+  - 6 Pest feature tests in `tests/Feature/Admin/AttendeeRosterTest.php` passing (100% green, 13 assertions).
 
 - [ ] **T2-W5: End-to-End Ground Ops Simulation & Gate Rehearsal**
   - Seed complete event scenario, simulate 50 walk-ins, scan 50 QR codes, lock session, export roster, and verify ledger consistency.

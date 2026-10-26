@@ -28,7 +28,7 @@ Route::middleware(['auth'])
         Route::get('cash-desk', CashDeskTerminal::class)->name('cash-desk');
     });
 
-Route::middleware(['auth'])
+Route::middleware(['auth', 'subdivision.access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
