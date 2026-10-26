@@ -91,13 +91,13 @@ The following wiring roadmap is prepared and ready for execution upon wake-up:
   - Invalid/forged hash returns instant rejection and error buzzer.
   - 6 Pest feature tests in `tests/Feature/Ops/ScannerTerminalTest.php` passing (100% green, 24 assertions).
 
-- [ ] **T2-W2: Atomic Walk-In Cash Desk Transaction (`GET /ops/cash-desk`)**
-  - Wire `CashDeskTerminal.php` submit action inside `DB::transaction()`.
-  - Create `Order` (`payment_method = 'cash'`, `payment_status = 'paid'`, `gross_amount`).
-  - Create `Attendee` record with unique SHA-256 `qr_code_hash`.
-  - Decrement `TicketType::quantity_available` with concurrency guardrails.
-  - Return created pass for instant on-screen thermal/SVG printing.
-  - Feature test verifying inventory decrement and order creation.
+- [x] **T2-W2: Atomic Walk-In Cash Desk Transaction (`GET /ops/cash-desk`)**
+  - Wired `CashDeskTerminal.php` submit action inside atomic `DB::transaction()`.
+  - Created `Order` (`payment_method = 'cash'`, `payment_status = 'paid'`, `gross_amount`).
+  - Created `Attendee` records with SHA-256 `qr_code_hash`.
+  - Atomically decremented `TicketType::available_quantity` via `lockForUpdate()` and rejected sales exceeding remaining stock.
+  - Replaced mock recent sales with live database query.
+  - 4 Pest feature tests in `tests/Feature/Ops/CashDeskTerminalTest.php` passing (100% green, 19 assertions).
 
 - [ ] **T2-W3: Daily Session Closeout & Tamper-Proof DomPDF Generator (`GET /admin/sessions`)**
   - Wire `DailySessionLedger.php` to calculate real-time DB metrics (Gross Revenue, Paystack Online vs. Gate Cash Tender, Zone Turnout).
