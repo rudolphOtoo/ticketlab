@@ -115,7 +115,7 @@ class CashDeskTerminal extends Component
 
     public function calculateTotal(): float
     {
-        if (!$this->selectedTierId) {
+        if (! $this->selectedTierId) {
             return 0.00;
         }
 
@@ -150,7 +150,7 @@ class CashDeskTerminal extends Component
         }
 
         $tier = TicketType::find($this->selectedTierId);
-        $passCode = 'TKT-CW-' . strtoupper(substr(md5((string) microtime(true)), 0, 6));
+        $passCode = 'TKT-CW-'.strtoupper(substr(md5((string) microtime(true)), 0, 6));
 
         $this->issuedPass = [
             'pass_code' => $passCode,

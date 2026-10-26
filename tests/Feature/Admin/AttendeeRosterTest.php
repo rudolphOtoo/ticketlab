@@ -20,12 +20,12 @@ test('unauthenticated users cannot view attendee roster', function () {
 test('authenticated user can view attendee roster with list of attendees', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-' . uniqid(),
+        'slug' => 'accra-summit-'.uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Admin User',
-        'email' => 'admin_' . uniqid() . '@ticketlab.test',
+        'email' => 'admin_'.uniqid().'@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -33,13 +33,13 @@ test('authenticated user can view attendee roster with list of attendees', funct
     $sub = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'Accra Central',
-        'slug' => 'accra-central-' . uniqid(),
+        'slug' => 'accra-central-'.uniqid(),
     ]);
 
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-' . uniqid(),
+        'slug' => 'summit-'.uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -55,7 +55,7 @@ test('authenticated user can view attendee roster with list of attendees', funct
     ]);
 
     $order = Order::create([
-        'reference' => 'ORD-' . uniqid(),
+        'reference' => 'ORD-'.uniqid(),
         'organization_id' => $org->id,
         'event_id' => $event->id,
         'customer_name' => 'Ama Serwah',
@@ -76,7 +76,7 @@ test('authenticated user can view attendee roster with list of attendees', funct
         'name' => 'Ama Serwah',
         'email' => 'ama@example.com',
         'phone' => '0241234567',
-        'qr_code_hash' => 'HASH_AMA_' . uniqid(),
+        'qr_code_hash' => 'HASH_AMA_'.uniqid(),
     ]);
 
     $this
@@ -91,12 +91,12 @@ test('authenticated user can view attendee roster with list of attendees', funct
 test('attendee check-in status can be toggled', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-' . uniqid(),
+        'slug' => 'accra-summit-'.uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Admin User',
-        'email' => 'admin_' . uniqid() . '@ticketlab.test',
+        'email' => 'admin_'.uniqid().'@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -104,7 +104,7 @@ test('attendee check-in status can be toggled', function () {
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-' . uniqid(),
+        'slug' => 'summit-'.uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -120,7 +120,7 @@ test('attendee check-in status can be toggled', function () {
     ]);
 
     $order = Order::create([
-        'reference' => 'ORD-' . uniqid(),
+        'reference' => 'ORD-'.uniqid(),
         'organization_id' => $org->id,
         'event_id' => $event->id,
         'customer_name' => 'Kofi Mensah',
@@ -140,7 +140,7 @@ test('attendee check-in status can be toggled', function () {
         'name' => 'Kofi Mensah',
         'email' => 'kofi@example.com',
         'phone' => '0241234568',
-        'qr_code_hash' => 'HASH_KOFI_' . uniqid(),
+        'qr_code_hash' => 'HASH_KOFI_'.uniqid(),
     ]);
 
     expect($attendee->isCheckedIn())->toBeFalse();

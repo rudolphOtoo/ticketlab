@@ -7,7 +7,9 @@ namespace App\Livewire\Admin;
 use App\Models\Attendee;
 use App\Models\Subdivision;
 use App\Models\TicketType;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -64,7 +66,7 @@ class AttendeeRoster extends Component
         }
 
         $attendee = $query->find($attendeeId);
-        if (!$attendee) {
+        if (! $attendee) {
             return;
         }
 
@@ -131,7 +133,7 @@ class AttendeeRoster extends Component
 
                 fclose($handle);
             },
-            'attendee_roster_' . now()->format('Y_m_d_His') . '.csv',
+            'attendee_roster_'.now()->format('Y_m_d_His').'.csv',
             [
                 'Content-Type' => 'text/csv',
             ],
@@ -139,10 +141,9 @@ class AttendeeRoster extends Component
     }
 
     /**
-     * @param  \App\Models\User|null  $user
-     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Attendee>
+     * @return Builder<Attendee>
      */
-    private function buildQuery(?\App\Models\User $user): \Illuminate\Database\Eloquent\Builder
+    private function buildQuery(?User $user): Builder
     {
         $query = Attendee::with(['subdivision', 'ticketType', 'checkedInByUser']);
 
@@ -167,7 +168,7 @@ class AttendeeRoster extends Component
 
         // 4. Search filter
         if (trim($this->search) !== '') {
-            $term = '%' . trim($this->search) . '%';
+            $term = '%'.trim($this->search).'%';
             $query->where(function ($q) use ($term) {
                 $q
                     ->where('name', 'like', $term)

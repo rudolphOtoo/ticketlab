@@ -83,12 +83,13 @@
 
 The following wiring roadmap is prepared and ready for execution upon wake-up:
 
-- [ ] **T2-W1: Live Camera QR Decoding & Instant Check-In (`GET /ops/scanner`)**
-  - Integrate `html5-qrcode` with back-facing camera priority.
-  - Wire `ScannerTerminal.php` action `validatePass($qrHash)` against MySQL `attendees`.
-  - First-time check-in stamps `checked_in_at = now()`, emits 🟢 chime, vibration, and attendee details.
+- [x] **T2-W1: Live Camera QR Decoding & Instant Check-In (`GET /ops/scanner`)**
+  - Integrated `html5-qrcode` bundled in Vite/Alpine on `#qr-reader` with back-facing camera priority.
+  - Wired `ScannerTerminal.php` action `validatePass($qrHash)` inside atomic `DB::transaction()` with `Attendee::lockForUpdate()` and strict `organization_id` tenant scoping.
+  - First-time check-in stamps `checked_in_at = now()`, records `checked_in_by = auth()->id()`, and emits 🟢 Web Audio chime + haptic vibration.
   - Duplicate scan emits 🔴 warning buzzer with exact prior scan timestamp.
-  - Feature test with Pest covering valid, duplicate, and invalid hash scenarios.
+  - Invalid/forged hash returns instant rejection and error buzzer.
+  - 6 Pest feature tests in `tests/Feature/Ops/ScannerTerminalTest.php` passing (100% green, 24 assertions).
 
 - [ ] **T2-W2: Atomic Walk-In Cash Desk Transaction (`GET /ops/cash-desk`)**
   - Wire `CashDeskTerminal.php` submit action inside `DB::transaction()`.

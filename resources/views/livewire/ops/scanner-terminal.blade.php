@@ -1,10 +1,67 @@
 <div class="flex flex-col items-center max-w-lg mx-auto gap-6"
      x-data="{
         audioCtx: null,
+        html5QrCode: null,
+        isScanning: false,
+        cameraError: null,
+        cameraStatusText: 'Initializing Camera...',
+        cooldown: false,
+        init() {
+            this.initAudio();
+            this.$nextTick(() => {
+                this.startCamera();
+            });
+        },
+        destroy() {
+            this.stopCamera();
+        },
         initAudio() {
             if (!this.audioCtx) {
                 this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
+        },
+        async startCamera() {
+            if (typeof window.Html5Qrcode === 'undefined') {
+                this.cameraStatusText = 'Camera engine loading...';
+                setTimeout(() => this.startCamera(), 300);
+                return;
+            }
+            try {
+                this.html5QrCode = new window.Html5Qrcode('qr-reader');
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 220, height: 220 },
+                    aspectRatio: 1.0,
+                };
+                await this.html5QrCode.start(
+                    { facingMode: 'environment' },
+                    config,
+                    (decodedText) => this.onScan(decodedText),
+                    () => {}
+                );
+                this.isScanning = true;
+                this.cameraError = null;
+            } catch (err) {
+                this.isScanning = false;
+                this.cameraError = err.message || 'Camera offline or permission denied';
+                this.cameraStatusText = 'Camera Offline (Simulators Active)';
+            }
+        },
+        async stopCamera() {
+            if (this.html5QrCode && this.isScanning) {
+                try {
+                    await this.html5QrCode.stop();
+                    this.isScanning = false;
+                } catch (e) {}
+            }
+        },
+        onScan(text) {
+            if (this.cooldown) return;
+            this.cooldown = true;
+            $wire.validatePass(text);
+            setTimeout(() => {
+                this.cooldown = false;
+            }, 1200);
         },
         playChime(freq1, freq2) {
             this.initAudio();
@@ -64,11 +121,16 @@
     <div class="relative w-full aspect-square max-h-[380px] rounded-2xl border-2 border-[var(--border-hairline)] bg-zinc-950 overflow-hidden shadow-md flex items-center justify-center">
         <!-- Live Video Element / Viewfinder Canvas -->
         <div id="qr-reader" class="w-full h-full object-cover">
-            <div class="absolute inset-0 flex flex-col items-center justify-center text-zinc-400 gap-3">
-                <svg class="size-12 text-zinc-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-zinc-400 gap-3 px-6 text-center" x-show="!isScanning">
+                <svg class="size-12 text-zinc-600" :class="{ 'animate-pulse': !cameraError }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
                 </svg>
-                <span class="text-xs font-mono tracking-wider text-zinc-500 uppercase">Optical Viewfinder Ready</span>
+                <span class="text-xs font-mono tracking-wider text-zinc-400 uppercase" x-text="cameraStatusText">Optical Viewfinder Ready</span>
+                <template x-if="cameraError">
+                    <button type="button" @click="startCamera()" class="mt-2 text-[11px] rounded bg-zinc-800 text-zinc-300 px-3 py-1 hover:bg-zinc-700 transition">
+                        Retry Camera Access
+                    </button>
+                </template>
             </div>
         </div>
 
