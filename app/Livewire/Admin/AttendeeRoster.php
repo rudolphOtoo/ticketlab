@@ -99,7 +99,7 @@ class AttendeeRoster extends Component
         $attendees = $this->buildQuery($user)->get();
 
         return response()->streamDownload(
-            function () use ($attendees) {
+            static function () use ($attendees) {
                 $handle = fopen('php://output', 'w');
                 if ($handle === false) {
                     return;
@@ -169,7 +169,7 @@ class AttendeeRoster extends Component
         // 4. Search filter
         if (trim($this->search) !== '') {
             $term = '%'.trim($this->search).'%';
-            $query->where(function ($q) use ($term) {
+            $query->where(static function ($q) use ($term) {
                 $q
                     ->where('name', 'like', $term)
                     ->orWhere('email', 'like', $term)

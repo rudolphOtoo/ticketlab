@@ -99,11 +99,11 @@ The following wiring roadmap is prepared and ready for execution upon wake-up:
   - Replaced mock recent sales with live database query.
   - 4 Pest feature tests in `tests/Feature/Ops/CashDeskTerminalTest.php` passing (100% green, 19 assertions).
 
-- [ ] **T2-W3: Daily Session Closeout & Tamper-Proof DomPDF Generator (`GET /admin/sessions`)**
-  - Wire `DailySessionLedger.php` to calculate real-time DB metrics (Gross Revenue, Paystack Online vs. Gate Cash Tender, Zone Turnout).
-  - Implement `SessionReportService` using `barryvdh/laravel-dompdf`.
-  - "Lock Session & Declare Figures" action freezes active tally into `session_ledgers`.
-  - Feature test validating ledger calculations and PDF creation.
+- [x] **T2-W3: Daily Session Closeout & Tamper-Proof DomPDF Generator (`GET /admin/sessions`)**
+  - Wired `DailySessionLedger.php` to calculate real-time DB metrics (Gross Revenue, Paystack Online vs. Gate Cash Tender, Zone Turnout, and Live Gate Feed).
+  - Implemented `SessionReportService` with `Barryvdh\DomPDF\Facade\Pdf` and formal audit template in `resources/views/reports/session-ledger.blade.php`.
+  - "Lock Session & Declare Figures" action stamps `locked_at`, `locked_by`, freezes metrics into `session_ledgers`, generates tamper-proof PDF in storage, and provides one-click PDF streaming download.
+  - 4 Pest feature tests in `tests/Feature/Admin/DailySessionLedgerTest.php` passing (100% green, 16 assertions).
 
 - [ ] **T2-W4: 3-Tier Multi-Zone RBAC & Streaming Roster Export (`GET /admin/attendees`)**
   - Implement `EnsureSubdivisionAccess` middleware and Eloquent scoping (Zone Admin restricted to `subdivision_id`, Superadmin sees all).

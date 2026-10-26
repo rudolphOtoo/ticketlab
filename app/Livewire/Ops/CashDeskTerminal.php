@@ -65,13 +65,13 @@ class CashDeskTerminal extends Component
 
         $orders = Order::with('attendees.ticketType')
             ->where('payment_method', PaymentMethod::PhysicalCash->value)
-            ->when($orgId, fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
             ->latest('paid_at')
             ->take(5)
             ->get();
 
-        $this->recentCashSales = $orders->map(function (Order $order) {
-            $tierName = $order->attendees->first()?->ticketType?->name ?? 'Gate Pass';
+        $this->recentCashSales = $orders->map(static function (Order $order) {
+            $tierName = $order->attendees->first()?->ticketType->name ?? 'Gate Pass';
             $passCode = 'TKT-CW-'.strtoupper(substr(md5($order->reference), 0, 6));
 
             return [
@@ -173,7 +173,7 @@ class CashDeskTerminal extends Component
 
             $tier->decrement('available_quantity', $this->quantity);
 
-            $orgId = auth()->user()?->organization_id ?? $event->organization_id;
+            $orgId = auth()->user()->organization_id ?? $event->organization_id;
             $subdivisionId = auth()->user()?->subdivision_id;
 
             $customerName = trim($this->attendeeName) !== '' ? trim($this->attendeeName) : 'Walk-In Guest';

@@ -72,8 +72,8 @@ class ScannerTerminal extends Component
                     'payload' => [
                         'status' => 'DUPLICATE',
                         'name' => $attendee->name,
-                        'tier' => $attendee->ticketType?->name ?? 'General Admission',
-                        'zone' => $attendee->subdivision?->name ?? 'Main Arena',
+                        'tier' => $attendee->ticketType->name ?? 'General Admission',
+                        'zone' => $attendee->subdivision->name ?? 'Main Arena',
                         'scanned_at' => $attendee->checked_in_at->format('h:i:s A'),
                         'message' => 'Pass was already scanned earlier today.',
                     ],
@@ -91,8 +91,8 @@ class ScannerTerminal extends Component
                 'payload' => [
                     'status' => 'VERIFIED',
                     'name' => $attendee->name,
-                    'tier' => $attendee->ticketType?->name ?? 'General Admission',
-                    'zone' => $attendee->subdivision?->name ?? 'Main Arena',
+                    'tier' => $attendee->ticketType->name ?? 'General Admission',
+                    'zone' => $attendee->subdivision->name ?? 'Main Arena',
                     'scanned_at' => now()->format('h:i:s A'),
                     'message' => 'Admitted to event. Gate clearance granted.',
                 ],

@@ -8,13 +8,26 @@
         </div>
 
         <div class="flex items-center gap-2.5">
-            <span class="text-[11px] text-[var(--text-tertiary)] hidden md:inline">Refreshed just now</span>
-            <button type="button" class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] shadow-xs transition">
-                <svg class="size-3.5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
-                Sync Gate Feed
-            </button>
+            @if ($session && $session->isLocked())
+                <span class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--status-warning)] bg-[var(--status-warning-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--status-warning)]">
+                    <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
+                    Session Locked
+                </span>
+                <button type="button"
+                        wire:click="downloadPdfReport"
+                        class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] shadow-xs transition">
+                    <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                    Download Audit PDF
+                </button>
+            @else
+                <button type="button"
+                        wire:click="lockSession"
+                        wire:confirm="Are you sure you want to lock this financial session? Figures will be frozen and an official audit PDF generated."
+                        class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent-brand)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-brand-fg)] hover:opacity-90 shadow-xs transition active:scale-95">
+                    <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
+                    Lock Session & Declare
+                </button>
+            @endif
         </div>
     </div>
 
@@ -245,53 +258,30 @@
                 </div>
 
                 <div class="flex flex-col divide-y divide-[var(--border-hairline)] text-xs">
-                    <div class="flex items-center justify-between py-2.5">
-                        <div class="flex items-center gap-2.5">
-                            <div class="size-7 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center font-bold text-[10px] text-[var(--text-primary)]">AS</div>
-                            <div class="flex flex-col">
-                                <span class="font-medium text-[var(--text-primary)]">Ama Serwah</span>
-                                <span class="text-[10px] text-[var(--text-tertiary)]">Gate A · VIP Gold</span>
+                    @forelse($liveGateFeed as $admitted)
+                        <div class="flex items-center justify-between py-2.5">
+                            <div class="flex items-center gap-2.5">
+                                <div class="size-7 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center font-bold text-[10px] text-[var(--text-primary)]">
+                                    {{ strtoupper(substr($admitted->name, 0, 2)) }}
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="font-medium text-[var(--text-primary)]">{{ $admitted->name }}</span>
+                                    <span class="text-[10px] text-[var(--text-tertiary)]">
+                                        {{ $admitted->subdivision?->name ?? 'Main Gate' }} · {{ $admitted->ticketType?->name ?? 'Pass' }}
+                                    </span>
+                                </div>
                             </div>
+                            <span class="text-[10px] text-[var(--text-tertiary)]">{{ $admitted->checked_in_at?->diffForHumans() ?? 'Just now' }}</span>
                         </div>
-                        <span class="text-[10px] text-[var(--text-tertiary)]">2m ago</span>
-                    </div>
-
-                    <div class="flex items-center justify-between py-2.5">
-                        <div class="flex items-center gap-2.5">
-                            <div class="size-7 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center font-bold text-[10px] text-[var(--text-primary)]">KM</div>
-                            <div class="flex flex-col">
-                                <span class="font-medium text-[var(--text-primary)]">Kofi Mensah</span>
-                                <span class="text-[10px] text-[var(--text-tertiary)]">Gate B · Regular</span>
-                            </div>
+                    @empty
+                        <div class="py-4 text-center text-xs text-[var(--text-tertiary)]">
+                            No attendee check-ins recorded yet today.
                         </div>
-                        <span class="text-[10px] text-[var(--text-tertiary)]">4m ago</span>
-                    </div>
-
-                    <div class="flex items-center justify-between py-2.5">
-                        <div class="flex items-center gap-2.5">
-                            <div class="size-7 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center font-bold text-[10px] text-[var(--text-primary)]">NK</div>
-                            <div class="flex flex-col">
-                                <span class="font-medium text-[var(--text-primary)]">Nana Kwame</span>
-                                <span class="text-[10px] text-[var(--text-tertiary)]">Gate A · VIP Diamond</span>
-                            </div>
-                        </div>
-                        <span class="text-[10px] text-[var(--text-tertiary)]">7m ago</span>
-                    </div>
-
-                    <div class="flex items-center justify-between py-2.5">
-                        <div class="flex items-center gap-2.5">
-                            <div class="size-7 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center font-bold text-[10px] text-[var(--text-primary)]">AO</div>
-                            <div class="flex flex-col">
-                                <span class="font-medium text-[var(--text-primary)]">Abena Osei</span>
-                                <span class="text-[10px] text-[var(--text-tertiary)]">Gate C · Early Bird</span>
-                            </div>
-                        </div>
-                        <span class="text-[10px] text-[var(--text-tertiary)]">11m ago</span>
-                    </div>
+                    @endforelse
                 </div>
 
                 <a href="{{ url('/admin/attendees') }}" class="text-center text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] pt-2 transition" wire:navigate>
-                    Review all 1,120 admissions &rarr;
+                    Review all {{ number_format($turnoutCount) }} admissions &rarr;
                 </a>
             </div>
         </div>
