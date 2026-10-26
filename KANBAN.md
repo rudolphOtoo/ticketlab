@@ -111,6 +111,8 @@ The following wiring roadmap is prepared and ready for execution upon wake-up:
   - Wired `spatie/simple-excel` (`SimpleExcelWriter::create('php://output', 'csv')`) with 500-record chunked streaming for $O(1)$ memory consumption.
   - 6 Pest feature tests in `tests/Feature/Admin/AttendeeRosterTest.php` passing (100% green, 13 assertions).
 
-- [ ] **T2-W5: End-to-End Ground Ops Simulation & Gate Rehearsal**
-  - Seed complete event scenario, simulate 50 walk-ins, scan 50 QR codes, lock session, export roster, and verify ledger consistency.
+- [x] **T2-W5: End-to-End Ground Ops Simulation & Gate Rehearsal**
+  - Created comprehensive rehearsal simulation `tests/Feature/Ops/GroundOpsRehearsalTest.php`.
+  - Tested complete lifecycle: walk-in cash desk sale with atomic capacity locking, SHA-256 QR pass issuance, instant camera check-in, duplicate scan rejection with prior timestamp, invalid hash rejection, 3-tier multi-zone RBAC enforcement, session ledger closeout with immutable DomPDF snapshot, and chunked CSV streaming export.
+  - 39 assertions passing (100% green). Full test suite: 50 passed, 0 failed, 5 skipped (186 assertions).
 
