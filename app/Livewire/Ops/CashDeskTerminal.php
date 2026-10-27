@@ -148,6 +148,12 @@ class CashDeskTerminal extends Component
             return;
         }
 
+        if ($this->quantity < 1 || $this->quantity > 100) {
+            $this->addError('quantity', 'Quantity must be between 1 and 100 tickets.');
+
+            return;
+        }
+
         if ($tendered < $total) {
             $this->addError('cashTendered', 'Tendered amount is less than total price.');
 

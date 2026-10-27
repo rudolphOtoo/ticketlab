@@ -61,6 +61,10 @@ class AttendeeRoster extends Component
         $user = auth()->user();
         $query = Attendee::query();
 
+        if ($user && $user->organization_id) {
+            $query->where('organization_id', $user->organization_id);
+        }
+
         // Enforce zone scoping if user is scoped to a specific subdivision
         if ($user && $user->subdivision_id !== null) {
             $query->where('subdivision_id', $user->subdivision_id);
@@ -135,7 +139,12 @@ class AttendeeRoster extends Component
     {
         $query = Attendee::with(['subdivision', 'ticketType', 'checkedInByUser']);
 
-        // 1. Enforce subdivision scoping for scoped stewards
+        // 1. Enforce organization tenant scoping
+        if ($user && $user->organization_id) {
+            $query->where('organization_id', $user->organization_id);
+        }
+
+        // 2. Enforce subdivision scoping for scoped stewards
         if ($user && $user->subdivision_id !== null) {
             $query->where('subdivision_id', $user->subdivision_id);
         } elseif ($this->zoneFilter !== '') {
@@ -178,6 +187,9 @@ class AttendeeRoster extends Component
 
         // Calculate summary counters for filtered view
         $baseQuery = Attendee::query();
+        if ($user && $user->organization_id) {
+            $baseQuery->where('organization_id', $user->organization_id);
+        }
         if ($user && $user->subdivision_id !== null) {
             $baseQuery->where('subdivision_id', $user->subdivision_id);
         }
@@ -186,8 +198,12 @@ class AttendeeRoster extends Component
         $checkedInCount = (clone $baseQuery)->whereNotNull('checked_in_at')->count();
         $pendingCount = $totalCount - $checkedInCount;
 
-        $subdivisions = Subdivision::all();
-        $ticketTypes = TicketType::all();
+        $subdivisions = Subdivision::query()
+            ->when($user?->organization_id, static fn ($q, $orgId) => $q->where('organization_id', $orgId))
+            ->get();
+        $ticketTypes = TicketType::query()
+            ->when($user?->organization_id, static fn ($q, $orgId) => $q->whereHas('event', static fn ($eq) => $eq->where('organization_id', $orgId)))
+            ->get();
 
         $selectedAttendee = $this->selectedAttendeeId
             ? Attendee::with(['subdivision', 'ticketType', 'order'])->find($this->selectedAttendeeId)

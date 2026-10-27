@@ -15,6 +15,7 @@ use App\Models\TicketType;
 use App\Services\Ledger\SessionReportService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -83,15 +84,17 @@ class DailySessionLedger extends Component
             'admitted' => Attendee::where('subdivision_id', $sub->id)->whereNotNull('checked_in_at')->count(),
         ])->toArray();
 
-        $session->update([
-            'locked_at' => now(),
-            'locked_by' => auth()->id(),
-            'total_online_momo' => $totalOnline,
-            'total_cash' => $totalCash,
-            'total_attendees' => $totalAttendees,
-        ]);
+        DB::transaction(static function () use ($session, $totalOnline, $totalCash, $totalAttendees, $reportService, $event, $capacityTotal, $zoneBreakdown): void {
+            $session->update([
+                'locked_at' => now(),
+                'locked_by' => auth()->id(),
+                'total_online_momo' => $totalOnline,
+                'total_cash' => $totalCash,
+                'total_attendees' => $totalAttendees,
+            ]);
 
-        $reportService->generateReport($session, $event, $capacityTotal, $zoneBreakdown);
+            $reportService->generateReport($session, $event, $capacityTotal, $zoneBreakdown);
+        });
 
         $this->dispatch('session-locked');
     }

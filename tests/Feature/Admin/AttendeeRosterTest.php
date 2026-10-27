@@ -334,3 +334,90 @@ test('attendee roster exports streaming CSV with spatie simple excel', function 
         ->call('exportCsv')
         ->assertFileDownloaded();
 });
+
+test('attendee roster strictly isolates records across different organizations', function () {
+    $orgA = Organization::create([
+        'name' => 'Org Alpha',
+        'slug' => 'org-alpha-'.uniqid(),
+    ]);
+
+    $orgB = Organization::create([
+        'name' => 'Org Beta',
+        'slug' => 'org-beta-'.uniqid(),
+    ]);
+
+    $adminA = User::create([
+        'name' => 'Admin Alpha',
+        'email' => 'alpha_'.uniqid().'@ticketlab.test',
+        'password' => Hash::make('password'),
+        'organization_id' => $orgA->id,
+        'role' => 'admin',
+    ]);
+
+    $eventA = Event::create([
+        'organization_id' => $orgA->id,
+        'title' => 'Event Alpha',
+        'slug' => 'event-alpha-'.uniqid(),
+        'venue' => 'Arena A',
+        'start_at' => now(),
+        'end_at' => now()->addDays(2),
+        'status' => 'published',
+    ]);
+
+    $tierA = TicketType::create([
+        'event_id' => $eventA->id,
+        'name' => 'Alpha Pass',
+        'price' => 50.00,
+        'total_capacity' => 100,
+        'available_quantity' => 100,
+    ]);
+
+    $orderA = Order::create([
+        'reference' => 'ORD-A-'.uniqid(),
+        'organization_id' => $orgA->id,
+        'customer_name' => 'Guest Alpha',
+        'customer_email' => 'alpha@test.gh',
+        'customer_phone' => '0241111111',
+        'gross_amount' => 50.00,
+        'net_amount' => 50.00,
+        'payment_status' => 'paid',
+        'payment_method' => 'cash',
+    ]);
+
+    Attendee::create([
+        'order_id' => $orderA->id,
+        'organization_id' => $orgA->id,
+        'ticket_type_id' => $tierA->id,
+        'name' => 'Guest Alpha Unique',
+        'email' => 'alpha@test.gh',
+        'phone' => '0241111111',
+        'qr_code_hash' => 'HASH_ALPHA_'.uniqid(),
+    ]);
+
+    $orderB = Order::create([
+        'reference' => 'ORD-B-'.uniqid(),
+        'organization_id' => $orgB->id,
+        'customer_name' => 'Guest Beta',
+        'customer_email' => 'beta@test.gh',
+        'customer_phone' => '0242222222',
+        'gross_amount' => 50.00,
+        'net_amount' => 50.00,
+        'payment_status' => 'paid',
+        'payment_method' => 'cash',
+    ]);
+
+    Attendee::create([
+        'order_id' => $orderB->id,
+        'organization_id' => $orgB->id,
+        'ticket_type_id' => $tierA->id,
+        'name' => 'Guest Beta Secret',
+        'email' => 'beta@test.gh',
+        'phone' => '0242222222',
+        'qr_code_hash' => 'HASH_BETA_'.uniqid(),
+    ]);
+
+    Livewire::actingAs($adminA)
+        ->test(AttendeeRoster::class)
+        ->assertSee('Guest Alpha Unique')
+        ->assertDontSee('Guest Beta Secret');
+});
