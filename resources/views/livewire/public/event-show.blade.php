@@ -1,21 +1,24 @@
-<div class="min-h-screen bg-zinc-50">
-    <header class="border-b border-zinc-200 bg-white">
+<div class="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)]">
+    <!-- Floating Island Nav Bar -->
+    <x-floating-nav :showBack="true" :current="$event->title" />
+
+    <header class="border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] pt-16 sm:pt-20">
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
             <div class="flex items-center gap-3">
                 @if ($organization->logo_url)
                     <img src="{{ $organization->logo_url }}" alt="{{ $organization->name }}" class="h-10 w-10 rounded-full object-cover">
                 @else
-                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-subtle)] border border-[var(--border-hairline)] text-sm font-semibold text-[var(--text-primary)]">
                         {{ \Illuminate\Support\Str::of($organization->name)->explode(' ')->map(fn ($word) => \Illuminate\Support\Str::substr($word, 0, 1))->take(2)->implode('') }}
                     </div>
                 @endif
                 <div>
-                    <p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Official tickets</p>
-                    <p class="text-sm font-semibold text-zinc-900">{{ $organization->name }}</p>
+                    <p class="text-xs font-medium uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Official tickets</p>
+                    <p class="text-sm font-semibold text-[var(--text-primary)]">{{ $organization->name }}</p>
                 </div>
             </div>
 
-            <span class="hidden rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-600 sm:inline-flex">
+            <span class="hidden rounded-full border border-[var(--border-hairline)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)] sm:inline-flex">
                 Secure checkout by Paystack
             </span>
         </div>
@@ -114,28 +117,44 @@
 
                     <div class="mt-6 grid gap-5 sm:grid-cols-2">
                         <div>
-                            <label for="subdivision" class="block text-sm font-medium text-zinc-700">
+                            <label for="subdivision" class="block text-sm font-medium text-[var(--text-secondary)]">
                                 Select your {{ $organization->subdivision_label }}
                             </label>
-                            <select
-                                id="subdivision"
-                                wire:model.live="subdivisionId"
-                                class="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
-                            >
-                                <option value="">No {{ strtolower($organization->subdivision_label) }} / general admission</option>
-                                @foreach ($subdivisions as $subdivision)
-                                    <option value="{{ $subdivision->id }}">{{ $subdivision->name }}</option>
-                                @endforeach
-                            </select>
+                            <div class="relative mt-2">
+                                <select
+                                    id="subdivision"
+                                    wire:model.live="subdivisionId"
+                                    class="w-full appearance-none rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2.5 pr-10 text-sm font-medium text-[var(--text-primary)] shadow-xs focus:border-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-[var(--text-primary)] transition cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
+                                >
+                                    <option value="" class="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
+                                        No {{ strtolower($organization->subdivision_label) }} / general admission
+                                    </option>
+                                    @foreach ($subdivisions as $subdivision)
+                                        <option value="{{ $subdivision->id }}" class="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
+                                            {{ $subdivision->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--text-secondary)]">
+                                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
                             @error('subdivisionId')
                                 <p class="mt-2 text-sm font-medium text-rose-600">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <div>
-                            <span class="block text-sm font-medium text-zinc-700">Quantity</span>
+                            <span class="block text-sm font-medium text-[var(--text-secondary)]">Quantity</span>
                             <div class="mt-2 flex items-center gap-3">
-                                <button type="button" wire:click="decrementQuantity" class="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-300 text-lg text-zinc-700 hover:bg-zinc-100" @disabled($quantity <= 1)>
+                                <button
+                                    type="button"
+                                    wire:click="decrementQuantity"
+                                    class="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-lg font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40 transition-colors press-scale cursor-pointer"
+                                    @disabled($quantity <= 1)
+                                >
                                     &minus;
                                 </button>
                                 <input
@@ -143,9 +162,13 @@
                                     min="1"
                                     max="20"
                                     wire:model.live.debounce.250ms="quantity"
-                                    class="w-20 rounded-xl border border-zinc-300 px-3 py-2.5 text-center text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                                    class="w-20 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-2 text-center text-sm font-bold font-mono text-[var(--text-primary)] shadow-xs focus:border-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-[var(--text-primary)]"
                                 >
-                                <button type="button" wire:click="incrementQuantity" class="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-300 text-lg text-zinc-700 hover:bg-zinc-100">
+                                <button
+                                    type="button"
+                                    wire:click="incrementQuantity"
+                                    class="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-lg font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors press-scale cursor-pointer"
+                                >
                                     +
                                 </button>
                             </div>

@@ -24,7 +24,7 @@
             <div class="flex items-center gap-3">
                 <button
                     type="button"
-                    onclick="window.toggleTheme ? window.toggleTheme(event) : document.documentElement.classList.toggle('dark')"
+                    onclick="window.toggleStudioTheme ? window.toggleStudioTheme(event, null, this) : (window.toggleTheme ? window.toggleTheme(event, null, this) : document.documentElement.classList.toggle('dark'))"
                     class="p-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors press-scale cursor-pointer"
                     aria-label="Toggle theme"
                 >

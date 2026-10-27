@@ -29,8 +29,8 @@ trait ScopedToZone
                     return;
                 }
 
-                // Zone Admin and Gate Usher can only access their assigned zone
-                if (!empty($user->zone_id)) {
+                // Zone Admin and Gate Staff can only access their assigned zone
+                if ($user->zone_id !== null) {
                     $builder->where($builder->getModel()->getTable() . '.zone_id', $user->zone_id);
                 } elseif (method_exists($user, 'isZoneAdmin') && $user->isZoneAdmin()) {
                     // Zone admins must have a zone_id

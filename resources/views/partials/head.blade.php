@@ -20,6 +20,81 @@
             document.documentElement.classList.add('dark');
         }
     })();
+
+    function toggleStudioTheme(event, targetTheme = null, triggerEl = null) {
+        const btn = triggerEl || event?.target?.closest('button') || event?.currentTarget;
+        const rect = btn?.getBoundingClientRect();
+        const x = rect ? Math.round(rect.left + rect.width / 2) : Math.round(event?.clientX ?? window.innerWidth / 2);
+        const y = rect ? Math.round(rect.top + rect.height / 2) : Math.round(event?.clientY ?? window.innerHeight / 2);
+
+        const isDark = document.documentElement.classList.contains('dark');
+        const nextTheme = targetTheme ?? (isDark ? 'light' : 'dark');
+
+        if (targetTheme && ((targetTheme === 'dark' && isDark) || (targetTheme === 'light' && !isDark))) {
+            return;
+        }
+
+        const isGoingDark = nextTheme === 'dark';
+
+        const commitThemeChange = () => {
+            if (isGoingDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            localStorage.setItem('theme', nextTheme);
+            document.dispatchEvent(new CustomEvent('theme-changed', {
+                detail: { theme: nextTheme }
+            }));
+        };
+
+        if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            commitThemeChange();
+            return;
+        }
+
+        const endRadius = Math.ceil(
+            Math.hypot(
+                Math.max(x, window.innerWidth - x),
+                Math.max(y, window.innerHeight - y)
+            ) * 1.05
+        );
+
+        const transition = document.startViewTransition(() => {
+            commitThemeChange();
+        });
+
+        transition.ready.then(() => {
+            if (isGoingDark) {
+                document.documentElement.animate(
+                    [
+                        { clipPath: `circle(0px at ${x}px ${y}px)` },
+                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
+                    ],
+                    {
+                        duration: 360,
+                        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+                        pseudoElement: '::view-transition-new(root)'
+                    }
+                );
+            } else {
+                document.documentElement.animate(
+                    [
+                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` },
+                        { clipPath: `circle(0px at ${x}px ${y}px)` }
+                    ],
+                    {
+                        duration: 360,
+                        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+                        pseudoElement: '::view-transition-old(root)'
+                    }
+                );
+            }
+        });
+    }
+
+    window.toggleStudioTheme = toggleStudioTheme;
+    window.toggleTheme = toggleStudioTheme;
 </script>
 
 <style>

@@ -10,76 +10,11 @@
             <div class="size-[42rem] rounded-full bg-gradient-to-b from-amber-500/10 via-orange-500/5 to-transparent blur-3xl opacity-60 dark:opacity-30 -translate-y-1/3"></div>
         </div>
 
-        <!-- Sticky Header Nav -->
-        <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-[var(--bg-canvas)]/85 border-b border-[var(--border-hairline)] transition-colors">
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-                <a href="{{ url('/') }}" class="inline-flex items-center gap-2.5 group cursor-pointer focus-ring rounded-lg">
-                    <div class="size-9 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] flex items-center justify-center shadow-xs group-hover:border-[var(--border-focused)] transition-colors">
-                        <x-app-logo-icon class="size-5 text-[var(--text-primary)]" />
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold tracking-tight text-[var(--text-primary)] leading-none">
-                            TicketLab
-                        </span>
-                        <span class="text-[10px] text-[var(--text-tertiary)] font-medium tracking-wide">
-                            Event & Ground Ops
-                        </span>
-                    </div>
-                </a>
-
-                <nav class="hidden md:flex items-center gap-6 text-xs font-semibold text-[var(--text-secondary)]">
-                    <a href="#features" class="hover:text-[var(--text-primary)] transition-colors">Core Engine</a>
-                    <a href="#events" class="hover:text-[var(--text-primary)] transition-colors">Live Events</a>
-                    <a href="{{ url('/admin/sessions') }}" class="hover:text-[var(--text-primary)] transition-colors">Ledger & Audit</a>
-                    <a href="{{ url('/ops/scanner') }}" class="hover:text-[var(--text-primary)] transition-colors">Gate Scanner</a>
-                </nav>
-
-                <div class="flex items-center gap-2.5">
-                    <!-- Liquid Ripple Theme Switcher -->
-                    <button
-                        type="button"
-                        onclick="window.toggleTheme ? window.toggleTheme(event) : document.documentElement.classList.toggle('dark')"
-                        class="p-2 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors press-scale cursor-pointer"
-                        aria-label="Toggle theme"
-                        title="Toggle dark/light theme"
-                    >
-                        <svg class="size-4.5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                        <svg class="size-4.5 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                    </button>
-
-                    @auth
-                        <a
-                            href="{{ route('dashboard') }}"
-                            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-field bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-90 transition shadow-xs press-scale cursor-pointer"
-                        >
-                            Operations Hub →
-                        </a>
-                    @else
-                        <a
-                            href="{{ route('login') }}"
-                            class="inline-flex items-center px-3 py-1.5 rounded-field border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-primary)] text-xs font-semibold hover:bg-[var(--bg-subtle)] transition press-scale"
-                        >
-                            Sign In
-                        </a>
-                        @if(Route::has('register'))
-                            <a
-                                href="{{ route('register') }}"
-                                class="inline-flex items-center px-3.5 py-1.5 rounded-field bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-90 transition shadow-xs press-scale cursor-pointer"
-                            >
-                                Register
-                            </a>
-                        @endif
-                    @endauth
-                </div>
-            </div>
-        </header>
+        <!-- Floating Island Nav Bar -->
+        <x-floating-nav :showBack="false" />
 
         <!-- Hero Section -->
-        <section class="max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-16 text-center">
+        <section class="max-w-5xl mx-auto px-4 sm:px-6 pt-24 sm:pt-32 pb-16 text-center">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-xs mb-6">
                 <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Universal Event & Ticketing Architecture</span>
