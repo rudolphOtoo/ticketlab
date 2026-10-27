@@ -3,7 +3,7 @@
 use App\Services\PaystackFeeCalculator;
 
 beforeEach(function () {
-    $this->calculator = new PaystackFeeCalculator;
+    $this->calculator = new PaystackFeeCalculator();
 });
 
 it('calculates gross amount for zero net loss with 1.95% fee rate', function () {

@@ -65,7 +65,7 @@ class UserPolicy
 
         if ($user->isZoneAdmin() && $user->zone_id === $model->zone_id) {
             // Prevent zone admins from deleting other zone admins
-            return ! $model->isZoneAdmin();
+            return !$model->isZoneAdmin();
         }
 
         return false;

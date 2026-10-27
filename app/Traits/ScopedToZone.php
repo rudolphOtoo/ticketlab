@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Traits;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,7 +17,12 @@ trait ScopedToZone
     {
         static::addGlobalScope('zone', function (Builder $builder) {
             if (Auth::check()) {
+                /** @var User|null $user */
                 $user = Auth::user();
+
+                if ($user === null) {
+                    return;
+                }
 
                 // Connexional Admin can access all zones
                 if (method_exists($user, 'canAccessAllZones') && $user->canAccessAllZones()) {
@@ -22,8 +30,8 @@ trait ScopedToZone
                 }
 
                 // Zone Admin and Gate Usher can only access their assigned zone
-                if ($user->zone_id) {
-                    $builder->where($builder->getModel()->getTable().'.zone_id', $user->zone_id);
+                if (!empty($user->zone_id)) {
+                    $builder->where($builder->getModel()->getTable() . '.zone_id', $user->zone_id);
                 } elseif (method_exists($user, 'isZoneAdmin') && $user->isZoneAdmin()) {
                     // Zone admins must have a zone_id
                     $builder->whereRaw('1 = 0');

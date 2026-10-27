@@ -4,20 +4,19 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('zone_id')
-                ->nullable()
-                ->after('email')
-                ->constrained('zones')
-                ->nullOnDelete();
-            $table->string('role')->default('gate_usher')->after('zone_id');
+            if (!Schema::hasColumn('users', 'zone_id')) {
+                $table->foreignId('zone_id')->nullable()->after('email')->constrained('zones')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('users', 'role')) {
+                $table->string('role')->default('gate_usher')->after('email');
+            }
         });
     }
 
