@@ -32,6 +32,11 @@ Route::middleware(['auth', 'subdivision.access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+        // Root admin route redirects to dashboard
+        Route::get('/', function () {
+            return redirect()->route('dashboard');
+        })->name('index');
+
         // Daily session ledger declaration & lockdown
         Route::get('sessions', DailySessionLedger::class)->name('sessions');
 
