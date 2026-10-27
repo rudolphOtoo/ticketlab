@@ -72,7 +72,19 @@
     </div>
 
     <!-- Ticket Tiers Grid -->
-    @if ($ticketTypes->isEmpty())
+    @if ($currentEvent === null)
+        <div class="rounded-3xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-12 text-center">
+            <div class="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--bg-subtle)] text-[var(--text-tertiary)]">
+                <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <h3 class="mt-4 text-sm font-semibold text-[var(--text-primary)]">No active event found</h3>
+            <p class="mt-1 text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
+                Please create or publish an event in the Customizer Studio before configuring ticket categories.
+            </p>
+        </div>
+    @elseif ($ticketTypes->isEmpty())
         <div class="rounded-3xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-12 text-center">
             <div class="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--bg-subtle)] text-[var(--text-tertiary)]">
                 <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -218,7 +230,10 @@
 
     <!-- Slide-Over / Modal Form -->
     @if ($isModalOpen)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs" wire:click.self="closeModal">
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs"
+            @keydown.window.escape="closeModal"
+        >
             <div class="w-full max-w-lg rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xl p-6 sm:p-7 space-y-5 animate-physical-modal">
                 <div class="flex items-center justify-between pb-3 border-b border-[var(--border-hairline)]">
                     <div>
@@ -341,7 +356,7 @@
                         <div class="flex items-center gap-2">
                             <input
                                 type="text"
-                                wire:model.live="newPerkInput"
+                                wire:model="newPerkInput"
                                 wire:keydown.enter.prevent="addPerk"
                                 placeholder="Type a perk and click Add (e.g. Lunch Included)"
                                 class="flex-1 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3.5 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] shadow-xs focus:border-[var(--text-primary)] focus:outline-hidden"

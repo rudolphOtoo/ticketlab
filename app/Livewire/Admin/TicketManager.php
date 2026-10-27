@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\TicketType;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -176,19 +177,23 @@ class TicketManager extends Component
             ]);
         }
 
-        $startDate = filled($this->sales_start_at) ? $this->sales_start_at : null;
-        $endDate = filled($this->sales_end_at) ? $this->sales_end_at : null;
+        $salesStart = filled($this->sales_start_at) ? $this->sales_start_at : null;
+        $salesEnd = filled($this->sales_end_at) ? $this->sales_end_at : null;
 
-        if ($this->editingTicketTypeId !== null) {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($startDate, $endDate): void {
-                /** @var TicketType $ticketType */
+        DB::transaction(function () use ($event, $salesStart, $salesEnd): void {
+            if ($this->editingTicketTypeId !== null) {
+                /** @var TicketType|null $ticketType */
                 $ticketType = TicketType::query()
                     ->whereHas('event', function ($query): void {
                         $query->where('organization_id', $this->organizationId);
                     })
                     ->whereKey($this->editingTicketTypeId)
                     ->lockForUpdate()
-                    ->firstOrFail();
+                    ->first();
+
+                if ($ticketType === null) {
+                    return;
+                }
 
                 $soldTickets = max(0, $ticketType->total_capacity - $ticketType->available_quantity);
 
@@ -207,30 +212,30 @@ class TicketManager extends Component
                     'price' => (float) $this->price,
                     'total_capacity' => $this->total_capacity,
                     'available_quantity' => $newAvailableQuantity,
-                    'sales_start_at' => $startDate,
-                    'sales_end_at' => $endDate,
+                    'sales_start_at' => $salesStart,
+                    'sales_end_at' => $salesEnd,
                     'is_active' => $this->is_active,
                     'perks' => $this->perks,
                 ]);
 
                 $this->flashMessage = "Ticket tier '{$ticketType->name}' updated successfully.";
-            });
-        } else {
-            $ticketType = TicketType::create([
-                'event_id' => $event->id,
-                'name' => $this->name,
-                'description' => $this->description,
-                'price' => (float) $this->price,
-                'total_capacity' => $this->total_capacity,
-                'available_quantity' => $this->total_capacity,
-                'sales_start_at' => $startDate,
-                'sales_end_at' => $endDate,
-                'is_active' => $this->is_active,
-                'perks' => $this->perks,
-            ]);
+            } else {
+                $ticketType = TicketType::create([
+                    'event_id' => $event->id,
+                    'name' => $this->name,
+                    'description' => $this->description,
+                    'price' => (float) $this->price,
+                    'total_capacity' => $this->total_capacity,
+                    'available_quantity' => $this->total_capacity,
+                    'sales_start_at' => $salesStart,
+                    'sales_end_at' => $salesEnd,
+                    'is_active' => $this->is_active,
+                    'perks' => $this->perks,
+                ]);
 
-            $this->flashMessage = "New ticket tier '{$ticketType->name}' created successfully.";
-        }
+                $this->flashMessage = "New ticket tier '{$ticketType->name}' created successfully.";
+            }
+        });
 
         $this->closeModal();
     }
