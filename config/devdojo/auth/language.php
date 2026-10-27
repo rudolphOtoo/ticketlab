@@ -83,5 +83,4 @@ return [
         'subheadline_recovery' => 'Please confirm access to your account by entering one of your emergency recovery codes.',
         'show_subheadline_recovery' => false,
     ],
-
 ];

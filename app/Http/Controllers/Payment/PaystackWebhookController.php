@@ -14,7 +14,8 @@ class PaystackWebhookController extends Controller
 {
     public function handle(Request $request, PayZephyrService $payZephyr): JsonResponse
     {
-        $signature = $request->header('x-paystack-signature');
+        $header = $request->header('x-paystack-signature');
+        $signature = is_string($header) ? $header : null;
 
         if (!$payZephyr->verifySignature($request->getContent(), $signature)) {
             return response()->json([
@@ -42,6 +43,7 @@ class PaystackWebhookController extends Controller
         }
 
         try {
+            /** @var array<string, mixed> $data */
             $order = $payZephyr->handleChargeSuccess($data);
         } catch (OrderFulfillmentException) {
             return response()->json([

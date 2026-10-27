@@ -153,9 +153,17 @@ class EventShow extends Component
             'customerPhone' => ['required', 'string', 'max:50'],
         ]);
 
+        $ticketTypeId = (int) $validated['ticketTypeId'];
+        $quantity = (int) $validated['quantity'];
+        $subdivisionId = isset($validated['subdivisionId']) && $validated['subdivisionId'] !== null
+            ? (int) $validated['subdivisionId']
+            : null;
+
         $event = $this->event();
+        /** @var Organization $organization */
         $organization = Organization::query()->findOrFail($event->organization_id);
-        $ticketType = $event->ticketTypes()->whereKey($validated['ticketTypeId'])->first();
+        /** @var TicketType|null $ticketType */
+        $ticketType = $event->ticketTypes()->whereKey($ticketTypeId)->first();
 
         if ($ticketType === null) {
             $this->addError('ticketTypeId', 'The selected ticket tier is unavailable.');
@@ -165,9 +173,9 @@ class EventShow extends Component
 
         $subdivision = null;
 
-        if ($validated['subdivisionId'] !== null) {
+        if ($subdivisionId !== null) {
             $subdivision = Subdivision::query()
-                ->whereKey($validated['subdivisionId'])
+                ->whereKey($subdivisionId)
                 ->where('organization_id', $organization->id)
                 ->first();
 
@@ -184,12 +192,7 @@ class EventShow extends Component
         $sessionId = session()->getId() ?: Str::uuid()->toString();
 
         try {
-            $reservation = $reservations->holdOrReuse(
-                $ticketType,
-                $validated['quantity'],
-                $sessionId,
-                $subdivision?->id,
-            );
+            $reservation = $reservations->holdOrReuse($ticketType, $quantity, $sessionId, $subdivision?->id);
         } catch (TicketSoldOutException $exception) {
             $this->addError('quantity', $exception->getMessage());
             $this->dispatch('ticket-hold-failed');
@@ -309,6 +312,7 @@ class EventShow extends Component
     public function render(): View
     {
         $event = $this->event();
+        /** @var Organization $organization */
         $organization = Organization::query()->findOrFail($event->organization_id);
 
         /** @var Collection<int, TicketType> $ticketTypes */
@@ -393,6 +397,7 @@ class EventShow extends Component
             return null;
         }
 
+        /** @var TicketType|null */
         return $this->event()->ticketTypes()->whereKey($this->ticketTypeId)->first();
     }
 

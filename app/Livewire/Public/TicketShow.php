@@ -43,7 +43,7 @@ class TicketShow extends Component
         $qrCode = app(QrCodeService::class);
 
         $qrCodes = $attendees->mapWithKeys(fn(Attendee $attendee): array => [
-            $attendee->id => $qrCode->svg($attendee->qr_code_hash, 240, 1),
+            (int) $attendee->id => $qrCode->svg((string) $attendee->qr_code_hash, 240, 1),
         ]);
 
         return view('livewire.public.ticket-show', [

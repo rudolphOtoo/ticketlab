@@ -23,6 +23,8 @@ class OrderFulfillmentService
 
     /**
      * Mark a pending order as paid and issue one QR attendee pass per ticket.
+     *
+     * @param array<string, mixed> $payment
      */
     public function fulfillReference(string $reference, array $payment = []): ?Order
     {
@@ -35,6 +37,9 @@ class OrderFulfillmentService
         return $this->fulfill($order, $payment);
     }
 
+    /**
+     * @param array<string, mixed> $payment
+     */
     public function fulfill(Order $order, array $payment = []): Order
     {
         try {
@@ -43,7 +48,10 @@ class OrderFulfillmentService
                 $order = Order::query()->whereKey($order->getKey())->lockForUpdate()->firstOrFail();
 
                 if (in_array($order->payment_status, [OrderStatus::Paid, OrderStatus::RequiresReview], true)) {
-                    return $order->fresh(['attendees']);
+                    $fresh = $order->fresh(['attendees']);
+                    assert($fresh instanceof Order);
+
+                    return $fresh;
                 }
 
                 if ($order->payment_status !== OrderStatus::Pending) {
@@ -72,7 +80,10 @@ class OrderFulfillmentService
                     $this->attendeeIssuer->issue($order, $fulfilled['ticket_type'], $fulfilled['quantity'], $metadata);
                 }
 
-                return $order->fresh(['attendees']);
+                $fresh = $order->fresh(['attendees']);
+                assert($fresh instanceof Order);
+
+                return $fresh;
             });
         } catch (Throwable $exception) {
             $this->paymentReview->mark($order, $exception->getMessage(), $payment);

@@ -11,7 +11,7 @@ use App\Models\TicketType;
 class ReservationStockService
 {
     /**
-     * @param array{ticket: TicketType, subdivision_id: int|null} $context
+     * @param array{ticket: TicketType, subdivision_id: int|null, organization_id?: int, session_id?: string} $context
      */
     public function reuse(Reservation $reservation, array $context, int $quantity, int $available): Reservation
     {
