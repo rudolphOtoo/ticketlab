@@ -14,7 +14,7 @@ class BrandedErrorPagesTest extends TestCase
     public function test_branded_error_views_render_for_common_codes(): void
     {
         $this->get('/non-existent-page-xyz-12345')->assertStatus(404);
-        
+
         // Test that error views exist and extend branded layout
         $this->assertFileExists(resource_path('views/errors/401.blade.php'));
         $this->assertFileExists(resource_path('views/errors/403.blade.php'));

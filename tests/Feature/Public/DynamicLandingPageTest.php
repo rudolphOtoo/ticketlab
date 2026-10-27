@@ -192,7 +192,6 @@ class DynamicLandingPageTest extends TestCase
             'status' => 'draft',
         ]);
 
-        $this->get(route('public.event.show', [$organization->slug, $unpublished->slug]))
-            ->assertStatus(404);
+        $this->get(route('public.event.show', [$organization->slug, $unpublished->slug]))->assertStatus(404);
     }
 }

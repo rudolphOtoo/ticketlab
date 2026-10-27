@@ -9,6 +9,7 @@ includes = [
     "vendor/laravel/framework/src/Illuminate/**/*.php",
     "vendor/bacon/bacon-qr-code/src/**/*.php"
 ]
+excludes = ["bootstrap/cache/**"]
 
 [formatter]
 print-width = 120

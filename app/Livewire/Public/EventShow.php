@@ -4,28 +4,21 @@ declare(strict_types=1);
 
 namespace App\Livewire\Public;
 
-use App\Enums\OrderStatus;
-use App\Enums\PaymentMethod;
 use App\Models\Event;
-use App\Models\EventFaq;
 use App\Models\EventFormField;
-use App\Models\EventSchedule;
-use App\Models\EventSpeaker;
 use App\Models\Order;
 use App\Models\Organization;
-use App\Models\Reservation;
 use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Services\Payment\OrderFulfillmentService;
 use App\Services\Payment\PayZephyrService;
+use App\Services\Payment\PendingOrderService;
 use App\Services\PaystackFeeCalculator;
 use App\Services\Reservation\TicketReservationService;
 use App\Services\Reservation\TicketSoldOutException;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Livewire\Attributes\Layout;
@@ -33,6 +26,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Throwable;
 
 #[Layout('layouts.public')]
 #[Title('Event Tickets')]
@@ -76,14 +70,7 @@ class EventShow extends Component
         $organization = Organization::query()->where('slug', $org_slug)->firstOrFail();
 
         $event = Event::query()
-            ->with([
-                'organization',
-                'speakers' => fn ($q) => $q->orderBy('sort_order'),
-                'schedules' => fn ($q) => $q->orderBy('sort_order'),
-                'faqs' => fn ($q) => $q->where('is_published', true)->orderBy('sort_order'),
-                'formFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
-                'ticketTypes',
-            ])
+            ->with(['ticketTypes', 'formFields' => fn($q) => $q->where('is_active', true)])
             ->where('organization_id', $organization->id)
             ->where('slug', $event_slug)
             ->where('status', 'published')
@@ -92,8 +79,9 @@ class EventShow extends Component
         $this->organizationId = $organization->id;
         $this->eventId = $event->id;
 
-        $defaultTicket = $event->ticketTypes
-            ->filter(fn ($ticket) => (int) ($ticket->available_quantity ?? 0) > 0)
+        $defaultTicket = $event
+            ->ticketTypes
+            ->filter(fn($ticket) => (int) ($ticket->available_quantity ?? 0) > 0)
             ->sortBy('price')
             ->first();
 
@@ -101,14 +89,12 @@ class EventShow extends Component
         $this->subdivisionId = $organization->subdivisions()->orderBy('name')->value('id');
 
         // Initialize dynamic form responses
-        $formFields = $event->formFields;
-        if ($formFields && $formFields->isNotEmpty()) {
-            foreach ($formFields as $field) {
-                if (! array_key_exists($field->field_key, $this->formResponses)) {
-                    $this->formResponses[$field->field_key] = '';
-                }
-            }
-        }
+        $this->formResponses += $event
+            ->formFields
+            ->mapWithKeys(static fn(EventFormField $field) => [
+                $field->field_key => '',
+            ])
+            ->all();
     }
 
     public function selectTicketType(int $ticketTypeId): void
@@ -177,29 +163,12 @@ class EventShow extends Component
         $this->checkoutOpen = false;
     }
 
-    public function startCheckout(TicketReservationService $reservations): void
+    public function startCheckout(TicketReservationService $reservations, PendingOrderService $pendingOrders): void
     {
-        $event = $this->event();
-        if (! $event->relationLoaded('formFields')) {
-            $event->load(['formFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')]);
-        }
+        $event = $this->event()->load(['formFields' => fn($q) => $q->where('is_active', true)]);
 
-        // Sanitize form responses
-        if (is_array($this->formResponses)) {
-            $sanitized = [];
-            foreach ($this->formResponses as $key => $value) {
-                if (is_string($value)) {
-                    $sanitized[$key] = trim(strip_tags($value));
-                } elseif (is_array($value)) {
-                    $sanitized[$key] = array_map(function ($v) {
-                        return is_string($v) ? trim(strip_tags($v)) : $v;
-                    }, $value);
-                } else {
-                    $sanitized[$key] = $value;
-                }
-            }
-            $this->formResponses = $sanitized;
-        }
+        // Only known questionnaire keys survive, so arbitrary payloads never reach order metadata.
+        $this->formResponses = $this->sanitizeFormResponses($this->formResponses, $event->formFields);
 
         $rules = [
             'ticketTypeId' => ['required', 'integer'],
@@ -208,70 +177,15 @@ class EventShow extends Component
             'customerName' => ['required', 'string', 'max:255'],
             'customerEmail' => ['required', 'string', 'email', 'max:255'],
             'customerPhone' => ['required', 'string', 'max:50'],
+            ...$this->formFieldRules($event->formFields),
         ];
-
-        // Validate dynamic form fields
-        $formFields = $event->formFields;
-        if ($formFields && $formFields->isNotEmpty()) {
-            $allowedKeys = [];
-            foreach ($formFields as $field) {
-                if (! $field->is_active) {
-                    continue;
-                }
-                $allowedKeys[] = $field->field_key;
-                $fieldRules = is_array($field->validation_rules) ? $field->validation_rules : [];
-                $rules["formResponses.{$field->field_key}"] = [];
-
-                if ($field->input_type === 'email') {
-                    $rules["formResponses.{$field->field_key}"][] = 'email';
-                } elseif ($field->input_type === 'number') {
-                    $rules["formResponses.{$field->field_key}"][] = 'numeric';
-                } elseif (in_array($field->input_type, ['select', 'radio'], true) && is_array($field->options)) {
-                    $options = array_values(array_filter($field->options));
-                    if (! empty($options)) {
-                        $rules["formResponses.{$field->field_key}"][] = 'in:'.implode(',', $options);
-                    }
-                }
-
-                if ($field->is_required) {
-                    $rules["formResponses.{$field->field_key}"][] = 'required';
-                }
-
-                if (! empty($fieldRules)) {
-                    // Merge provided rules but ensure basic type constraints are not bypassed
-                    foreach ($fieldRules as $rule) {
-                        if (is_string($rule) && ! in_array($rule, $rules["formResponses.{$field->field_key}"], true)) {
-                            $rules["formResponses.{$field->field_key}"][] = $rule;
-                        }
-                    }
-                }
-
-                if (empty($rules["formResponses.{$field->field_key}"])) {
-                    unset($rules["formResponses.{$field->field_key}"]);
-                }
-            }
-
-            // Prevent arbitrary payload injection by only accepting known keys
-            if (is_array($this->formResponses)) {
-                $filtered = [];
-                foreach ($this->formResponses as $key => $value) {
-                    if (in_array($key, $allowedKeys, true)) {
-                        $filtered[$key] = $value;
-                    }
-                }
-                $this->formResponses = $filtered;
-            }
-        }
 
         $validated = $this->validate($rules);
 
         $ticketTypeId = (int) $validated['ticketTypeId'];
         $quantity = (int) $validated['quantity'];
-        $subdivisionId = isset($validated['subdivisionId']) && $validated['subdivisionId'] !== null
-            ? (int) $validated['subdivisionId']
-            : null;
+        $subdivisionId = isset($validated['subdivisionId']) ? (int) $validated['subdivisionId'] : null;
 
-        $event = $this->event();
         /** @var Organization $organization */
         $organization = Organization::query()->findOrFail($event->organization_id);
         /** @var TicketType|null $ticketType */
@@ -316,14 +230,14 @@ class EventShow extends Component
             return;
         }
 
-        $netAmount = round((float) $ticketType->price * $validated['quantity'], 2);
+        $netAmount = round((float) $ticketType->price * $quantity, 2);
         $platformFee = $this->platformFee($organization);
         $breakdown = PaystackFeeCalculator::breakdown($netAmount, $platformFee);
 
         $orderAttributes = [
             'organization_id' => $organization->id,
-            'event_id' => $event->id,
             'subdivision_id' => $subdivision?->id,
+            'reservation_id' => $reservation->getKey(),
             'customer_name' => $validated['customerName'],
             'customer_email' => $validated['customerEmail'],
             'customer_phone' => $validated['customerPhone'],
@@ -335,7 +249,7 @@ class EventShow extends Component
                 'reservation_id' => $reservation->getKey(),
                 'ticket_type_id' => $ticketType->id,
                 'ticket_type_name' => $ticketType->name,
-                'quantity' => (int) $validated['quantity'],
+                'quantity' => $quantity,
                 'subdivision_name' => $subdivision?->name,
                 'platform_fee' => $breakdown['platform_fee'],
                 'reservation_expires_at' => $reservation->expires_at?->toIso8601String(),
@@ -345,7 +259,7 @@ class EventShow extends Component
         ];
 
         try {
-            $order = $this->persistOrder($reservation, $orderAttributes);
+            $order = $pendingOrders->persist($reservation, $orderAttributes);
         } catch (InvalidArgumentException $exception) {
             $this->addError('payment', $exception->getMessage());
 
@@ -365,7 +279,7 @@ class EventShow extends Component
             'metadata' => [
                 'order_reference' => $order->reference,
                 'ticket_type' => $ticketType->name,
-                'quantity' => $validated['quantity'],
+                'quantity' => $quantity,
                 'organization_id' => $organization->id,
             ],
         ]);
@@ -389,9 +303,13 @@ class EventShow extends Component
             if ($payZephyr->isSuccessful($verification)) {
                 app(OrderFulfillmentService::class)->fulfill($order, $verification);
             }
-        } catch (\Throwable) {
+        } catch (Throwable $exception) {
             // The asynchronous Paystack webhook remains the fail-safe if the
             // browser loses connectivity during callback verification.
+            Log::warning('Inline Paystack verification failed; deferring to webhook.', [
+                'order_reference' => $order->reference,
+                'error' => $exception->getMessage(),
+            ]);
         }
 
         $this->redirect(route('public.tickets.show', ['order' => $order->reference]), navigate: true);
@@ -425,18 +343,19 @@ class EventShow extends Component
 
     public function render(): View
     {
-        $event = $this->event();
-        if (! $event->relationLoaded('organization')) {
-            $event->load('organization');
-        }
+        $event = $this->event()->load([
+            'organization',
+            'ticketTypes',
+            'speakers',
+            'schedules',
+            'faqs' => fn($q) => $q->where('is_published', true),
+            'formFields' => fn($q) => $q->where('is_active', true),
+        ]);
         /** @var Organization $organization */
-        $organization = $event->organization ?? Organization::query()->findOrFail($event->organization_id);
+        $organization = $event->organization;
 
-        if (! $event->relationLoaded('ticketTypes')) {
-            $event->load('ticketTypes');
-        }
         /** @var Collection<int, TicketType> $ticketTypes */
-        $ticketTypes = $event->ticketTypes ? $event->ticketTypes->sortBy('price')->values() : $event->ticketTypes()->orderBy('price')->get();
+        $ticketTypes = $event->ticketTypes->sortBy('price')->values();
 
         $selectedTicketType = $ticketTypes->firstWhere('id', $this->ticketTypeId);
 
@@ -444,28 +363,18 @@ class EventShow extends Component
 
         $breakdown = PaystackFeeCalculator::breakdown($subtotal, $this->platformFee($organization));
 
-        if (! $event->relationLoaded('speakers')) {
-            $event->load(['speakers' => fn ($q) => $q->orderBy('sort_order')]);
-        }
-        if (! $event->relationLoaded('schedules')) {
-            $event->load(['schedules' => fn ($q) => $q->orderBy('sort_order')]);
-        }
-        if (! $event->relationLoaded('formFields')) {
-            $event->load(['formFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')]);
-        }
-        if (! $event->relationLoaded('faqs')) {
-            $event->load(['faqs' => fn ($q) => $q->where('is_published', true)->orderBy('sort_order')]);
-        }
-
-        $speakers = $event->speakers ?? $event->speakers()->orderBy('sort_order')->get();
-        $schedules = $event->schedules ?? $event->schedules()->orderBy('sort_order')->get();
-        $formFields = $event->formFields ?? $event->formFields()->where('is_active', true)->orderBy('sort_order')->get();
-        $faqs = $event->faqs ?? $event->faqs()->where('is_published', true)->orderBy('sort_order')->get();
+        $speakers = $event->speakers;
+        $schedules = $event->schedules;
+        $formFields = $event->formFields;
+        $faqs = $event->faqs;
 
         if ($this->faqSearch !== '') {
             $search = Str::lower($this->faqSearch);
             $faqs = $faqs->filter(function ($faq) use ($search) {
-                return Str::contains(Str::lower($faq->question), $search) || Str::contains(Str::lower($faq->answer), $search);
+                return (
+                    Str::contains(Str::lower($faq->question), $search)
+                    || Str::contains(Str::lower($faq->answer), $search)
+                );
             });
         }
 
@@ -489,71 +398,10 @@ class EventShow extends Component
         ]);
     }
 
-    /**
-     * @param array<string, mixed> $attributes
-     */
-    private function persistOrder(Reservation $reservation, array $attributes): Order
-    {
-        for ($attempt = 0; $attempt < 3; $attempt++) {
-            try {
-                return DB::transaction(fn(): Order => $this->storeOrder($reservation, $attributes));
-            } catch (UniqueConstraintViolationException $exception) {
-                if ($attempt === 2) {
-                    throw $exception;
-                }
-            }
-        }
-
-        throw new InvalidArgumentException('Unable to create a checkout order.');
-    }
-
-    /**
-     * @param array<string, mixed> $attributes
-     */
-    private function storeOrder(Reservation $reservation, array $attributes): Order
-    {
-        /** @var Order|null $order */
-        $order = Order::query()->where('reservation_id', $reservation->getKey())->lockForUpdate()->first();
-
-        if ($order !== null) {
-            if ($order->payment_status !== OrderStatus::Pending) {
-                throw new InvalidArgumentException(
-                    'This checkout already has a payment that is under review or completed.',
-                );
-            }
-
-            $order->forceFill($attributes)->save();
-
-            return $order->refresh();
-        }
-
-        return Order::query()->create(
-            $attributes
-            + [
-                'user_id' => null,
-                'reference' => $this->generateReference(),
-                'payment_method' => PaymentMethod::MobileMoney,
-                'payment_status' => OrderStatus::Pending,
-                'paid_at' => null,
-            ],
-        );
-    }
-
     private function event(): Event
     {
         /** @var Event */
-        $event = Event::query()
-            ->with([
-                'organization',
-                'speakers' => fn ($q) => $q->orderBy('sort_order'),
-                'schedules' => fn ($q) => $q->orderBy('sort_order'),
-                'faqs' => fn ($q) => $q->where('is_published', true)->orderBy('sort_order'),
-                'formFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
-                'ticketTypes',
-            ])
-            ->findOrFail($this->eventId);
-
-        return $event;
+        return Event::query()->findOrFail($this->eventId);
     }
 
     private function selectedTicketType(): ?TicketType
@@ -563,20 +411,44 @@ class EventShow extends Component
         }
 
         /** @var TicketType|null */
-        return $this->event()->ticketTypes()->whereKey($this->ticketTypeId)->first();
+        return TicketType::query()->where('event_id', $this->eventId)->find($this->ticketTypeId);
+    }
+
+    /**
+     * @param array<string, mixed> $responses
+     * @param Collection<int, EventFormField> $fields
+     * @return array<string, mixed>
+     */
+    private function sanitizeFormResponses(array $responses, Collection $fields): array
+    {
+        $clean = static fn(mixed $value): mixed => is_string($value) ? trim(strip_tags($value)) : $value;
+
+        $allowed = $fields->mapWithKeys(static fn(EventFormField $field) => [$field->field_key => true])->all();
+        $known = array_intersect_key($responses, $allowed);
+
+        return array_map(static fn(mixed $value): mixed => is_array($value)
+            ? array_map($clean, $value)
+            : $clean($value), $known);
+    }
+
+    /**
+     * Build validation rules for the event's dynamic questionnaire.
+     *
+     * @param Collection<int, EventFormField> $fields
+     * @return array<string, array<int, mixed>>
+     */
+    private function formFieldRules(Collection $fields): array
+    {
+        return $fields
+            ->mapWithKeys(static fn(EventFormField $field) => [
+                "formResponses.{$field->field_key}" => $field->validationRules(),
+            ])
+            ->filter()
+            ->all();
     }
 
     private function platformFee(Organization $organization): float
     {
         return max(0.0, (float) ($organization->settings['platform_fee'] ?? 0));
-    }
-
-    private function generateReference(): string
-    {
-        do {
-            $reference = 'TKT-' . strtoupper((string) Str::ulid());
-        } while (Order::query()->where('reference', $reference)->exists());
-
-        return $reference;
     }
 }

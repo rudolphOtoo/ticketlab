@@ -19,6 +19,7 @@ class EventSpeaker extends Model
     {
         return EventSpeakerFactory::new();
     }
+
     use BelongsToOrganization;
     use HasFactory;
 
