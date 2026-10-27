@@ -24,12 +24,12 @@ test('unauthenticated users cannot access financial closeout ledger', function (
 test('authenticated admin can view financial closeout ledger with aggregated figures', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Admin Jane',
-        'email' => 'admin_'.uniqid().'@ticketlab.test',
+        'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -37,13 +37,13 @@ test('authenticated admin can view financial closeout ledger with aggregated fig
     $subdivision = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'Accra Central Zone',
-        'slug' => 'accra-central-'.uniqid(),
+        'slug' => 'accra-central-' . uniqid(),
     ]);
 
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -62,7 +62,7 @@ test('authenticated admin can view financial closeout ledger with aggregated fig
     Order::create([
         'organization_id' => $org->id,
         'subdivision_id' => $subdivision->id,
-        'reference' => 'TL-ORD-ONLINE-'.uniqid(),
+        'reference' => 'TL-ORD-ONLINE-' . uniqid(),
         'customer_name' => 'Online Payer',
         'customer_email' => 'online@gh.com',
         'customer_phone' => '+233240001122',
@@ -78,7 +78,7 @@ test('authenticated admin can view financial closeout ledger with aggregated fig
     $cashOrder = Order::create([
         'organization_id' => $org->id,
         'subdivision_id' => $subdivision->id,
-        'reference' => 'TL-ORD-CASH-'.uniqid(),
+        'reference' => 'TL-ORD-CASH-' . uniqid(),
         'customer_name' => 'Cash Payer',
         'customer_email' => 'cash@gh.com',
         'customer_phone' => '+233240003344',
@@ -119,12 +119,12 @@ test('admin can lock financial session and generate tamper-proof PDF audit repor
 
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Finance Director',
-        'email' => 'finance_'.uniqid().'@ticketlab.test',
+        'email' => 'finance_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -132,7 +132,7 @@ test('admin can lock financial session and generate tamper-proof PDF audit repor
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -149,7 +149,7 @@ test('admin can lock financial session and generate tamper-proof PDF audit repor
 
     $order = Order::create([
         'organization_id' => $org->id,
-        'reference' => 'TL-ORD-CASH-'.uniqid(),
+        'reference' => 'TL-ORD-CASH-' . uniqid(),
         'customer_name' => 'Session Attendee',
         'customer_email' => 'session@test.gh',
         'customer_phone' => '+233541112233',
@@ -179,11 +179,16 @@ test('admin can lock financial session and generate tamper-proof PDF audit repor
 
     $session = SessionLedger::find($component->get('activeSessionId'));
 
-    expect($session->isLocked())->toBeTrue()
-        ->and($session->locked_by)->toBe($user->id)
-        ->and((float) $session->total_cash)->toBe(50.00)
-        ->and($session->total_attendees)->toBe(1)
-        ->and($session->snapshot_pdf_path)->not->toBeNull();
+    expect($session->isLocked())
+        ->toBeTrue()
+        ->and($session->locked_by)
+        ->toBe($user->id)
+        ->and((float) $session->total_cash)
+        ->toBe(50.00)
+        ->and($session->total_attendees)
+        ->toBe(1)
+        ->and($session->snapshot_pdf_path)
+        ->not->toBeNull();
 
     Storage::disk('local')->assertExists($session->snapshot_pdf_path);
 });
@@ -193,12 +198,12 @@ test('locked session offers PDF download and prevents double locking', function 
 
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Finance Director',
-        'email' => 'finance_'.uniqid().'@ticketlab.test',
+        'email' => 'finance_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);

@@ -20,32 +20,29 @@ test('unauthenticated users cannot view attendee roster', function () {
 test('door terminal usher is blocked by middleware from accessing administrative roster', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $usher = User::create([
         'name' => 'Gate Usher',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'usher',
     ]);
 
-    $this
-        ->actingAs($usher)
-        ->get(route('admin.attendees'))
-        ->assertForbidden();
+    $this->actingAs($usher)->get(route('admin.attendees'))->assertForbidden();
 });
 
 test('authenticated admin can view attendee roster with list of attendees', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Admin User',
-        'email' => 'admin_'.uniqid().'@ticketlab.test',
+        'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
@@ -54,13 +51,13 @@ test('authenticated admin can view attendee roster with list of attendees', func
     $sub = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'Accra Central',
-        'slug' => 'accra-central-'.uniqid(),
+        'slug' => 'accra-central-' . uniqid(),
     ]);
 
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -76,7 +73,7 @@ test('authenticated admin can view attendee roster with list of attendees', func
     ]);
 
     $order = Order::create([
-        'reference' => 'ORD-'.uniqid(),
+        'reference' => 'ORD-' . uniqid(),
         'organization_id' => $org->id,
         'subdivision_id' => $sub->id,
         'customer_name' => 'Ama Serwah',
@@ -97,7 +94,7 @@ test('authenticated admin can view attendee roster with list of attendees', func
         'name' => 'Ama Serwah',
         'email' => 'ama@example.com',
         'phone' => '0241234567',
-        'qr_code_hash' => 'HASH_AMA_'.uniqid(),
+        'qr_code_hash' => 'HASH_AMA_' . uniqid(),
     ]);
 
     $this
@@ -112,24 +109,24 @@ test('authenticated admin can view attendee roster with list of attendees', func
 test('zone admin is strictly scoped to their assigned subdivision', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $zoneA = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'Kumasi Zone',
-        'slug' => 'kumasi-'.uniqid(),
+        'slug' => 'kumasi-' . uniqid(),
     ]);
 
     $zoneB = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'Accra Zone',
-        'slug' => 'accra-'.uniqid(),
+        'slug' => 'accra-' . uniqid(),
     ]);
 
     $zoneAdminA = User::create([
         'name' => 'Kumasi Head',
-        'email' => 'kumasi_'.uniqid().'@ticketlab.test',
+        'email' => 'kumasi_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'subdivision_id' => $zoneA->id,
@@ -139,7 +136,7 @@ test('zone admin is strictly scoped to their assigned subdivision', function () 
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -155,7 +152,7 @@ test('zone admin is strictly scoped to their assigned subdivision', function () 
     ]);
 
     $orderA = Order::create([
-        'reference' => 'ORD-A-'.uniqid(),
+        'reference' => 'ORD-A-' . uniqid(),
         'organization_id' => $org->id,
         'subdivision_id' => $zoneA->id,
         'customer_name' => 'Kumasi Attendee',
@@ -168,7 +165,7 @@ test('zone admin is strictly scoped to their assigned subdivision', function () 
     ]);
 
     $orderB = Order::create([
-        'reference' => 'ORD-B-'.uniqid(),
+        'reference' => 'ORD-B-' . uniqid(),
         'organization_id' => $org->id,
         'subdivision_id' => $zoneB->id,
         'customer_name' => 'Accra Attendee',
@@ -188,7 +185,7 @@ test('zone admin is strictly scoped to their assigned subdivision', function () 
         'name' => 'Kumasi Attendee',
         'email' => 'kumasi@test.gh',
         'phone' => '0241111111',
-        'qr_code_hash' => 'HASH_KUMASI_'.uniqid(),
+        'qr_code_hash' => 'HASH_KUMASI_' . uniqid(),
     ]);
 
     Attendee::create([
@@ -199,7 +196,7 @@ test('zone admin is strictly scoped to their assigned subdivision', function () 
         'name' => 'Accra Attendee',
         'email' => 'accra@test.gh',
         'phone' => '0242222222',
-        'qr_code_hash' => 'HASH_ACCRA_'.uniqid(),
+        'qr_code_hash' => 'HASH_ACCRA_' . uniqid(),
     ]);
 
     // Kumasi Zone Admin sees only Kumasi Attendee
@@ -212,12 +209,12 @@ test('zone admin is strictly scoped to their assigned subdivision', function () 
 test('attendee check-in status can be toggled', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Admin User',
-        'email' => 'admin_'.uniqid().'@ticketlab.test',
+        'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
@@ -226,7 +223,7 @@ test('attendee check-in status can be toggled', function () {
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -242,7 +239,7 @@ test('attendee check-in status can be toggled', function () {
     ]);
 
     $order = Order::create([
-        'reference' => 'ORD-'.uniqid(),
+        'reference' => 'ORD-' . uniqid(),
         'organization_id' => $org->id,
         'customer_name' => 'Kofi Mensah',
         'customer_email' => 'kofi@example.com',
@@ -261,7 +258,7 @@ test('attendee check-in status can be toggled', function () {
         'name' => 'Kofi Mensah',
         'email' => 'kofi@example.com',
         'phone' => '0241234568',
-        'qr_code_hash' => 'HASH_KOFI_'.uniqid(),
+        'qr_code_hash' => 'HASH_KOFI_' . uniqid(),
     ]);
 
     expect($attendee->isCheckedIn())->toBeFalse();
@@ -278,12 +275,12 @@ test('attendee check-in status can be toggled', function () {
 test('attendee roster exports streaming CSV with spatie simple excel', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Super Admin',
-        'email' => 'super_'.uniqid().'@ticketlab.test',
+        'email' => 'super_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
@@ -292,7 +289,7 @@ test('attendee roster exports streaming CSV with spatie simple excel', function 
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -308,7 +305,7 @@ test('attendee roster exports streaming CSV with spatie simple excel', function 
     ]);
 
     $order = Order::create([
-        'reference' => 'ORD-EXP-'.uniqid(),
+        'reference' => 'ORD-EXP-' . uniqid(),
         'organization_id' => $org->id,
         'customer_name' => 'Export Guest',
         'customer_email' => 'export@test.gh',
@@ -326,29 +323,26 @@ test('attendee roster exports streaming CSV with spatie simple excel', function 
         'name' => 'Export Guest',
         'email' => 'export@test.gh',
         'phone' => '0249999999',
-        'qr_code_hash' => 'HASH_EXP_'.uniqid(),
+        'qr_code_hash' => 'HASH_EXP_' . uniqid(),
     ]);
 
-    Livewire::actingAs($user)
-        ->test(AttendeeRoster::class)
-        ->call('exportCsv')
-        ->assertFileDownloaded();
+    Livewire::actingAs($user)->test(AttendeeRoster::class)->call('exportCsv')->assertFileDownloaded();
 });
 
 test('attendee roster strictly isolates records across different organizations', function () {
     $orgA = Organization::create([
         'name' => 'Org Alpha',
-        'slug' => 'org-alpha-'.uniqid(),
+        'slug' => 'org-alpha-' . uniqid(),
     ]);
 
     $orgB = Organization::create([
         'name' => 'Org Beta',
-        'slug' => 'org-beta-'.uniqid(),
+        'slug' => 'org-beta-' . uniqid(),
     ]);
 
     $adminA = User::create([
         'name' => 'Admin Alpha',
-        'email' => 'alpha_'.uniqid().'@ticketlab.test',
+        'email' => 'alpha_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $orgA->id,
         'role' => 'admin',
@@ -357,7 +351,7 @@ test('attendee roster strictly isolates records across different organizations',
     $eventA = Event::create([
         'organization_id' => $orgA->id,
         'title' => 'Event Alpha',
-        'slug' => 'event-alpha-'.uniqid(),
+        'slug' => 'event-alpha-' . uniqid(),
         'venue' => 'Arena A',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -373,7 +367,7 @@ test('attendee roster strictly isolates records across different organizations',
     ]);
 
     $orderA = Order::create([
-        'reference' => 'ORD-A-'.uniqid(),
+        'reference' => 'ORD-A-' . uniqid(),
         'organization_id' => $orgA->id,
         'customer_name' => 'Guest Alpha',
         'customer_email' => 'alpha@test.gh',
@@ -391,11 +385,11 @@ test('attendee roster strictly isolates records across different organizations',
         'name' => 'Guest Alpha Unique',
         'email' => 'alpha@test.gh',
         'phone' => '0241111111',
-        'qr_code_hash' => 'HASH_ALPHA_'.uniqid(),
+        'qr_code_hash' => 'HASH_ALPHA_' . uniqid(),
     ]);
 
     $orderB = Order::create([
-        'reference' => 'ORD-B-'.uniqid(),
+        'reference' => 'ORD-B-' . uniqid(),
         'organization_id' => $orgB->id,
         'customer_name' => 'Guest Beta',
         'customer_email' => 'beta@test.gh',
@@ -413,7 +407,7 @@ test('attendee roster strictly isolates records across different organizations',
         'name' => 'Guest Beta Secret',
         'email' => 'beta@test.gh',
         'phone' => '0242222222',
-        'qr_code_hash' => 'HASH_BETA_'.uniqid(),
+        'qr_code_hash' => 'HASH_BETA_' . uniqid(),
     ]);
 
     Livewire::actingAs($adminA)

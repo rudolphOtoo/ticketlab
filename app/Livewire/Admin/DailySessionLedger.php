@@ -36,14 +36,14 @@ class DailySessionLedger extends Component
         $orgId = auth()->user()?->organization_id;
 
         $session = SessionLedger::query()
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->latest('opened_at')
             ->first();
 
-        if (! $session) {
+        if (!$session) {
             $session = SessionLedger::create([
                 'organization_id' => $orgId ?? 1,
-                'session_name' => 'Session Day 1 — '.now()->format('M d, Y'),
+                'session_name' => 'Session Day 1 — ' . now()->format('M d, Y'),
                 'opened_at' => now(),
             ]);
         }
@@ -54,7 +54,7 @@ class DailySessionLedger extends Component
     public function lockSession(SessionReportService $reportService): void
     {
         $session = SessionLedger::find($this->activeSessionId);
-        if (! $session || $session->isLocked()) {
+        if (!$session || $session->isLocked()) {
             return;
         }
 
@@ -63,28 +63,39 @@ class DailySessionLedger extends Component
 
         $totalOnline = (float) Order::where('payment_method', '!=', PaymentMethod::PhysicalCash->value)
             ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->sum('gross_amount');
 
         $totalCash = (float) Order::where('payment_method', PaymentMethod::PhysicalCash->value)
             ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->sum('gross_amount');
 
         $totalAttendees = Attendee::whereNotNull('checked_in_at')
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->count();
 
-        $capacityTotal = (int) TicketType::when($event, static fn ($q) => $q->where('event_id', $event->id))->sum('total_capacity');
+        $capacityTotal = (int) TicketType::when($event, static fn($q) => $q->where('event_id', $event->id))->sum(
+            'total_capacity',
+        );
 
-        $subdivisions = Subdivision::when($orgId, static fn ($q) => $q->where('organization_id', $orgId))->get();
-        $zoneBreakdown = $subdivisions->map(static fn (Subdivision $sub) => [
+        $subdivisions = Subdivision::when($orgId, static fn($q) => $q->where('organization_id', $orgId))->get();
+        $zoneBreakdown = $subdivisions->map(static fn(Subdivision $sub) => [
             'name' => $sub->name,
             'code' => $sub->slug,
             'admitted' => Attendee::where('subdivision_id', $sub->id)->whereNotNull('checked_in_at')->count(),
         ])->toArray();
 
-        DB::transaction(static function () use ($session, $totalOnline, $totalCash, $totalAttendees, $reportService, $event, $capacityTotal, $zoneBreakdown): void {
+        DB::transaction(static function () use (
+            $session,
+            $totalOnline,
+            $totalCash,
+            $totalAttendees,
+            $reportService,
+            $event,
+            $capacityTotal,
+            $zoneBreakdown,
+        ): void {
             $session->update([
                 'locked_at' => now(),
                 'locked_by' => auth()->id(),
@@ -102,7 +113,7 @@ class DailySessionLedger extends Component
     public function downloadPdfReport(SessionReportService $reportService): ?StreamedResponse
     {
         $session = SessionLedger::find($this->activeSessionId);
-        if (! $session) {
+        if (!$session) {
             return null;
         }
 
@@ -122,28 +133,31 @@ class DailySessionLedger extends Component
         $session = SessionLedger::find($this->activeSessionId);
 
         /** @var Collection<int, Subdivision> $subdivisions */
-        $subdivisions = Subdivision::query()
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
-            ->get();
+        $subdivisions = Subdivision::query()->when($orgId, static fn($q) => $q->where(
+            'organization_id',
+            $orgId,
+        ))->get();
 
         // Calculate actual totals
         $totalOnlinePaystack = (float) Order::where('payment_method', '!=', PaymentMethod::PhysicalCash->value)
             ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->sum('gross_amount');
 
         $totalGateCash = (float) Order::where('payment_method', PaymentMethod::PhysicalCash->value)
             ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->sum('gross_amount');
 
         $grossRevenue = $totalOnlinePaystack + $totalGateCash;
 
         $turnoutCount = Attendee::whereNotNull('checked_in_at')
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->count();
 
-        $capacityTotal = (int) TicketType::when($event, static fn ($q) => $q->where('event_id', $event->id))->sum('total_capacity');
+        $capacityTotal = (int) TicketType::when($event, static fn($q) => $q->where('event_id', $event->id))->sum(
+            'total_capacity',
+        );
         if ($capacityTotal === 0) {
             $capacityTotal = max(1, Attendee::count());
         }
@@ -152,7 +166,7 @@ class DailySessionLedger extends Component
 
         $liveGateFeed = Attendee::with(['subdivision', 'ticketType'])
             ->whereNotNull('checked_in_at')
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->latest('checked_in_at')
             ->take(4)
             ->get();

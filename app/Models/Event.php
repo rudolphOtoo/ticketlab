@@ -24,6 +24,7 @@ class Event extends Model
         'start_at',
         'end_at',
         'status',
+        'customization',
     ];
 
     protected function casts(): array
@@ -31,11 +32,32 @@ class Event extends Model
         return [
             'start_at' => 'datetime',
             'end_at' => 'datetime',
+            'customization' => 'array',
         ];
     }
 
     public function ticketTypes(): HasMany
     {
         return $this->hasMany(TicketType::class);
+    }
+
+    public function speakers(): HasMany
+    {
+        return $this->hasMany(EventSpeaker::class)->orderBy('sort_order');
+    }
+
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(EventSchedule::class)->orderBy('sort_order');
+    }
+
+    public function faqs(): HasMany
+    {
+        return $this->hasMany(EventFaq::class)->orderBy('sort_order');
+    }
+
+    public function formFields(): HasMany
+    {
+        return $this->hasMany(EventFormField::class)->orderBy('sort_order');
     }
 }

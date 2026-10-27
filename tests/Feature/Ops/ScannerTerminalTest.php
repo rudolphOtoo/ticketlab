@@ -22,12 +22,12 @@ test('unauthenticated users cannot view gate door scanner', function () {
 test('authenticated usher can view scanner terminal with telemetry and viewfinder', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Usher Kwame',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -43,12 +43,12 @@ test('authenticated usher can view scanner terminal with telemetry and viewfinde
 test('scanner terminal validates valid qr pass atomically and stamps check in', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Usher Kwame',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -56,13 +56,13 @@ test('scanner terminal validates valid qr pass atomically and stamps check in', 
     $subdivision = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'VIP Lounge Sector A',
-        'slug' => 'vip-a-'.uniqid(),
+        'slug' => 'vip-a-' . uniqid(),
     ]);
 
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -80,7 +80,7 @@ test('scanner terminal validates valid qr pass atomically and stamps check in', 
     $order = Order::create([
         'organization_id' => $org->id,
         'subdivision_id' => $subdivision->id,
-        'reference' => 'TL-ORD-'.uniqid(),
+        'reference' => 'TL-ORD-' . uniqid(),
         'customer_name' => 'Kojo Antwi',
         'customer_email' => 'kojo@music.gh',
         'customer_phone' => '+233244999888',
@@ -117,19 +117,18 @@ test('scanner terminal validates valid qr pass atomically and stamps check in', 
         ->assertDispatched('play-success-sound');
 
     $attendee->refresh();
-    expect($attendee->checked_in_at)->not->toBeNull()
-        ->and($attendee->checked_in_by)->toBe($user->id);
+    expect($attendee->checked_in_at)->not->toBeNull()->and($attendee->checked_in_by)->toBe($user->id);
 });
 
 test('scanner terminal detects duplicate scan and warns with prior timestamp', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Usher Kwame',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -137,7 +136,7 @@ test('scanner terminal detects duplicate scan and warns with prior timestamp', f
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -154,7 +153,7 @@ test('scanner terminal detects duplicate scan and warns with prior timestamp', f
 
     $order = Order::create([
         'organization_id' => $org->id,
-        'reference' => 'TL-ORD-'.uniqid(),
+        'reference' => 'TL-ORD-' . uniqid(),
         'customer_name' => 'Ama Mansa',
         'customer_email' => 'ama@test.gh',
         'customer_phone' => '+233201112233',
@@ -195,12 +194,12 @@ test('scanner terminal detects duplicate scan and warns with prior timestamp', f
 test('scanner terminal rejects invalid or forged qr hash', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Usher Kwame',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -216,17 +215,17 @@ test('scanner terminal rejects invalid or forged qr hash', function () {
 test('scanner terminal enforces tenant isolation and rejects pass from another organization', function () {
     $orgA = Organization::create([
         'name' => 'Org Alpha',
-        'slug' => 'org-alpha-'.uniqid(),
+        'slug' => 'org-alpha-' . uniqid(),
     ]);
 
     $orgB = Organization::create([
         'name' => 'Org Beta',
-        'slug' => 'org-beta-'.uniqid(),
+        'slug' => 'org-beta-' . uniqid(),
     ]);
 
     $userA = User::create([
         'name' => 'Usher Alpha',
-        'email' => 'usher_a_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_a_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $orgA->id,
     ]);
@@ -234,7 +233,7 @@ test('scanner terminal enforces tenant isolation and rejects pass from another o
     $eventB = Event::create([
         'organization_id' => $orgB->id,
         'title' => 'Beta Event',
-        'slug' => 'beta-event-'.uniqid(),
+        'slug' => 'beta-event-' . uniqid(),
         'venue' => 'Beta Center',
         'start_at' => now(),
         'end_at' => now()->addDays(1),
@@ -251,7 +250,7 @@ test('scanner terminal enforces tenant isolation and rejects pass from another o
 
     $orderB = Order::create([
         'organization_id' => $orgB->id,
-        'reference' => 'TL-ORD-B-'.uniqid(),
+        'reference' => 'TL-ORD-B-' . uniqid(),
         'customer_name' => 'Foreign Guest',
         'customer_email' => 'foreign@beta.com',
         'customer_phone' => '+233555555555',

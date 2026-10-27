@@ -42,21 +42,19 @@ class ScannerTerminal extends Component
         }
 
         $result = DB::transaction(function () use ($cleanHash) {
-            $query = Attendee::with(['ticketType', 'subdivision'])
-                ->where('qr_code_hash', $cleanHash)
-                ->lockForUpdate();
+            $query = Attendee::with(['ticketType', 'subdivision'])->where('qr_code_hash', $cleanHash)->lockForUpdate();
 
             if (auth()->check() && auth()->user()?->organization_id) {
                 $query->where('organization_id', auth()->user()->organization_id);
             }
 
             if ($this->eventId) {
-                $query->whereHas('ticketType', fn ($q) => $q->where('event_id', $this->eventId));
+                $query->whereHas('ticketType', fn($q) => $q->where('event_id', $this->eventId));
             }
 
             $attendee = $query->first();
 
-            if (! $attendee) {
+            if (!$attendee) {
                 return [
                     'state' => 'invalid',
                     'payload' => [

@@ -17,12 +17,12 @@ test('unauthenticated users cannot view cash desk register', function () {
 test('authenticated user can view cash desk register with tiers', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Usher John',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -30,7 +30,7 @@ test('authenticated user can view cash desk register with tiers', function () {
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -57,12 +57,12 @@ test('authenticated user can view cash desk register with tiers', function () {
 test('cash desk terminal calculates total and issues pass with change', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Usher John',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -70,7 +70,7 @@ test('cash desk terminal calculates total and issues pass with change', function
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -116,12 +116,12 @@ test('cash desk terminal calculates total and issues pass with change', function
 test('cash desk terminal rejects sale when requested quantity exceeds available capacity', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Usher John',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -129,7 +129,7 @@ test('cash desk terminal rejects sale when requested quantity exceeds available 
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),
@@ -161,12 +161,12 @@ test('cash desk terminal rejects sale when requested quantity exceeds available 
 test('cash desk terminal rejects non-positive or excessive ticket quantities', function () {
     $org = Organization::create([
         'name' => 'Accra Summit Org',
-        'slug' => 'accra-summit-'.uniqid(),
+        'slug' => 'accra-summit-' . uniqid(),
     ]);
 
     $user = User::create([
         'name' => 'Usher John',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
     ]);
@@ -174,7 +174,7 @@ test('cash desk terminal rejects non-positive or excessive ticket quantities', f
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Summit 2026',
-        'slug' => 'summit-'.uniqid(),
+        'slug' => 'summit-' . uniqid(),
         'venue' => 'Perez Dome',
         'start_at' => now(),
         'end_at' => now()->addDays(2),

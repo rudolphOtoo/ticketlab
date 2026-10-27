@@ -19,7 +19,7 @@ class SessionReportService
         SessionLedger $ledger,
         ?Event $event = null,
         int $capacityTotal = 0,
-        array $zoneBreakdown = []
+        array $zoneBreakdown = [],
     ): string {
         $organization = $ledger->organization;
         $timestamp = now()->format('Ymd_His');
@@ -52,7 +52,7 @@ class SessionReportService
     {
         $path = $ledger->snapshot_pdf_path;
 
-        if (! $path || ! Storage::disk('local')->exists($path)) {
+        if (!$path || !Storage::disk('local')->exists($path)) {
             $path = $this->generateReport($ledger);
         }
 

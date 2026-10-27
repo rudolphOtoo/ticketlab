@@ -26,31 +26,31 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
     // 1. Establish Organization and Regional Subdivisions
     $org = Organization::create([
         'name' => 'Perez Dome Assemblies',
-        'slug' => 'perez-dome-'.uniqid(),
+        'slug' => 'perez-dome-' . uniqid(),
     ]);
 
     $accra = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'Accra Central Zone',
-        'slug' => 'accra-central-'.uniqid(),
+        'slug' => 'accra-central-' . uniqid(),
     ]);
 
     $kumasi = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'Kumasi South Zone',
-        'slug' => 'kumasi-south-'.uniqid(),
+        'slug' => 'kumasi-south-' . uniqid(),
     ]);
 
     $capeCoast = Subdivision::create([
         'organization_id' => $org->id,
         'name' => 'Cape Coast North Zone',
-        'slug' => 'cape-coast-'.uniqid(),
+        'slug' => 'cape-coast-' . uniqid(),
     ]);
 
     // 2. Establish Role Users
     $superadmin = User::create([
         'name' => 'General Overseer Admin',
-        'email' => 'admin_'.uniqid().'@ticketlab.test',
+        'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
@@ -59,7 +59,7 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
 
     $kumasiAdmin = User::create([
         'name' => 'Kumasi Lead Admin',
-        'email' => 'kumasi_'.uniqid().'@ticketlab.test',
+        'email' => 'kumasi_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
@@ -68,7 +68,7 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
 
     $usher = User::create([
         'name' => 'Door Usher Kwame',
-        'email' => 'usher_'.uniqid().'@ticketlab.test',
+        'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'usher',
@@ -79,7 +79,7 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
     $event = Event::create([
         'organization_id' => $org->id,
         'title' => 'Kingdom Mega Summit 2026',
-        'slug' => 'kingdom-summit-'.uniqid(),
+        'slug' => 'kingdom-summit-' . uniqid(),
         'venue' => 'Perez Dome Auditorium',
         'start_at' => now(),
         'end_at' => now()->addDays(3),
@@ -105,7 +105,7 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
     // 4. Pre-populate Online Paystack Orders & Attendees (3 attendees across Accra and Kumasi)
     $onlineOrder = Order::create([
         'organization_id' => $org->id,
-        'reference' => 'TL-ORD-ONLINE-'.uniqid(),
+        'reference' => 'TL-ORD-ONLINE-' . uniqid(),
         'customer_name' => 'Kofi Online Buyer',
         'customer_email' => 'kofi@online.test',
         'customer_phone' => '+233240009988',
@@ -156,36 +156,44 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
     expect($regularTier->available_quantity)->toBe(498);
 
     $cashOrder = Order::where('payment_method', PaymentMethod::PhysicalCash->value)->first();
-    expect($cashOrder)->not->toBeNull()
-        ->and((float) $cashOrder->gross_amount)->toBe(100.00);
+    expect($cashOrder)
+        ->not
+        ->toBeNull()
+        ->and((float) $cashOrder->gross_amount)
+        ->toBe(100.00);
 
     $cashAttendees = Attendee::where('order_id', $cashOrder->id)->get();
     expect($cashAttendees)->toHaveCount(2);
     $walkinAttendee = $cashAttendees->first();
 
     // 6. Door QR Scanner Execution
-    $scannerComponent = Livewire::actingAs($usher)
-        ->test(ScannerTerminal::class, ['eventId' => $event->id]);
+    $scannerComponent = Livewire::actingAs($usher)->test(ScannerTerminal::class, ['eventId' => $event->id]);
 
     // 6a. Valid Scan
-    $scannerComponent->call('validatePass', $walkinAttendee->qr_code_hash)
+    $scannerComponent
+        ->call('validatePass', $walkinAttendee->qr_code_hash)
         ->assertSet('scanState', 'success')
         ->assertSet('scanResult.status', 'VERIFIED')
         ->assertDispatched('play-success-sound');
 
     $walkinAttendee->refresh();
-    expect($walkinAttendee->isCheckedIn())->toBeTrue()
-        ->and($walkinAttendee->checked_in_by)->toBe($usher->id)
-        ->and($walkinAttendee->checked_in_at)->not->toBeNull();
+    expect($walkinAttendee->isCheckedIn())
+        ->toBeTrue()
+        ->and($walkinAttendee->checked_in_by)
+        ->toBe($usher->id)
+        ->and($walkinAttendee->checked_in_at)
+        ->not->toBeNull();
 
     // 6b. Duplicate Scan Rejection
-    $scannerComponent->call('validatePass', $walkinAttendee->qr_code_hash)
+    $scannerComponent
+        ->call('validatePass', $walkinAttendee->qr_code_hash)
         ->assertSet('scanState', 'duplicate')
         ->assertSet('scanResult.status', 'DUPLICATE')
         ->assertDispatched('play-warning-sound');
 
     // 6c. Invalid Hash Rejection
-    $scannerComponent->call('validatePass', 'tampered-qr-code-hash-999')
+    $scannerComponent
+        ->call('validatePass', 'tampered-qr-code-hash-999')
         ->assertSet('scanState', 'invalid')
         ->assertSet('scanResult.status', 'INVALID')
         ->assertDispatched('play-error-sound');
@@ -219,20 +227,20 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
         ->assertDispatched('session-locked');
 
     $savedLedger = SessionLedger::where('organization_id', $org->id)->latest()->first();
-    expect($savedLedger)->not->toBeNull()
-        ->and($savedLedger->isLocked())->toBeTrue()
-        ->and($savedLedger->locked_by)->toBe($superadmin->id)
-        ->and((float) $savedLedger->total_cash)->toBe(100.00)
-        ->and((float) $savedLedger->total_online_momo)->toBe(450.00)
-        ->and($savedLedger->total_attendees)->toBe(1)
-        ->and($savedLedger->snapshot_pdf_path)->not->toBeNull();
+    expect($savedLedger)
+        ->not->toBeNull()->and(
+            $savedLedger->isLocked(),
+        )->toBeTrue()->and($savedLedger->locked_by)->toBe($superadmin->id)->and((float) $savedLedger->total_cash)->toBe(
+            100.00,
+        )->and((float) $savedLedger->total_online_momo)->toBe(450.00)->and($savedLedger->total_attendees)->toBe(
+            1,
+        )->and($savedLedger->snapshot_pdf_path)
+        ->not->toBeNull();
 
     Storage::disk('local')->assertExists($savedLedger->snapshot_pdf_path);
 
     // 9. Streaming Roster CSV Export
-    $exportResponse = Livewire::actingAs($superadmin)
-        ->test(AttendeeRoster::class)
-        ->call('exportCsv');
+    $exportResponse = Livewire::actingAs($superadmin)->test(AttendeeRoster::class)->call('exportCsv');
 
     $exportResponse->assertFileDownloaded();
 });

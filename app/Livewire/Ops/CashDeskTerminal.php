@@ -65,14 +65,14 @@ class CashDeskTerminal extends Component
 
         $orders = Order::with('attendees.ticketType')
             ->where('payment_method', PaymentMethod::PhysicalCash->value)
-            ->when($orgId, static fn ($q) => $q->where('organization_id', $orgId))
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->latest('paid_at')
             ->take(5)
             ->get();
 
         $this->recentCashSales = $orders->map(static function (Order $order) {
             $tierName = $order->attendees->first()?->ticketType->name ?? 'Gate Pass';
-            $passCode = 'TKT-CW-'.strtoupper(substr(md5($order->reference), 0, 6));
+            $passCode = 'TKT-CW-' . strtoupper(substr(md5($order->reference), 0, 6));
 
             return [
                 'pass_code' => $passCode,
@@ -120,7 +120,7 @@ class CashDeskTerminal extends Component
 
     public function calculateTotal(): float
     {
-        if (! $this->selectedTierId) {
+        if (!$this->selectedTierId) {
             return 0.00;
         }
 
@@ -161,7 +161,7 @@ class CashDeskTerminal extends Component
         }
 
         $event = $this->getActiveEvent();
-        if (! $event) {
+        if (!$event) {
             $this->addError('tier', 'No active event found.');
 
             return;
@@ -170,7 +170,7 @@ class CashDeskTerminal extends Component
         $result = DB::transaction(function () use ($event, $total, $tendered) {
             $tier = TicketType::where('id', $this->selectedTierId)->lockForUpdate()->first();
 
-            if (! $tier || $tier->available_quantity < $this->quantity) {
+            if (!$tier || $tier->available_quantity < $this->quantity) {
                 return [
                     'success' => false,
                     'error' => 'Selected tier does not have enough remaining capacity.',
@@ -184,8 +184,8 @@ class CashDeskTerminal extends Component
 
             $customerName = trim($this->attendeeName) !== '' ? trim($this->attendeeName) : 'Walk-In Guest';
             $customerPhone = trim($this->attendeePhone) !== '' ? trim($this->attendeePhone) : 'N/A';
-            $customerEmail = 'walkin_'.strtolower(bin2hex(random_bytes(4))).'@cashdesk.local';
-            $reference = 'TL-ORD-CASH-'.strtoupper(bin2hex(random_bytes(4)));
+            $customerEmail = 'walkin_' . strtolower(bin2hex(random_bytes(4))) . '@cashdesk.local';
+            $reference = 'TL-ORD-CASH-' . strtoupper(bin2hex(random_bytes(4)));
 
             $order = Order::create([
                 'organization_id' => $orgId,
@@ -204,13 +204,16 @@ class CashDeskTerminal extends Component
 
             $attendees = [];
             for ($i = 0; $i < $this->quantity; $i++) {
-                $qrHash = hash('sha256', 'TL-PASS-'.$order->reference.'-'.($i + 1).'-'.bin2hex(random_bytes(4)));
+                $qrHash = hash(
+                    'sha256',
+                    'TL-PASS-' . $order->reference . '-' . ($i + 1) . '-' . bin2hex(random_bytes(4)),
+                );
                 $attendees[] = Attendee::create([
                     'organization_id' => $orgId,
                     'order_id' => $order->id,
                     'subdivision_id' => $subdivisionId,
                     'ticket_type_id' => $tier->id,
-                    'name' => $this->quantity > 1 ? $customerName.' (Pass '.($i + 1).')' : $customerName,
+                    'name' => $this->quantity > 1 ? $customerName . ' (Pass ' . ($i + 1) . ')' : $customerName,
                     'email' => $customerEmail,
                     'phone' => $customerPhone,
                     'qr_code_hash' => $qrHash,
@@ -218,7 +221,7 @@ class CashDeskTerminal extends Component
                 ]);
             }
 
-            $passCode = 'TKT-CW-'.strtoupper(substr(md5($order->reference), 0, 6));
+            $passCode = 'TKT-CW-' . strtoupper(substr(md5($order->reference), 0, 6));
 
             return [
                 'success' => true,
@@ -238,7 +241,7 @@ class CashDeskTerminal extends Component
             ];
         });
 
-        if (! $result['success']) {
+        if (!$result['success']) {
             $this->addError('tier', $result['error']);
 
             return;

@@ -25,12 +25,14 @@ class Attendee extends Model
         'qr_code_hash',
         'checked_in_at',
         'checked_in_by',
+        'custom_fields',
     ];
 
     protected function casts(): array
     {
         return [
             'checked_in_at' => 'datetime',
+            'custom_fields' => 'array',
         ];
     }
 

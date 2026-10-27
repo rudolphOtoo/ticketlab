@@ -20,7 +20,7 @@ class EnsureSubdivisionAccess
     {
         $user = $request->user();
 
-        if (! $user) {
+        if (!$user) {
             abort(401);
         }
 
@@ -37,7 +37,9 @@ class EnsureSubdivisionAccess
         // Tier 2: Subdivision Admin zone boundary check
         $requestedSubdivisionId = $request->route('subdivision') ?? $request->query('subdivision_id');
         if ($requestedSubdivisionId !== null && $user->subdivision_id !== null && $user->role !== 'superadmin') {
-            $requestedId = is_object($requestedSubdivisionId) ? $requestedSubdivisionId->id : (int) $requestedSubdivisionId;
+            $requestedId = is_object($requestedSubdivisionId)
+                ? $requestedSubdivisionId->id
+                : (int) $requestedSubdivisionId;
             if ($user->subdivision_id !== $requestedId) {
                 abort(403, 'You are only authorized to access records within your assigned zone.');
             }

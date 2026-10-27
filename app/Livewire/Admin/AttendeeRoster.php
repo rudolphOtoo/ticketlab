@@ -71,7 +71,7 @@ class AttendeeRoster extends Component
         }
 
         $attendee = $query->find($attendeeId);
-        if (! $attendee) {
+        if (!$attendee) {
             return;
         }
 
@@ -101,7 +101,7 @@ class AttendeeRoster extends Component
     public function exportCsv(): StreamedResponse
     {
         $user = auth()->user();
-        $fileName = 'attendee_roster_'.now()->format('Y_m_d_His').'.csv';
+        $fileName = 'attendee_roster_' . now()->format('Y_m_d_His') . '.csv';
 
         return response()->streamDownload(
             function () use ($user) {
@@ -117,7 +117,9 @@ class AttendeeRoster extends Component
                             'Zone' => $att->subdivision ? $att->subdivision->name : 'General',
                             'Ticket Tier' => $att->ticketType ? $att->ticketType->name : 'N/A',
                             'QR Code' => $att->qr_code_hash,
-                            'Checked In At' => $att->checked_in_at ? $att->checked_in_at->format('Y-m-d H:i:s') : 'Pending',
+                            'Checked In At' => $att->checked_in_at
+                                ? $att->checked_in_at->format('Y-m-d H:i:s')
+                                : 'Pending',
                             'Checked In By' => $att->checkedInByUser ? $att->checkedInByUser->name : 'N/A',
                         ]);
                     }
@@ -165,7 +167,7 @@ class AttendeeRoster extends Component
 
         // 4. Search filter
         if (trim($this->search) !== '') {
-            $term = '%'.trim($this->search).'%';
+            $term = '%' . trim($this->search) . '%';
             $query->where(static function ($q) use ($term) {
                 $q
                     ->where('name', 'like', $term)
@@ -198,12 +200,14 @@ class AttendeeRoster extends Component
         $checkedInCount = (clone $baseQuery)->whereNotNull('checked_in_at')->count();
         $pendingCount = $totalCount - $checkedInCount;
 
-        $subdivisions = Subdivision::query()
-            ->when($user?->organization_id, static fn ($q, $orgId) => $q->where('organization_id', $orgId))
-            ->get();
-        $ticketTypes = TicketType::query()
-            ->when($user?->organization_id, static fn ($q, $orgId) => $q->whereHas('event', static fn ($eq) => $eq->where('organization_id', $orgId)))
-            ->get();
+        $subdivisions = Subdivision::query()->when($user?->organization_id, static fn($q, $orgId) => $q->where(
+            'organization_id',
+            $orgId,
+        ))->get();
+        $ticketTypes = TicketType::query()->when($user?->organization_id, static fn(
+            $q,
+            $orgId,
+        ) => $q->whereHas('event', static fn($eq) => $eq->where('organization_id', $orgId)))->get();
 
         $selectedAttendee = $this->selectedAttendeeId
             ? Attendee::with(['subdivision', 'ticketType', 'order'])->find($this->selectedAttendeeId)

@@ -22,6 +22,8 @@ class TicketType extends Model
         'available_quantity',
         'sales_start_at',
         'sales_end_at',
+        'perks',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -32,6 +34,8 @@ class TicketType extends Model
             'available_quantity' => 'integer',
             'sales_start_at' => 'datetime',
             'sales_end_at' => 'datetime',
+            'perks' => 'array',
+            'is_active' => 'boolean',
         ];
     }
 
