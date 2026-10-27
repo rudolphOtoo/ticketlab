@@ -27,7 +27,7 @@
     <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_26rem]">
             <section class="space-y-6">
-                <div class="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+                <div class="overflow-hidden rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-sm">
                     @if ($event->banner_path)
                         <img src="{{ asset('storage/'.$event->banner_path) }}" alt="{{ $event->title }}" class="h-64 w-full object-cover sm:h-80">
                     @else
@@ -40,8 +40,8 @@
                     @endif
 
                     <div class="space-y-5 p-6 sm:p-8">
-                        <div class="flex flex-wrap items-center gap-3 text-sm text-zinc-600">
-                            <span class="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1">
+                        <div class="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
+                            <span class="inline-flex items-center gap-2 rounded-full border border-[var(--border-hairline)] px-3 py-1">
                                 <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
                                 {{ $event->start_at->format('D, j M Y') }}
                                 @if (! $event->start_at->isSameDay($event->end_at))
@@ -49,17 +49,56 @@
                                 @endif
                             </span>
                             @if ($event->venue)
-                                <span class="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1">{{ $event->venue }}</span>
+                                <span class="inline-flex items-center gap-2 rounded-full border border-[var(--border-hairline)] px-3 py-1">{{ $event->venue }}</span>
                             @endif
                         </div>
 
-                        <div>
-                            <h2 class="text-xl font-semibold tracking-tight text-zinc-900">About this event</h2>
-                            <p class="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">{{ $event->description ?: 'Join us for this special gathering. Select a ticket tier below to reserve your seat.' }}</p>
+                        <div x-data="{
+                                target: new Date('{{ $event->start_date ?? $event->start_at->toIso8601String() }}').getTime(),
+                                now: Date.now(),
+                                days: 0, hours: 0, minutes: 0, seconds: 0,
+                                init() {
+                                    this.update();
+                                    setInterval(() => { this.now = Date.now(); this.update(); }, 1000);
+                                },
+                                update() {
+                                    let diff = Math.max(0, this.target - this.now);
+                                    this.days = Math.floor(diff / (1000*60*60*24));
+                                    diff -= this.days * (1000*60*60*24);
+                                    this.hours = Math.floor(diff / (1000*60*60));
+                                    diff -= this.hours * (1000*60*60);
+                                    this.minutes = Math.floor(diff / (1000*60));
+                                    diff -= this.minutes * (1000*60);
+                                    this.seconds = Math.floor(diff / 1000);
+                                }
+                            }" x-init="init()" class="grid grid-cols-4 gap-3 text-center">
+                            <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3">
+                                <div class="text-xl font-semibold" x-text="String(days).padStart(2,'0')">00</div>
+                                <div class="text-xs text-[var(--text-tertiary)]">Days</div>
+                            </div>
+                            <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3">
+                                <div class="text-xl font-semibold" x-text="String(hours).padStart(2,'0')">00</div>
+                                <div class="text-xs text-[var(--text-tertiary)]">Hours</div>
+                            </div>
+                            <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3">
+                                <div class="text-xl font-semibold" x-text="String(minutes).padStart(2,'0')">00</div>
+                                <div class="text-xs text-[var(--text-tertiary)]">Minutes</div>
+                            </div>
+                            <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3">
+                                <div class="text-xl font-semibold" x-text="String(seconds).padStart(2,'0')">00</div>
+                                <div class="text-xs text-[var(--text-tertiary)]">Seconds</div>
+                            </div>
                         </div>
 
-                        <div class="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-600">
-                            <p class="font-medium text-zinc-900">{{ $event->start_at->format('l, j F Y') }}</p>
+                        <a href="#tickets" class="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-primary-fg)] hover:opacity-90 transition">Register Now</a>
+
+                        <div>
+                            <h2 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]">About this event</h2>
+                            <p class="mt-2 whitespace-pre-line text-sm leading-7 text-[var(--text-secondary)]">{{ $event->description ?: 'Join us for this special gathering. Select a ticket tier below to reserve your seat.' }}</p>
+                        </div>
+
+                        <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-secondary)]">
+                            <p class="font-medium text-[var(--text-primary)]">{{ $event->start_at->format('l, j F Y') }}</p>
                             <p>{{ $event->start_at->format('g:i A') }} – {{ $event->end_at->format('g:i A') }}</p>
                             @if ($event->venue)
                                 <p class="mt-1">{{ $event->venue }}</p>
@@ -68,11 +107,11 @@
                     </div>
                 </div>
 
-                <div class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
+                <div id="tickets" class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm sm:p-8">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <h2 class="text-xl font-semibold tracking-tight text-zinc-900">Choose your ticket</h2>
-                            <p class="mt-1 text-sm text-zinc-600">Inventory updates live. Your seats are held for 15 minutes at checkout.</p>
+                            <h2 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]">Choose your ticket</h2>
+                            <p class="mt-1 text-sm text-[var(--text-secondary)]">Inventory updates live. Your seats are held for 15 minutes at checkout.</p>
                         </div>
                     </div>
 
@@ -178,6 +217,131 @@
                         </div>
                     </div>
                 </div>
+
+                @if (isset($speakers) && $speakers->isNotEmpty())
+                    <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm sm:p-8">
+                        <h2 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]">Speakers & Guests</h2>
+                        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            @foreach ($speakers as $speaker)
+                                <div x-data="{ open: false }" class="rounded-2xl border border-[var(--border-hairline)] p-4">
+                                    <button type="button" @click="open = true" class="w-full text-left">
+                                        <div class="flex items-center gap-3">
+                                            @if ($speaker->photo_path)
+                                                <img src="{{ asset('storage/'.$speaker->photo_path) }}" alt="{{ $speaker->name }}" class="h-12 w-12 rounded-full object-cover">
+                                            @else
+                                                <div class="h-12 w-12 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-sm font-semibold">{{ strtoupper(substr($speaker->name,0,2)) }}</div>
+                                            @endif
+                                            <div>
+                                                <p class="font-medium text-[var(--text-primary)]">{{ $speaker->name }}</p>
+                                                <p class="text-xs text-[var(--text-secondary)]">{{ $speaker->title_role }}</p>
+                                                @if ($speaker->topic)
+                                                    <p class="text-xs text-[var(--text-tertiary)]">{{ $speaker->topic }}</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <div x-show="open" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click="open = false">
+                                        <div class="w-full max-w-md rounded-3xl bg-[var(--bg-surface)] p-6 shadow-xl" @click.stop>
+                                            <div class="flex items-start justify-between">
+                                                <div>
+                                                    <p class="text-lg font-semibold">{{ $speaker->name }}</p>
+                                                    <p class="text-sm text-[var(--text-secondary)]">{{ $speaker->title_role }}</p>
+                                                </div>
+                                                <button type="button" @click="open = false" class="text-sm text-[var(--text-tertiary)]">Close</button>
+                                            </div>
+                                            @if ($speaker->bio)
+                                                <p class="mt-3 text-sm text-[var(--text-secondary)] leading-6">{{ $speaker->bio }}</p>
+                                            @endif
+                                            @if (is_array($speaker->social_links))
+                                                <div class="mt-4 flex flex-wrap gap-2">
+                                                    @foreach ($speaker->social_links as $key => $link)
+                                                        @php($url = is_array($link) ? ($link['url'] ?? $link['href'] ?? null) : $link)
+                                                        @if ($url)
+                                                            <a href="{{ $url }}" target="_blank" class="rounded-full border border-[var(--border-hairline)] px-2 py-1 text-xs">{{ is_array($link) ? ($link['label'] ?? $key) : $key }}</a>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                @if (isset($scheduleDays) && $scheduleDays->isNotEmpty())
+                    <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm sm:p-8">
+                        <h2 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]">Program Schedule</h2>
+                        <div x-data="{ tab: '{{ $scheduleDays->keys()->first() }}' }" class="mt-4">
+                            <div class="flex flex-wrap gap-2">
+                                @foreach ($scheduleDays as $dayLabel => $daySessions)
+                                    <button type="button" @click="tab = '{{ $dayLabel }}'" :class="tab === '{{ $dayLabel }}' ? 'bg-[var(--color-primary)] text-[var(--color-primary-fg)]' : 'border border-[var(--border-hairline)] text-[var(--text-secondary)]'" class="rounded-full px-3 py-1 text-xs font-medium">{{ $dayLabel }}</button>
+                                @endforeach
+                            </div>
+                            <div class="mt-4 space-y-2">
+                                @foreach ($scheduleDays as $dayLabel => $daySessions)
+                                    <div x-show="tab === '{{ $dayLabel }}'">
+                                        @foreach ($daySessions as $session)
+                                            <div class="flex items-start justify-between gap-4 rounded-2xl border border-[var(--border-hairline)] p-3">
+                                                <div>
+                                                    <p class="font-medium text-[var(--text-primary)]">{{ $session->session_title }}</p>
+                                                    <p class="text-xs text-[var(--text-secondary)]">{{ $session->speaker_name }} @if($session->venue_hall) • {{ $session->venue_hall }} @endif</p>
+                                                    @if ($session->description)
+                                                        <p class="mt-1 text-xs text-[var(--text-tertiary)]">{{ $session->description }}</p>
+                                                    @endif
+                                                </div>
+                                                <div class="text-right text-xs text-[var(--text-tertiary)]">
+                                                    <p>{{ $session->start_time }}</p>
+                                                    <p>{{ $session->end_time }}</p>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                @if (isset($faqs) && $faqs->isNotEmpty())
+                    <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm sm:p-8">
+                        <h2 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]">FAQs</h2>
+                        <div class="mt-3">
+                            <input type="text" wire:model.live.debounce.300ms="faqSearch" placeholder="Search FAQs..." class="w-full rounded-xl border border-[var(--border-hairline)] px-3 py-2 text-sm">
+                        </div>
+                        <div class="mt-4 divide-y divide-[var(--border-hairline)]">
+                            @foreach ($faqs as $faq)
+                                <div x-data="{ open: false }" class="py-3">
+                                    <button type="button" @click="open = !open" class="flex w-full items-center justify-between text-left">
+                                        <span class="font-medium text-[var(--text-primary)]">{{ $faq->question }}</span>
+                                        <span class="text-[var(--text-tertiary)]" x-text="open ? '-' : '+'"></span>
+                                    </button>
+                                    <div x-show="open" x-collapse style="display: none;" class="mt-2 text-sm text-[var(--text-secondary)] leading-6">
+                                        {!! nl2br(e($faq->answer)) !!}
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+                @endif
+
+                @if (isset($formFields) && $formFields->isNotEmpty())
+                    <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm sm:p-8">
+                        <h2 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]">Event Information</h2>
+                        <div class="mt-4 space-y-3">
+                            @foreach ($formFields as $field)
+                                <div class="rounded-2xl border border-[var(--border-hairline)] p-3">
+                                    <p class="text-sm font-medium text-[var(--text-primary)]">{{ $field->label }} @if($field->is_required)<span class="text-rose-500">*</span>@endif</p>
+                                    @if ($field->description)
+                                        <p class="text-xs text-[var(--text-secondary)]">{{ $field->description }}</p>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
             </section>
 
             <aside class="lg:sticky lg:top-6 lg:self-start">
@@ -277,6 +441,30 @@
                             @error('customerPhone') <p class="mt-1.5 text-sm text-rose-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
+
+                    @if (isset($formFields) && $formFields->isNotEmpty())
+                        <div class="space-y-3 rounded-2xl border border-zinc-200 p-4">
+                            <p class="text-sm font-medium text-zinc-900">Additional Information</p>
+                            @foreach ($formFields as $field)
+                                <div>
+                                    <label class="block text-sm font-medium text-zinc-700">{{ $field->label }} @if($field->is_required)<span class="text-rose-500">*</span>@endif</label>
+                                    @if ($field->input_type === 'textarea')
+                                        <textarea wire:model.blur="formResponses.{{ $field->field_key }}" class="mt-1.5 w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"></textarea>
+                                    @elseif ($field->input_type === 'select' && is_array($field->options))
+                                        <select wire:model.blur="formResponses.{{ $field->field_key }}" class="mt-1.5 w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10">
+                                            <option value="">Select...</option>
+                                            @foreach ($field->options as $opt)
+                                                <option value="{{ is_array($opt) ? ($opt['value'] ?? $opt['label']) : $opt }}">{{ is_array($opt) ? ($opt['label'] ?? $opt['value']) : $opt }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <input type="text" wire:model.blur="formResponses.{{ $field->field_key }}" placeholder="{{ $field->placeholder }}" class="mt-1.5 w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10">
+                                    @endif
+                                    @error('formResponses.' . $field->field_key) <p class="mt-1.5 text-sm text-rose-600">{{ $message }}</p> @enderror
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
 
                     <div class="rounded-2xl bg-zinc-50 p-4">
                         <dl class="space-y-2 text-sm">

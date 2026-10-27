@@ -18,6 +18,7 @@ class AttendeeIssuer
     {
         $attendeeNames = $metadata['attendee_names'] ?? [];
         $attendeeEmails = $metadata['attendee_emails'] ?? [];
+        $customFields = $metadata['custom_fields'] ?? $metadata['form_responses'] ?? [];
 
         for ($index = 0; $index < $quantity; $index++) {
             $name =
@@ -37,6 +38,7 @@ class AttendeeIssuer
                 'qr_code_hash' => $this->generateQrHash($order, $index),
                 'checked_in_at' => null,
                 'checked_in_by' => null,
+                'custom_fields' => is_array($customFields) ? $customFields : null,
             ]);
         }
     }

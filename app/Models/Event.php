@@ -8,11 +8,18 @@ use App\Models\Concerns\BelongsToOrganization;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Database\Factories\EventFactory;
 
 class Event extends Model
 {
     use BelongsToOrganization;
+    /** @use HasFactory<EventFactory> */
     use HasFactory;
+
+    protected static function newFactory(): EventFactory
+    {
+        return EventFactory::new();
+    }
 
     protected $fillable = [
         'organization_id',

@@ -1,3 +1,13 @@
+    <script>
+        if (!window.Alpine) {
+            const script = document.createElement('script');
+            script.defer = true;
+            script.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js';
+            script.integrity = 'sha256-NYhTz3mvNscbZ+7hO7ZuHjvQ+8g2u7D2/0Zg5jB8X0g=';
+            script.crossOrigin = 'anonymous';
+            document.head.appendChild(script);
+        }
+    </script>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 

@@ -5,12 +5,20 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use Database\Factories\EventSpeakerFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EventSpeaker extends Model
 {
+    /** @use HasFactory<EventSpeakerFactory> */
+    use HasFactory;
+
+    protected static function newFactory(): EventSpeakerFactory
+    {
+        return EventSpeakerFactory::new();
+    }
     use BelongsToOrganization;
     use HasFactory;
 

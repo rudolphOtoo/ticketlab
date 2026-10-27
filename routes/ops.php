@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Livewire\Admin\AttendeeRoster;
 use App\Livewire\Admin\DailySessionLedger;
+use App\Livewire\Admin\MarketingStudio;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
 use Illuminate\Support\Facades\Route;
@@ -42,4 +43,7 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Scoped attendee rosters & Excel export
         Route::get('attendees', AttendeeRoster::class)->name('attendees');
+
+        // Marketing Studio
+        Route::get('studio/marketing', MarketingStudio::class)->name('studio.marketing');
     });

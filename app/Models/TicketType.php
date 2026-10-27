@@ -8,10 +8,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Database\Factories\TicketTypeFactory;
 
 class TicketType extends Model
 {
+    /** @use HasFactory<TicketTypeFactory> */
     use HasFactory;
+
+    protected static function newFactory(): TicketTypeFactory
+    {
+        return TicketTypeFactory::new();
+    }
 
     protected $fillable = [
         'event_id',

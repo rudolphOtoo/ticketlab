@@ -7,6 +7,10 @@ namespace App\Livewire\Public;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Models\Event;
+use App\Models\EventFaq;
+use App\Models\EventFormField;
+use App\Models\EventSchedule;
+use App\Models\EventSpeaker;
 use App\Models\Order;
 use App\Models\Organization;
 use App\Models\Reservation;
@@ -19,6 +23,7 @@ use App\Services\Reservation\TicketReservationService;
 use App\Services\Reservation\TicketSoldOutException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -57,11 +62,28 @@ class EventShow extends Component
 
     public ?string $flashMessage = null;
 
+    /**
+     * @var array<string, mixed>
+     */
+    public array $formResponses = [];
+
+    public string $faqSearch = '';
+
+    public ?int $activeFaqId = null;
+
     public function mount(string $org_slug, string $event_slug): void
     {
         $organization = Organization::query()->where('slug', $org_slug)->firstOrFail();
 
         $event = Event::query()
+            ->with([
+                'organization',
+                'speakers' => fn ($q) => $q->orderBy('sort_order'),
+                'schedules' => fn ($q) => $q->orderBy('sort_order'),
+                'faqs' => fn ($q) => $q->where('is_published', true)->orderBy('sort_order'),
+                'formFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
+                'ticketTypes',
+            ])
             ->where('organization_id', $organization->id)
             ->where('slug', $event_slug)
             ->where('status', 'published')
@@ -70,10 +92,23 @@ class EventShow extends Component
         $this->organizationId = $organization->id;
         $this->eventId = $event->id;
 
-        $defaultTicket = $event->ticketTypes()->where('available_quantity', '>', 0)->orderBy('price')->first();
+        $defaultTicket = $event->ticketTypes
+            ->filter(fn ($ticket) => (int) ($ticket->available_quantity ?? 0) > 0)
+            ->sortBy('price')
+            ->first();
 
         $this->ticketTypeId = $defaultTicket?->id;
         $this->subdivisionId = $organization->subdivisions()->orderBy('name')->value('id');
+
+        // Initialize dynamic form responses
+        $formFields = $event->formFields;
+        if ($formFields && $formFields->isNotEmpty()) {
+            foreach ($formFields as $field) {
+                if (! array_key_exists($field->field_key, $this->formResponses)) {
+                    $this->formResponses[$field->field_key] = '';
+                }
+            }
+        }
     }
 
     public function selectTicketType(int $ticketTypeId): void
@@ -144,14 +179,91 @@ class EventShow extends Component
 
     public function startCheckout(TicketReservationService $reservations): void
     {
-        $validated = $this->validate([
+        $event = $this->event();
+        if (! $event->relationLoaded('formFields')) {
+            $event->load(['formFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')]);
+        }
+
+        // Sanitize form responses
+        if (is_array($this->formResponses)) {
+            $sanitized = [];
+            foreach ($this->formResponses as $key => $value) {
+                if (is_string($value)) {
+                    $sanitized[$key] = trim(strip_tags($value));
+                } elseif (is_array($value)) {
+                    $sanitized[$key] = array_map(function ($v) {
+                        return is_string($v) ? trim(strip_tags($v)) : $v;
+                    }, $value);
+                } else {
+                    $sanitized[$key] = $value;
+                }
+            }
+            $this->formResponses = $sanitized;
+        }
+
+        $rules = [
             'ticketTypeId' => ['required', 'integer'],
             'quantity' => ['required', 'integer', 'min:1', 'max:20'],
             'subdivisionId' => ['nullable', 'integer'],
             'customerName' => ['required', 'string', 'max:255'],
             'customerEmail' => ['required', 'string', 'email', 'max:255'],
             'customerPhone' => ['required', 'string', 'max:50'],
-        ]);
+        ];
+
+        // Validate dynamic form fields
+        $formFields = $event->formFields;
+        if ($formFields && $formFields->isNotEmpty()) {
+            $allowedKeys = [];
+            foreach ($formFields as $field) {
+                if (! $field->is_active) {
+                    continue;
+                }
+                $allowedKeys[] = $field->field_key;
+                $fieldRules = is_array($field->validation_rules) ? $field->validation_rules : [];
+                $rules["formResponses.{$field->field_key}"] = [];
+
+                if ($field->input_type === 'email') {
+                    $rules["formResponses.{$field->field_key}"][] = 'email';
+                } elseif ($field->input_type === 'number') {
+                    $rules["formResponses.{$field->field_key}"][] = 'numeric';
+                } elseif (in_array($field->input_type, ['select', 'radio'], true) && is_array($field->options)) {
+                    $options = array_values(array_filter($field->options));
+                    if (! empty($options)) {
+                        $rules["formResponses.{$field->field_key}"][] = 'in:'.implode(',', $options);
+                    }
+                }
+
+                if ($field->is_required) {
+                    $rules["formResponses.{$field->field_key}"][] = 'required';
+                }
+
+                if (! empty($fieldRules)) {
+                    // Merge provided rules but ensure basic type constraints are not bypassed
+                    foreach ($fieldRules as $rule) {
+                        if (is_string($rule) && ! in_array($rule, $rules["formResponses.{$field->field_key}"], true)) {
+                            $rules["formResponses.{$field->field_key}"][] = $rule;
+                        }
+                    }
+                }
+
+                if (empty($rules["formResponses.{$field->field_key}"])) {
+                    unset($rules["formResponses.{$field->field_key}"]);
+                }
+            }
+
+            // Prevent arbitrary payload injection by only accepting known keys
+            if (is_array($this->formResponses)) {
+                $filtered = [];
+                foreach ($this->formResponses as $key => $value) {
+                    if (in_array($key, $allowedKeys, true)) {
+                        $filtered[$key] = $value;
+                    }
+                }
+                $this->formResponses = $filtered;
+            }
+        }
+
+        $validated = $this->validate($rules);
 
         $ticketTypeId = (int) $validated['ticketTypeId'];
         $quantity = (int) $validated['quantity'];
@@ -210,8 +322,8 @@ class EventShow extends Component
 
         $orderAttributes = [
             'organization_id' => $organization->id,
+            'event_id' => $event->id,
             'subdivision_id' => $subdivision?->id,
-            'reservation_id' => $reservation->getKey(),
             'customer_name' => $validated['customerName'],
             'customer_email' => $validated['customerEmail'],
             'customer_phone' => $validated['customerPhone'],
@@ -227,6 +339,8 @@ class EventShow extends Component
                 'subdivision_name' => $subdivision?->name,
                 'platform_fee' => $breakdown['platform_fee'],
                 'reservation_expires_at' => $reservation->expires_at?->toIso8601String(),
+                'custom_fields' => $this->formResponses,
+                'form_responses' => $this->formResponses,
             ],
         ];
 
@@ -312,17 +426,52 @@ class EventShow extends Component
     public function render(): View
     {
         $event = $this->event();
+        if (! $event->relationLoaded('organization')) {
+            $event->load('organization');
+        }
         /** @var Organization $organization */
-        $organization = Organization::query()->findOrFail($event->organization_id);
+        $organization = $event->organization ?? Organization::query()->findOrFail($event->organization_id);
 
+        if (! $event->relationLoaded('ticketTypes')) {
+            $event->load('ticketTypes');
+        }
         /** @var Collection<int, TicketType> $ticketTypes */
-        $ticketTypes = $event->ticketTypes()->orderBy('price')->get();
+        $ticketTypes = $event->ticketTypes ? $event->ticketTypes->sortBy('price')->values() : $event->ticketTypes()->orderBy('price')->get();
 
         $selectedTicketType = $ticketTypes->firstWhere('id', $this->ticketTypeId);
 
         $subtotal = $selectedTicketType === null ? 0.0 : round((float) $selectedTicketType->price * $this->quantity, 2);
 
         $breakdown = PaystackFeeCalculator::breakdown($subtotal, $this->platformFee($organization));
+
+        if (! $event->relationLoaded('speakers')) {
+            $event->load(['speakers' => fn ($q) => $q->orderBy('sort_order')]);
+        }
+        if (! $event->relationLoaded('schedules')) {
+            $event->load(['schedules' => fn ($q) => $q->orderBy('sort_order')]);
+        }
+        if (! $event->relationLoaded('formFields')) {
+            $event->load(['formFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')]);
+        }
+        if (! $event->relationLoaded('faqs')) {
+            $event->load(['faqs' => fn ($q) => $q->where('is_published', true)->orderBy('sort_order')]);
+        }
+
+        $speakers = $event->speakers ?? $event->speakers()->orderBy('sort_order')->get();
+        $schedules = $event->schedules ?? $event->schedules()->orderBy('sort_order')->get();
+        $formFields = $event->formFields ?? $event->formFields()->where('is_active', true)->orderBy('sort_order')->get();
+        $faqs = $event->faqs ?? $event->faqs()->where('is_published', true)->orderBy('sort_order')->get();
+
+        if ($this->faqSearch !== '') {
+            $search = Str::lower($this->faqSearch);
+            $faqs = $faqs->filter(function ($faq) use ($search) {
+                return Str::contains(Str::lower($faq->question), $search) || Str::contains(Str::lower($faq->answer), $search);
+            });
+        }
+
+        $scheduleDays = $schedules->groupBy(function ($schedule) {
+            return $schedule->day_label ?: 'Day 1';
+        });
 
         return view('livewire.public.event-show', [
             'organization' => $organization,
@@ -332,6 +481,11 @@ class EventShow extends Component
             'selectedTicketType' => $selectedTicketType,
             'subtotal' => $subtotal,
             'breakdown' => $breakdown,
+            'speakers' => $speakers,
+            'schedules' => $schedules,
+            'scheduleDays' => $scheduleDays,
+            'formFields' => $formFields,
+            'faqs' => $faqs,
         ]);
     }
 
@@ -388,7 +542,18 @@ class EventShow extends Component
     private function event(): Event
     {
         /** @var Event */
-        return Event::query()->findOrFail($this->eventId);
+        $event = Event::query()
+            ->with([
+                'organization',
+                'speakers' => fn ($q) => $q->orderBy('sort_order'),
+                'schedules' => fn ($q) => $q->orderBy('sort_order'),
+                'faqs' => fn ($q) => $q->where('is_published', true)->orderBy('sort_order'),
+                'formFields' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order'),
+                'ticketTypes',
+            ])
+            ->findOrFail($this->eventId);
+
+        return $event;
     }
 
     private function selectedTicketType(): ?TicketType

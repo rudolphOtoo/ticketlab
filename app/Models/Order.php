@@ -12,11 +12,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Database\Factories\OrderFactory;
 
 class Order extends Model
 {
     use BelongsToOrganization;
+    /** @use HasFactory<OrderFactory> */
     use HasFactory;
+
+    protected static function newFactory(): OrderFactory
+    {
+        return OrderFactory::new();
+    }
 
     protected $fillable = [
         'organization_id',
