@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Admin\AttendeeRoster;
+use App\Livewire\Admin\DailySessionLedger;
+use App\Livewire\Ops\CashDeskTerminal;
+use App\Livewire\Ops\ScannerTerminal;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,17 +22,19 @@ Route::middleware(['auth'])
     ->name('ops.')
     ->group(function () {
         // Mobile camera door scanner terminal
-        // Route::get('scanner', ScannerTerminal::class)->name('scanner');
+        Route::get('scanner', ScannerTerminal::class)->name('scanner');
+
         // On-site walk-in cash desk portal
-        // Route::get('cash-desk', CashDeskTerminal::class)->name('cash-desk');
+        Route::get('cash-desk', CashDeskTerminal::class)->name('cash-desk');
     });
 
-Route::middleware(['auth'])
+Route::middleware(['auth', 'subdivision.access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
         // Daily session ledger declaration & lockdown
-        // Route::get('sessions', DailySessionLedger::class)->name('sessions');
+        Route::get('sessions', DailySessionLedger::class)->name('sessions');
+
         // Scoped attendee rosters & Excel export
-        // Route::get('attendees', AttendeeRoster::class)->name('attendees');
+        Route::get('attendees', AttendeeRoster::class)->name('attendees');
     });

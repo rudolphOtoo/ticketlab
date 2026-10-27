@@ -60,13 +60,11 @@ class ProfileUpdateTest extends TestCase
 
         $this->actingAs($user);
 
-        $response = Livewire::test('pages::settings.delete-user-modal')
-            ->set('password', 'password')
-            ->call('deleteUser');
+        $response = Livewire::test('pages::settings.delete-user-modal')->set('password', 'password')->call(
+            'deleteUser',
+        );
 
-        $response
-            ->assertHasNoErrors()
-            ->assertRedirect('/');
+        $response->assertHasNoErrors()->assertRedirect('/');
 
         $this->assertNull($user->fresh());
         $this->assertFalse(auth()->check());
@@ -78,9 +76,9 @@ class ProfileUpdateTest extends TestCase
 
         $this->actingAs($user);
 
-        $response = Livewire::test('pages::settings.delete-user-modal')
-            ->set('password', 'wrong-password')
-            ->call('deleteUser');
+        $response = Livewire::test('pages::settings.delete-user-modal')->set('password', 'wrong-password')->call(
+            'deleteUser',
+        );
 
         $response->assertHasErrors(['password']);
 
