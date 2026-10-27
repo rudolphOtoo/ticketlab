@@ -12,7 +12,6 @@ return [
      | a conventional file to locate the various service credentials.
      |
      */
-
     'paystack' => [
         'secret_key' => env('PAYSTACK_SECRET_KEY'),
         'public_key' => env('PAYSTACK_PUBLIC_KEY'),

@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Schema;
  * rather than an edit to the create migration, so installs that already ran
  * that one get it too.
  */
-return new class extends Migration {
+return new class extends Migration
+{
     private const INDEX = 'webhook_events_provider_created_at_index';
 
     public function up(): void
@@ -26,7 +27,7 @@ return new class extends Migration {
             return;
         }
 
-        Schema::table($table, function (Blueprint $table) {
+        Schema::table($table, static function (Blueprint $table) {
             $table->index(['provider', 'created_at'], self::INDEX);
         });
     }
@@ -35,11 +36,11 @@ return new class extends Migration {
     {
         $table = config('payments.webhook.events.table', 'webhook_events');
 
-        if (!Schema::hasIndex($table, self::INDEX)) {
+        if (! Schema::hasIndex($table, self::INDEX)) {
             return;
         }
 
-        Schema::table($table, function (Blueprint $table) {
+        Schema::table($table, static function (Blueprint $table) {
             $table->dropIndex(self::INDEX);
         });
     }

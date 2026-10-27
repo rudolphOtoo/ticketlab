@@ -1,5 +1,16 @@
 <?php
 
+use KenDeNigerian\PayZephyr\Drivers\FlutterwaveDriver;
+use KenDeNigerian\PayZephyr\Drivers\MollieDriver;
+use KenDeNigerian\PayZephyr\Drivers\MonnifyDriver;
+use KenDeNigerian\PayZephyr\Drivers\OPayDriver;
+use KenDeNigerian\PayZephyr\Drivers\PaddleDriver;
+use KenDeNigerian\PayZephyr\Drivers\PayPalDriver;
+use KenDeNigerian\PayZephyr\Drivers\PaystackDriver;
+use KenDeNigerian\PayZephyr\Drivers\RazorpayDriver;
+use KenDeNigerian\PayZephyr\Drivers\SquareDriver;
+use KenDeNigerian\PayZephyr\Drivers\StripeDriver;
+
 $paymentsHealthCheckAllowedIps = env('PAYMENTS_HEALTH_CHECK_ALLOWED_IPS');
 $paymentsHealthCheckAllowedTokens = env('PAYMENTS_HEALTH_CHECK_ALLOWED_TOKENS');
 
@@ -55,7 +66,7 @@ return [
     'providers' => [
         'paystack' => [
             'driver' => 'paystack',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\PaystackDriver::class,
+            'driver_class' => PaystackDriver::class,
             'secret_key' => env('PAYSTACK_SECRET_KEY'),
             'public_key' => env('PAYSTACK_PUBLIC_KEY'),
             'base_url' => env('PAYSTACK_BASE_URL', 'https://api.paystack.co'),
@@ -65,7 +76,7 @@ return [
 
         'flutterwave' => [
             'driver' => 'flutterwave',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\FlutterwaveDriver::class,
+            'driver_class' => FlutterwaveDriver::class,
             'reference_prefix' => 'FLW',
             'secret_key' => env('FLUTTERWAVE_SECRET_KEY'),
             'public_key' => env('FLUTTERWAVE_PUBLIC_KEY'),
@@ -79,7 +90,7 @@ return [
 
         'monnify' => [
             'driver' => 'monnify',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\MonnifyDriver::class,
+            'driver_class' => MonnifyDriver::class,
             'reference_prefix' => 'MON',
             'api_key' => env('MONNIFY_API_KEY'),
             'secret_key' => env('MONNIFY_SECRET_KEY'),
@@ -91,7 +102,7 @@ return [
 
         'stripe' => [
             'driver' => 'stripe',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\StripeDriver::class,
+            'driver_class' => StripeDriver::class,
             'secret_key' => env('STRIPE_SECRET_KEY'),
             'public_key' => env('STRIPE_PUBLIC_KEY'),
             'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
@@ -105,7 +116,7 @@ return [
 
         'paypal' => [
             'driver' => 'paypal',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\PayPalDriver::class,
+            'driver_class' => PayPalDriver::class,
             'client_id' => env('PAYPAL_CLIENT_ID'),
             'client_secret' => env('PAYPAL_CLIENT_SECRET'),
             'webhook_id' => env('PAYPAL_WEBHOOK_ID'), // Required for webhook validation
@@ -117,7 +128,7 @@ return [
 
         'square' => [
             'driver' => 'square',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\SquareDriver::class,
+            'driver_class' => SquareDriver::class,
             'access_token' => env('SQUARE_ACCESS_TOKEN'),
             'location_id' => env('SQUARE_LOCATION_ID'),
             'webhook_signature_key' => env('SQUARE_WEBHOOK_SIGNATURE_KEY'),
@@ -133,7 +144,7 @@ return [
 
         'opay' => [
             'driver' => 'opay',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\OPayDriver::class,
+            'driver_class' => OPayDriver::class,
             'merchant_id' => env('OPAY_MERCHANT_ID'),
             'public_key' => env('OPAY_PUBLIC_KEY'),
             'secret_key' => env('OPAY_SECRET_KEY'), // Required for webhook validation
@@ -144,7 +155,7 @@ return [
 
         'paddle' => [
             'driver' => 'paddle',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\PaddleDriver::class,
+            'driver_class' => PaddleDriver::class,
             'api_key' => env('PADDLE_API_KEY'),
             'client_token' => env('PADDLE_CLIENT_TOKEN'), // Paddle.js only; unused server-side
             'webhook_secret' => env('PADDLE_WEBHOOK_SECRET'), // Notification destination secret key
@@ -157,7 +168,7 @@ return [
 
         'mollie' => [
             'driver' => 'mollie',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\MollieDriver::class,
+            'driver_class' => MollieDriver::class,
             'reference_prefix' => 'MOLLIE',
             'api_key' => env('MOLLIE_API_KEY'),
             'webhook_secret' => env('MOLLIE_WEBHOOK_SECRET'),
@@ -168,7 +179,7 @@ return [
 
         'razorpay' => [
             'driver' => 'razorpay',
-            'driver_class' => \KenDeNigerian\PayZephyr\Drivers\RazorpayDriver::class,
+            'driver_class' => RazorpayDriver::class,
             'reference_prefix' => 'RAZORPAY',
             'key_id' => env('RAZORPAY_KEY_ID'),
             'key_secret' => env('RAZORPAY_KEY_SECRET'),
@@ -204,14 +215,14 @@ return [
         'path' => env('PAYMENTS_WEBHOOK_PATH', '/payments/webhook'),
         'verify_signature' => env('PAYMENTS_WEBHOOK_VERIFY_SIGNATURE', true),
         'rate_limit' => env('PAYMENTS_WEBHOOK_RATE_LIMIT', '120,1'), // requests per minute
-        'max_payload_size' => env('PAYMENTS_WEBHOOK_MAX_PAYLOAD_SIZE', 1048576), // 1MB in bytes
+        'max_payload_size' => env('PAYMENTS_WEBHOOK_MAX_PAYLOAD_SIZE', 1_048_576), // 1MB in bytes
         'max_retries' => env('PAYMENTS_WEBHOOK_MAX_RETRIES', 3),
         'retry_backoff' => env('PAYMENTS_WEBHOOK_RETRY_BACKOFF', 60), // seconds
         'events' => [
             'table' => env('PAYMENTS_WEBHOOK_EVENTS_TABLE', 'webhook_events'),
             // How old an event-creation timestamp may be (PayPal, Square). Every retry repeats it,
             // so this must outlast the providers' retry schedules. Seconds; default 72 hours.
-            'replay_window' => env('PAYMENTS_WEBHOOK_REPLAY_WINDOW', 259200),
+            'replay_window' => env('PAYMENTS_WEBHOOK_REPLAY_WINDOW', 259_200),
             // Days of deduplication records payzephyr:webhooks:prune keeps. Must exceed each
             // pruned provider's replay window; the command refuses otherwise.
             'retention_days' => env('PAYMENTS_WEBHOOK_EVENTS_RETENTION_DAYS', 30),

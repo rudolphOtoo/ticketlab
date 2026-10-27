@@ -3,6 +3,24 @@
     "components": {
         "toast": {
             "installationTime": 1792864642
+        },
+        "button": {
+            "installationTime": 1792957243
+        },
+        "icon": {
+            "installationTime": 1792957244
+        },
+        "input": {
+            "installationTime": 1792957245
+        },
+        "checkbox": {
+            "installationTime": 1792957246
+        },
+        "badge": {
+            "installationTime": 1792957247
+        },
+        "avatar": {
+            "installationTime": 1792957248
         }
     }
 }
