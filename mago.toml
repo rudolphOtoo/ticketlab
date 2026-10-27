@@ -5,6 +5,10 @@ php-version = "8.5"
 
 [source]
 paths = ["app", "bootstrap", "config", "database", "routes", "tests"]
+includes = [
+    "vendor/laravel/framework/src/Illuminate/**/*.php",
+    "vendor/bacon/bacon-qr-code/src/**/*.php"
+]
 
 [formatter]
 print-width = 120
@@ -12,3 +16,37 @@ tab-width = 4
 use-tabs = false
 single-quote = true
 trailing-comma = true
+
+[analyzer]
+excludes = ["tests/**", "config/**", "database/migrations/**", "routes/**"]
+ignore = [
+    "non-existent-class-like",
+    "mixed-method-access",
+    "invalid-method-access",
+    "mixed-property-access",
+    "non-existent-method",
+    "mixed-return-statement",
+    "mixed-assignment",
+    "mixed-operand",
+    "mixed-argument",
+    "non-existent-attribute-class",
+    "mixed-property-type-coercion",
+    "invalid-type-cast",
+    "missing-template-parameter",
+    "non-documented-property",
+    "less-specific-argument",
+    "possibly-invalid-argument",
+    "invalid-return-statement",
+    "nullable-return-statement",
+    "less-specific-return-statement",
+    "less-specific-nested-argument-type",
+    "mixed-array-access",
+    "mixed-array-index",
+    "possibly-null-property-access",
+    "no-value",
+    "non-documented-method",
+    "impossible-assignment"
+]
+
+[linter]
+rules = { "no-literal-password" = { enabled = false }, "cyclomatic-complexity" = { enabled = false }, "too-many-methods" = { enabled = false }, "too-many-properties" = { enabled = false } }

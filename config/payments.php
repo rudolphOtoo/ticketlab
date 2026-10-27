@@ -251,7 +251,7 @@ return [
         // refused (and the reason logged).
         'require_auth' => env(
             'PAYMENTS_HEALTH_CHECK_REQUIRE_AUTH',
-            ! in_array(env('APP_ENV', 'production'), ['local', 'testing'], true),
+            !in_array(env('APP_ENV', 'production'), ['local', 'testing'], true),
         ),
         'allowed_ips' => $paymentsHealthCheckAllowedIps ? explode(',', $paymentsHealthCheckAllowedIps) : [],
         'allowed_tokens' => $paymentsHealthCheckAllowedTokens ? explode(',', $paymentsHealthCheckAllowedTokens) : [],
