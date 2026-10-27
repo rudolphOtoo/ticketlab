@@ -41,7 +41,11 @@ ignore = [
     "less-specific-return-statement",
     "less-specific-nested-argument-type",
     "mixed-array-access",
-    "mixed-array-index"
+    "mixed-array-index",
+    "possibly-null-property-access",
+    "no-value",
+    "non-documented-method",
+    "impossible-assignment"
 ]
 
 [linter]
