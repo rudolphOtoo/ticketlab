@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Payment\PaystackWebhookController;
+use App\Livewire\Public\EventDirectory;
 use App\Livewire\Public\EventShow;
 use App\Livewire\Public\TicketShow;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -25,12 +26,14 @@ Route::post('api/payzephyr/webhook', [PaystackWebhookController::class, 'handle'
     ->name('public.payzephyr.webhook')
     ->withoutMiddleware([ValidateCsrfToken::class]);
 
+Route::get('events', EventDirectory::class)->name('public.events.index');
+
 Route::get('tickets/{order:reference}', TicketShow::class)->name('public.tickets.show');
 
 Route::prefix('{org_slug}')
     ->name('public.')
     ->where([
-        'org_slug' => '(?!ops/|admin/|api/|livewire/|up/|dashboard/|settings/|tickets/)[A-Za-z0-9][A-Za-z0-9-]*',
+        'org_slug' => '(?!ops/|admin/|api/|livewire/|up/|dashboard/|settings/|tickets/|events/)[A-Za-z0-9][A-Za-z0-9-]*',
     ])
     ->group(function () {
         // Event landing, ticket tier selection & Paystack checkout drawer

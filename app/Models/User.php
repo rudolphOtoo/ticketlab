@@ -72,4 +72,9 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 
         return Str::length($initials) > 1 ? Str::substr($initials, 0, 1) . Str::substr($initials, -1) : $initials;
     }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
 }

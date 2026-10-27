@@ -8,6 +8,7 @@ use App\Livewire\Admin\EventCustomizer;
 use App\Livewire\Admin\TicketManager;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
+use App\Livewire\Platform\PlatformDashboard;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,6 +19,10 @@ use Illuminate\Support\Facades\Route;
  | Handles gate usher camera QR scanner, on-site walk-in cash desk,
  | daily session closure PDF statements, and scoped attendee rosters.
  */
+
+Route::middleware(['auth', 'super_admin'])
+    ->get('platform', PlatformDashboard::class)
+    ->name('platform.dashboard');
 
 Route::middleware(['auth'])
     ->prefix('ops')

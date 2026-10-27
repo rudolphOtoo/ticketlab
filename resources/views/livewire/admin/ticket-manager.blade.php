@@ -106,21 +106,21 @@
             @endif
         </div>
     @else
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             @foreach ($ticketTypes as $tier)
                 @php
                     $sold = max(0, $tier->total_capacity - $tier->available_quantity);
                     $percentSold = $tier->total_capacity > 0 ? min(100, round(($sold / $tier->total_capacity) * 100)) : 0;
                 @endphp
-                <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 shadow-xs flex flex-col justify-between subtle-hover-glow transition relative overflow-hidden group">
-                    <div class="space-y-4">
+                <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between subtle-hover-glow transition relative overflow-hidden group">
+                    <div class="space-y-3">
                         <!-- Top Meta -->
-                        <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start justify-between gap-2.5">
                             <div>
-                                <span class="text-[11px] font-mono font-medium text-[var(--text-tertiary)] uppercase tracking-wider">
+                                <span class="text-[10px] font-mono font-medium text-[var(--text-tertiary)] uppercase tracking-wider">
                                     Tier #{{ $tier->id }}
                                 </span>
-                                <h3 class="text-base font-bold text-[var(--text-primary)] mt-0.5">
+                                <h3 class="text-sm font-bold text-[var(--text-primary)] leading-tight">
                                     {{ $tier->name }}
                                 </h3>
                             </div>
@@ -128,7 +128,7 @@
                             <button
                                 type="button"
                                 wire:click="toggleActive({{ $tier->id }})"
-                                class="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold transition {{ $tier->is_active ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' }}"
+                                class="cursor-pointer shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold transition {{ $tier->is_active ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' }}"
                                 title="Click to {{ $tier->is_active ? 'pause' : 'resume' }} sales"
                             >
                                 <span class="size-1.5 rounded-full {{ $tier->is_active ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400' }}"></span>
@@ -138,31 +138,31 @@
 
                         <!-- Price Tag -->
                         <div class="flex items-baseline gap-1">
-                            <span class="text-xs font-semibold text-[var(--text-secondary)]">GHS</span>
-                            <span class="text-2xl font-black text-[var(--text-primary)] tracking-tight">
+                            <span class="text-[11px] font-semibold text-[var(--text-secondary)]">GHS</span>
+                            <span class="text-lg font-black text-[var(--text-primary)] tracking-tight">
                                 {{ number_format((float) $tier->price, 2) }}
                             </span>
                         </div>
 
                         @if ($tier->description)
-                            <p class="text-xs text-[var(--text-secondary)] line-clamp-2 leading-relaxed">
+                            <p class="text-[11px] text-[var(--text-secondary)] line-clamp-2 leading-normal">
                                 {{ $tier->description }}
                             </p>
                         @endif
 
                         <!-- Capacity Bar -->
-                        <div class="space-y-1.5 pt-2 border-t border-[var(--border-hairline)]">
-                            <div class="flex items-center justify-between text-[11px] font-medium text-[var(--text-secondary)]">
+                        <div class="space-y-1 pt-2 border-t border-[var(--border-hairline)]">
+                            <div class="flex items-center justify-between text-[10px] font-medium text-[var(--text-secondary)]">
                                 <span>Capacity</span>
-                                <span><strong class="text-[var(--text-primary)]">{{ $sold }}</strong> / {{ $tier->total_capacity }} sold ({{ $percentSold }}%)</span>
+                                <span><strong class="text-[var(--text-primary)]">{{ $sold }}</strong>/{{ $tier->total_capacity }} sold ({{ $percentSold }}%)</span>
                             </div>
-                            <div class="h-2 w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                            <div class="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                                 <div
                                     class="h-full rounded-full transition-all duration-300 {{ $percentSold >= 100 ? 'bg-rose-500' : ($percentSold >= 80 ? 'bg-amber-500' : 'bg-[var(--color-primary)]') }}"
                                     style="width: {{ $percentSold }}%"
                                 ></div>
                             </div>
-                            <div class="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] pt-0.5">
+                            <div class="flex items-center justify-between text-[9px] text-[var(--text-tertiary)] pt-0.5">
                                 <span>{{ $tier->available_quantity }} remaining</span>
                                 <span>{{ $tier->attendees_count }} checked-in</span>
                             </div>
@@ -170,12 +170,11 @@
 
                         <!-- Perks Checklist -->
                         @if (!empty($tier->perks))
-                            <div class="space-y-1.5 pt-2 border-t border-[var(--border-hairline)]">
-                                <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Included Perks</span>
-                                <div class="flex flex-wrap gap-1.5">
+                            <div class="space-y-1 pt-2 border-t border-[var(--border-hairline)]">
+                                <div class="flex flex-wrap gap-1">
                                     @foreach ($tier->perks as $perk)
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--bg-subtle)] text-[10px] font-medium text-[var(--text-secondary)]">
-                                            <svg class="size-2.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[9px] font-medium text-[var(--text-secondary)]">
+                                            <svg class="size-2 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                                             </svg>
                                             {{ $perk }}
@@ -187,8 +186,8 @@
                     </div>
 
                     <!-- Bottom Action Ribbon -->
-                    <div class="flex items-center justify-between pt-4 mt-4 border-t border-[var(--border-hairline)]">
-                        <span class="text-[10px] text-[var(--text-tertiary)]">
+                    <div class="flex items-center justify-between pt-2.5 mt-2.5 border-t border-[var(--border-hairline)]">
+                        <span class="text-[9px] text-[var(--text-tertiary)]">
                             @if ($tier->sales_end_at)
                                 Closes {{ $tier->sales_end_at->format('M d, Y') }}
                             @else
@@ -196,14 +195,14 @@
                             @endif
                         </span>
 
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1">
                             <button
                                 type="button"
                                 wire:click="editTicketType({{ $tier->id }})"
-                                class="p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition press-scale cursor-pointer"
+                                class="p-1 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition press-scale cursor-pointer"
                                 title="Edit Tier"
                             >
-                                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>
                             </button>
@@ -213,10 +212,10 @@
                                     type="button"
                                     wire:click="deleteTicketType({{ $tier->id }})"
                                     wire:confirm="Are you sure you want to delete this ticket tier? This action cannot be undone."
-                                    class="p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition press-scale cursor-pointer"
+                                    class="p-1 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition press-scale cursor-pointer"
                                     title="Delete Tier"
                                 >
-                                    <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>

@@ -388,28 +388,28 @@
                         <p class="text-xs text-[var(--text-secondary)]">No speakers added yet. Click above to introduce your keynote roster.</p>
                     </div>
                 @else
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         @foreach ($speakers as $spk)
-                            <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-xs flex items-start justify-between gap-3 subtle-hover-glow transition">
-                                <div class="flex items-start gap-3">
+                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-2xs flex items-start justify-between gap-2.5 subtle-hover-glow transition">
+                                <div class="flex items-start gap-2.5">
                                     @if ($spk->photo_path)
-                                        <img src="{{ $spk->photo_path }}" alt="{{ $spk->name }}" class="size-12 rounded-xl object-cover border border-[var(--border-hairline)]" />
+                                        <img src="{{ $spk->photo_path }}" alt="{{ $spk->name }}" class="size-9 rounded-lg object-cover border border-[var(--border-hairline)]" />
                                     @else
-                                        <div class="size-12 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-hairline)] flex items-center justify-center font-bold text-xs text-[var(--text-primary)]">
+                                        <div class="size-9 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-hairline)] flex items-center justify-center font-bold text-[11px] text-[var(--text-primary)]">
                                             {{ substr($spk->name, 0, 2) }}
                                         </div>
                                     @endif
 
                                     <div class="space-y-0.5">
                                         <div class="flex items-center gap-1.5">
-                                            <h4 class="text-xs font-bold text-[var(--text-primary)]">{{ $spk->name }}</h4>
+                                            <h4 class="text-xs font-bold text-[var(--text-primary)] leading-tight">{{ $spk->name }}</h4>
                                             @if ($spk->is_featured)
                                                 <span class="px-1.5 py-0.2 rounded-sm bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold text-[9px]">Featured</span>
                                             @endif
                                         </div>
-                                        <p class="text-[11px] font-medium text-[var(--text-secondary)]">{{ $spk->title_role }}</p>
+                                        <p class="text-[10px] font-medium text-[var(--text-secondary)]">{{ $spk->title_role }}</p>
                                         @if ($spk->topic)
-                                            <p class="text-[10px] text-[var(--text-tertiary)] italic">"{{ $spk->topic }}"</p>
+                                            <p class="text-[9px] text-[var(--text-tertiary)] italic line-clamp-1">"{{ $spk->topic }}"</p>
                                         @endif
                                     </div>
                                 </div>
@@ -418,9 +418,9 @@
                                     <button
                                         type="button"
                                         wire:click="editSpeaker({{ $spk->id }})"
-                                        class="p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition cursor-pointer"
+                                        class="p-1 rounded-md border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition cursor-pointer press-scale"
                                     >
-                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
@@ -428,9 +428,9 @@
                                         type="button"
                                         wire:click="deleteSpeaker({{ $spk->id }})"
                                         wire:confirm="Remove speaker?"
-                                        class="p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                        class="p-1 rounded-md border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer press-scale"
                                     >
-                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
@@ -444,37 +444,37 @@
 
         <!-- Tab 3: Program Schedule -->
         @if ($activeTab === 'schedule')
-            <div class="space-y-5">
+            <div class="space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <h3 class="text-sm font-bold text-[var(--text-primary)]">Day-by-Day Program Schedule</h3>
-                        <p class="text-xs text-[var(--text-secondary)] mt-0.5">Sessions, timings, halls, and speakers.</p>
+                        <p class="text-[11px] text-[var(--text-secondary)] mt-0.5">Sessions, timings, halls, and speakers.</p>
                     </div>
 
                     <button
                         type="button"
                         wire:click="openCreateScheduleModal"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-xs press-scale cursor-pointer"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale cursor-pointer"
                     >
                         + Add Session
                     </button>
                 </div>
 
                 @if ($schedules->isEmpty())
-                    <div class="rounded-2xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-8 text-center">
+                    <div class="rounded-xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 text-center">
                         <p class="text-xs text-[var(--text-secondary)]">No program sessions added. Map out day-by-day itineraries.</p>
                     </div>
                 @else
-                    <div class="space-y-3">
+                    <div class="space-y-2">
                         @foreach ($schedules as $item)
-                            <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 subtle-hover-glow transition">
-                                <div class="flex items-start sm:items-center gap-3">
-                                    <span class="px-2.5 py-1 rounded-md bg-[var(--bg-subtle)] text-[11px] font-mono font-bold text-[var(--text-secondary)] shrink-0">
+                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 subtle-hover-glow transition">
+                                <div class="flex items-start sm:items-center gap-2.5">
+                                    <span class="px-2 py-0.5 rounded-md bg-[var(--bg-subtle)] text-[10px] font-mono font-bold text-[var(--text-secondary)] shrink-0">
                                         {{ $item->day_label }}
                                     </span>
                                     <div class="space-y-0.5">
                                         <h4 class="text-xs font-bold text-[var(--text-primary)]">{{ $item->session_title }}</h4>
-                                        <div class="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-secondary)]">
+                                        <div class="flex flex-wrap items-center gap-2 text-[10px] text-[var(--text-secondary)]">
                                             <span>⏱ {{ $item->start_time }} - {{ $item->end_time }}</span>
                                             @if ($item->venue_hall)
                                                 <span>· 📍 {{ $item->venue_hall }}</span>
@@ -490,9 +490,9 @@
                                     <button
                                         type="button"
                                         wire:click="editSchedule({{ $item->id }})"
-                                        class="p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition cursor-pointer"
+                                        class="p-1 rounded-md border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition cursor-pointer press-scale"
                                     >
-                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
@@ -500,9 +500,9 @@
                                         type="button"
                                         wire:click="deleteSchedule({{ $item->id }})"
                                         wire:confirm="Delete this session?"
-                                        class="p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                        class="p-1 rounded-md border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer press-scale"
                                     >
-                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
@@ -516,58 +516,58 @@
 
         <!-- Tab 4: Dynamic Questionnaire Builder -->
         @if ($activeTab === 'form_fields')
-            <div class="space-y-5">
+            <div class="space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <h3 class="text-sm font-bold text-[var(--text-primary)]">Custom Registration Questionnaire</h3>
-                        <p class="text-xs text-[var(--text-secondary)] mt-0.5">Capture custom data during checkout (e.g. T-Shirt Size, Bus Route).</p>
+                        <p class="text-[11px] text-[var(--text-secondary)] mt-0.5">Capture custom data during checkout (e.g. T-Shirt Size, Bus Route).</p>
                     </div>
 
                     <button
                         type="button"
                         wire:click="openCreateFieldModal"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-xs press-scale cursor-pointer"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale cursor-pointer"
                     >
                         + Add Custom Field
                     </button>
                 </div>
 
                 @if ($formFields->isEmpty())
-                    <div class="rounded-2xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-8 text-center">
+                    <div class="rounded-xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 text-center">
                         <p class="text-xs text-[var(--text-secondary)]">No custom fields yet. Patron checkout currently requires only Name, Email, and Phone.</p>
                     </div>
                 @else
-                    <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-xs">
+                    <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-2xs">
                         <table class="w-full text-left text-xs">
-                            <thead class="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] font-semibold">
+                            <thead class="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] font-semibold text-[11px]">
                                 <tr>
-                                    <th class="px-4 py-3">Label</th>
-                                    <th class="px-4 py-3">Field Key</th>
-                                    <th class="px-4 py-3">Type</th>
-                                    <th class="px-4 py-3">Required</th>
-                                    <th class="px-4 py-3 text-right">Actions</th>
+                                    <th class="px-3.5 py-2.5">Label</th>
+                                    <th class="px-3.5 py-2.5">Field Key</th>
+                                    <th class="px-3.5 py-2.5">Type</th>
+                                    <th class="px-3.5 py-2.5">Required</th>
+                                    <th class="px-3.5 py-2.5 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-[var(--border-hairline)]">
+                            <tbody class="divide-y divide-[var(--border-hairline)] text-[11px]">
                                 @foreach ($formFields as $f)
                                     <tr class="hover:bg-[var(--bg-subtle)]/50 transition">
-                                        <td class="px-4 py-3 font-bold text-[var(--text-primary)]">{{ $f->label }}</td>
-                                        <td class="px-4 py-3 font-mono text-[var(--text-secondary)]">{{ $f->field_key }}</td>
-                                        <td class="px-4 py-3">
-                                            <span class="px-2 py-0.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-hairline)] font-medium text-[10px]">
+                                        <td class="px-3.5 py-2 font-bold text-[var(--text-primary)]">{{ $f->label }}</td>
+                                        <td class="px-3.5 py-2 font-mono text-[var(--text-secondary)]">{{ $f->field_key }}</td>
+                                        <td class="px-3.5 py-2">
+                                            <span class="px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] border border-[var(--border-hairline)] font-medium text-[9px]">
                                                 {{ strtoupper($f->input_type) }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-3">
+                                        <td class="px-3.5 py-2">
                                             <span class="font-medium {{ $f->is_required ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-[var(--text-tertiary)]' }}">
                                                 {{ $f->is_required ? 'Yes' : 'Optional' }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-3 text-right space-x-1">
+                                        <td class="px-3.5 py-2 text-right space-x-1">
                                             <button
                                                 type="button"
                                                 wire:click="editField({{ $f->id }})"
-                                                class="p-1 rounded-md border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                                                class="p-1 rounded border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer press-scale"
                                             >
                                                 Edit
                                             </button>
@@ -575,7 +575,7 @@
                                                 type="button"
                                                 wire:click="deleteField({{ $f->id }})"
                                                 wire:confirm="Delete field?"
-                                                class="p-1 rounded-md border border-[var(--border-hairline)] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                                class="p-1 rounded border border-[var(--border-hairline)] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer press-scale"
                                             >
                                                 Delete
                                             </button>
@@ -591,33 +591,33 @@
 
         <!-- Tab 5: FAQs -->
         @if ($activeTab === 'faqs')
-            <div class="space-y-5">
+            <div class="space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <h3 class="text-sm font-bold text-[var(--text-primary)]">Frequently Asked Questions</h3>
-                        <p class="text-xs text-[var(--text-secondary)] mt-0.5">Provide answers regarding tickets, parking, and passes.</p>
+                        <p class="text-[11px] text-[var(--text-secondary)] mt-0.5">Provide answers regarding tickets, parking, and passes.</p>
                     </div>
 
                     <button
                         type="button"
                         wire:click="openCreateFaqModal"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-xs press-scale cursor-pointer"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale cursor-pointer"
                     >
                         + Add FAQ
                     </button>
                 </div>
 
                 @if ($faqs->isEmpty())
-                    <div class="rounded-2xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-8 text-center">
+                    <div class="rounded-xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 text-center">
                         <p class="text-xs text-[var(--text-secondary)]">No FAQs added yet.</p>
                     </div>
                 @else
-                    <div class="space-y-3">
+                    <div class="space-y-2">
                         @foreach ($faqs as $faq)
-                            <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-xs space-y-2 subtle-hover-glow transition">
-                                <div class="flex items-start justify-between gap-3">
+                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-2xs space-y-1.5 subtle-hover-glow transition">
+                                <div class="flex items-start justify-between gap-2.5">
                                     <div class="flex items-center gap-2">
-                                        <span class="px-2 py-0.5 rounded-md bg-[var(--bg-subtle)] text-[10px] font-semibold text-[var(--text-secondary)]">
+                                        <span class="px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[9px] font-semibold text-[var(--text-secondary)]">
                                             {{ $faq->category }}
                                         </span>
                                         <h4 class="text-xs font-bold text-[var(--text-primary)]">{{ $faq->question }}</h4>
@@ -626,7 +626,7 @@
                                         <button
                                             type="button"
                                             wire:click="editFaq({{ $faq->id }})"
-                                            class="p-1 rounded-md border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                                            class="px-2 py-0.5 rounded text-[11px] border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer press-scale"
                                         >
                                             Edit
                                         </button>
@@ -634,13 +634,13 @@
                                             type="button"
                                             wire:click="deleteFaq({{ $faq->id }})"
                                             wire:confirm="Delete FAQ?"
-                                            class="p-1 rounded-md border border-[var(--border-hairline)] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                            class="px-2 py-0.5 rounded text-[11px] border border-[var(--border-hairline)] text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer press-scale"
                                         >
                                             Delete
                                         </button>
                                     </div>
                                 </div>
-                                <p class="text-xs text-[var(--text-secondary)] leading-relaxed pl-1">{{ $faq->answer }}</p>
+                                <p class="text-[11px] text-[var(--text-secondary)] leading-relaxed pl-1">{{ $faq->answer }}</p>
                             </div>
                         @endforeach
                     </div>
