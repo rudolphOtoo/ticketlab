@@ -232,7 +232,7 @@
     @if ($isModalOpen)
         <div
             class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs"
-            @keydown.window.escape="closeModal"
+            @keydown.window.escape="$wire.closeModal()"
         >
             <div class="w-full max-w-lg rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xl p-6 sm:p-7 space-y-5 animate-physical-modal">
                 <div class="flex items-center justify-between pb-3 border-b border-[var(--border-hairline)]">

@@ -9,7 +9,6 @@ use App\Models\Organization;
 use App\Models\TicketType;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -180,7 +179,7 @@ class TicketManager extends Component
         $salesStart = filled($this->sales_start_at) ? $this->sales_start_at : null;
         $salesEnd = filled($this->sales_end_at) ? $this->sales_end_at : null;
 
-        DB::transaction(function () use ($event, $salesStart, $salesEnd): void {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($event, $salesStart, $salesEnd): void {
             if ($this->editingTicketTypeId !== null) {
                 /** @var TicketType|null $ticketType */
                 $ticketType = TicketType::query()
