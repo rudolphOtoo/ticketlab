@@ -218,7 +218,7 @@
 
     <!-- Slide-Over / Modal Form -->
     @if ($isModalOpen)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs">
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs" wire:click.self="closeModal">
             <div class="w-full max-w-lg rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xl p-6 sm:p-7 space-y-5 animate-physical-modal">
                 <div class="flex items-center justify-between pb-3 border-b border-[var(--border-hairline)]">
                     <div>
@@ -341,7 +341,7 @@
                         <div class="flex items-center gap-2">
                             <input
                                 type="text"
-                                wire:model="newPerkInput"
+                                wire:model.live="newPerkInput"
                                 wire:keydown.enter.prevent="addPerk"
                                 placeholder="Type a perk and click Add (e.g. Lunch Included)"
                                 class="flex-1 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3.5 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] shadow-xs focus:border-[var(--text-primary)] focus:outline-hidden"

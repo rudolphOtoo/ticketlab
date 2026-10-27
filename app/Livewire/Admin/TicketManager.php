@@ -176,37 +176,45 @@ class TicketManager extends Component
             ]);
         }
 
+        $startDate = filled($this->sales_start_at) ? $this->sales_start_at : null;
+        $endDate = filled($this->sales_end_at) ? $this->sales_end_at : null;
+
         if ($this->editingTicketTypeId !== null) {
-            $ticketType = $this->findScopedTicketType($this->editingTicketTypeId);
+            \Illuminate\Support\Facades\DB::transaction(function () use ($startDate, $endDate): void {
+                /** @var TicketType $ticketType */
+                $ticketType = TicketType::query()
+                    ->whereHas('event', function ($query): void {
+                        $query->where('organization_id', $this->organizationId);
+                    })
+                    ->whereKey($this->editingTicketTypeId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            if ($ticketType === null) {
-                return;
-            }
+                $soldTickets = max(0, $ticketType->total_capacity - $ticketType->available_quantity);
 
-            $soldTickets = max(0, $ticketType->total_capacity - $ticketType->available_quantity);
+                if ($this->total_capacity < $soldTickets) {
+                    throw ValidationException::withMessages([
+                        'total_capacity' => "Cannot reduce capacity below currently sold tickets ({$soldTickets}).",
+                    ]);
+                }
 
-            if ($this->total_capacity < $soldTickets) {
-                throw ValidationException::withMessages([
-                    'total_capacity' => "Cannot reduce capacity below currently sold tickets ({$soldTickets}).",
+                $capacityDiff = $this->total_capacity - $ticketType->total_capacity;
+                $newAvailableQuantity = max(0, $ticketType->available_quantity + $capacityDiff);
+
+                $ticketType->update([
+                    'name' => $this->name,
+                    'description' => $this->description,
+                    'price' => (float) $this->price,
+                    'total_capacity' => $this->total_capacity,
+                    'available_quantity' => $newAvailableQuantity,
+                    'sales_start_at' => $startDate,
+                    'sales_end_at' => $endDate,
+                    'is_active' => $this->is_active,
+                    'perks' => $this->perks,
                 ]);
-            }
 
-            $capacityDiff = $this->total_capacity - $ticketType->total_capacity;
-            $newAvailableQuantity = max(0, $ticketType->available_quantity + $capacityDiff);
-
-            $ticketType->update([
-                'name' => $this->name,
-                'description' => $this->description,
-                'price' => (float) $this->price,
-                'total_capacity' => $this->total_capacity,
-                'available_quantity' => $newAvailableQuantity,
-                'sales_start_at' => $this->sales_start_at,
-                'sales_end_at' => $this->sales_end_at,
-                'is_active' => $this->is_active,
-                'perks' => $this->perks,
-            ]);
-
-            $this->flashMessage = "Ticket tier '{$ticketType->name}' updated successfully.";
+                $this->flashMessage = "Ticket tier '{$ticketType->name}' updated successfully.";
+            });
         } else {
             $ticketType = TicketType::create([
                 'event_id' => $event->id,
@@ -215,8 +223,8 @@ class TicketManager extends Component
                 'price' => (float) $this->price,
                 'total_capacity' => $this->total_capacity,
                 'available_quantity' => $this->total_capacity,
-                'sales_start_at' => $this->sales_start_at,
-                'sales_end_at' => $this->sales_end_at,
+                'sales_start_at' => $startDate,
+                'sales_end_at' => $endDate,
                 'is_active' => $this->is_active,
                 'perks' => $this->perks,
             ]);
