@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Livewire\Admin\AttendeeRoster;
 use App\Livewire\Admin\DailySessionLedger;
+use App\Livewire\Admin\EventCustomizer;
 use App\Livewire\Admin\TicketManager;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
@@ -46,4 +47,7 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Self-service ticket category & pricing manager
         Route::get('tickets', TicketManager::class)->name('tickets');
+
+        // Non-coder visual event customizer studio
+        Route::get('studio', EventCustomizer::class)->name('studio');
     });
