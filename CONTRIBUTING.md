@@ -4,15 +4,14 @@ Thank you for your interest in contributing to TicketLab! This document outlines
 
 ## Branching Strategy
 
-We follow an adapted Git Flow branching strategy anchored on `dev`:
+We follow a Git Flow-inspired branching strategy:
 
-- `main` - Production-ready, locked releases only.
-- `dev` - Active integration branch and shared foundation baseline. All feature branches originate from and merge back into `dev`.
-- `feature/*` - New features (e.g., `feature/track-1-checkout`, `feature/track-2-scanner`)
+- `main` - Production-ready code. All releases are tagged from this branch.
+- `feature/*` - New features (e.g., `feature/payment-integration`)
 - `fix/*` - Bug fixes (e.g., `fix/ticket-validation`)
-- `hotfix/*` - Critical production fixes branching directly from `main`
+- `hotfix/*` - Critical production fixes (e.g., `hotfix/security-patch`)
 - `refactor/*` - Code refactoring without changing functionality
-- `chore/*` - Maintenance tasks, tooling and dependency updates
+- `chore/*` - Maintenance tasks, dependency updates
 
 ## Commit Message Convention
 
@@ -47,33 +46,33 @@ docs: update README with setup instructions
 
 ## Pull Request Process
 
-1. **Create a branch** from `dev` following the naming convention above.
-2. **Make your changes** in small, focused increments following `PACE: BITE`.
-3. **Write/update tests** for any new functionality (Pest).
+1. **Create a branch** from `main` following the naming convention above
+2. **Make your changes** with clear, atomic commits
+3. **Write/update tests** for any new functionality
 4. **Run quality checks** locally:
-```bash
-composer lint:check
-composer types:check
-php artisan test
-```
-5. **Update documentation** if necessary ([README.md](file:///c:/Users/Fafa/Desktop/CodeSpace/ticketlab/README.md), [plan/MASTER_PLAN.md](file:///c:/Users/Fafa/Desktop/CodeSpace/ticketlab/plan/MASTER_PLAN.md)).
-6. **Submit a PR** targeting `dev` with:
-- Clear title following Conventional Commits
-- Description of changes and motivation
-- Reference to any related tickets
-- Screenshots or recordings for UI changes
-7. **Code review** - Address feedback from peer reviewer.
-8. **Merge** - PRs require passing local checks and peer approval before merging into `dev`.
+   ```bash
+   composer lint:check
+   composer types:check
+   php artisan test
+   ```
+5. **Update documentation** if necessary (README, code comments)
+6. **Submit a PR** with:
+   - Clear title following Conventional Commits
+   - Description of changes and motivation
+   - Reference to any related issues
+   - Screenshots for UI changes
+7. **Code review** - Address feedback from reviewers
+8. **Merge** - PRs require passing CI checks and approval
 
 ## Code Standards
 
-- **PHP**: Strictly PHP 8.5+, following PER-CS / PSR-12 standards enforced by **Mago** (`carthage-software/mago`).
-- **Type Safety**: Explicit return type declarations, parameter type hints, and Mago static analysis.
-- **Testing**: Comprehensive Pest tests for happy, failure, and edge paths.
-- **Security**: Never commit secrets or API keys. Keep environment configurations isolated.
-- **Database**: Additive migrations only after Phase 0. No destructive schema updates.
-- **Architecture**: Follow Laravel 13, Livewire 4, and single-database multi-tenancy conventions.
+- **PHP**: Follow PSR-12 standards, enforced by Laravel Pint
+- **Type Safety**: Use type hints, return types, and proper PHPDoc where appropriate
+- **Testing**: Write tests for new features and bug fixes
+- **Security**: Never commit secrets, API keys, or credentials. Use environment variables
+- **Database**: Use migrations for schema changes, seeders for test data
+- **Architecture**: Follow Laravel conventions and existing project patterns
 
 ## Getting Help
 
-If you have questions, please open an issue or consult the team in your active workspace channel.
+If you have questions, please open an issue with the `question` label.
