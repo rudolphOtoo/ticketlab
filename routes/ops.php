@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Livewire\Admin\AttendeeRoster;
 use App\Livewire\Admin\DailySessionLedger;
+use App\Livewire\Admin\TicketManager;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
 use Illuminate\Support\Facades\Route;
@@ -42,4 +43,7 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Scoped attendee rosters & Excel export
         Route::get('attendees', AttendeeRoster::class)->name('attendees');
+
+        // Self-service ticket category & pricing manager
+        Route::get('tickets', TicketManager::class)->name('tickets');
     });
