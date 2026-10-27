@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Livewire\Admin\AttendeeRoster;
 use App\Livewire\Admin\DailySessionLedger;
+use App\Livewire\Admin\DataExportCentral;
 use App\Livewire\Admin\EventCustomizer;
 use App\Livewire\Admin\TicketManager;
 use App\Livewire\Ops\CashDeskTerminal;
@@ -55,4 +56,7 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Non-coder visual event customizer studio
         Route::get('studio', EventCustomizer::class)->name('studio');
+
+        // Anti-vendor-lock-in data export & sovereignty central
+        Route::get('exports', DataExportCentral::class)->name('exports');
     });
