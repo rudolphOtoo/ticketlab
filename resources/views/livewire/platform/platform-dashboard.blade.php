@@ -94,6 +94,121 @@
 
     </div>
 
+    <!-- Runtime Deployment Engine (Dynamic Dual-Mode Controller) -->
+    <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-2xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-base">⚙️</span>
+                    <h2 class="text-sm font-bold text-[var(--text-primary)]">Runtime Deployment Personality</h2>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold {{ $deploymentMode === 'dedicated' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20' }}">
+                        Active: {{ $deploymentMode === 'dedicated' ? 'Dedicated Bespoke (' . ($homeOrgSlug ?? 'None') . ')' : 'Multi-Tenant Platform Hub' }}
+                    </span>
+                </div>
+                <p class="text-xs text-[var(--text-secondary)] mt-0.5">
+                    Toggle system deployment mode dynamically from database without redeploying <code class="px-1 py-0.5 rounded bg-[var(--bg-subtle)] font-mono text-[11px]">.env</code>. Changes propagate instantly across all edge requests.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button
+                    type="button"
+                    wire:click="savePlatformSettings"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--text-primary)] text-[var(--bg-canvas)] text-xs font-semibold press-scale shadow-2xs hover:opacity-90 disabled:opacity-50 transition"
+                >
+                    <span wire:loading.remove wire:target="savePlatformSettings">Save Configuration</span>
+                    <span wire:loading wire:target="savePlatformSettings">Saving...</span>
+                </button>
+            </div>
+        </div>
+
+        @if ($settingSuccessMessage)
+            <div class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-200">
+                <div class="flex items-center gap-2">
+                    <span>✓</span>
+                    <span>{{ $settingSuccessMessage }}</span>
+                </div>
+                <button type="button" wire:click="$set('settingSuccessMessage', null)" class="text-emerald-600 hover:text-emerald-800 text-xs">✕</button>
+            </div>
+        @endif
+
+        @error('deploymentMode')
+            <p class="text-xs text-rose-500">{{ $message }}</p>
+        @enderror
+        @error('homeOrgSlug')
+            <p class="text-xs text-rose-500">{{ $message }}</p>
+        @enderror
+
+        <!-- Mode Selection Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <!-- Platform Mode Card -->
+            <label class="relative flex flex-col p-3.5 rounded-xl border cursor-pointer transition select-none {{ $deploymentMode === 'platform' ? 'border-[var(--text-primary)] bg-[var(--bg-subtle)]/60 ring-1 ring-[var(--text-primary)]' : 'border-[var(--border-hairline)] bg-[var(--bg-canvas)] hover:border-[var(--border-strong)]' }}">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-2">
+                        <input
+                            type="radio"
+                            wire:model.live="deploymentMode"
+                            value="platform"
+                            class="text-[var(--text-primary)] focus:ring-[var(--text-primary)]"
+                        />
+                        <span class="text-xs font-bold text-[var(--text-primary)]">Multi-Tenant Platform Hub</span>
+                    </div>
+                    <span class="text-xs">🌐</span>
+                </div>
+                <p class="text-[11px] text-[var(--text-secondary)] mt-2 leading-relaxed">
+                    Root <code class="px-1 py-0.2 rounded bg-[var(--bg-surface)] font-mono text-[10px]">/</code> serves the public discovery directory with events search, multi-tenant navigation, and SaaS onboarding. Organizers can toggle individual event visibility (Public Directory vs Unlisted).
+                </p>
+            </label>
+
+            <!-- Dedicated Bespoke Mode Card -->
+            <label class="relative flex flex-col p-3.5 rounded-xl border cursor-pointer transition select-none {{ $deploymentMode === 'dedicated' ? 'border-[var(--text-primary)] bg-[var(--bg-subtle)]/60 ring-1 ring-[var(--text-primary)]' : 'border-[var(--border-hairline)] bg-[var(--bg-canvas)] hover:border-[var(--border-strong)]' }}">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-2">
+                        <input
+                            type="radio"
+                            wire:model.live="deploymentMode"
+                            value="dedicated"
+                            class="text-[var(--text-primary)] focus:ring-[var(--text-primary)]"
+                        />
+                        <span class="text-xs font-bold text-[var(--text-primary)]">Dedicated Bespoke Client</span>
+                    </div>
+                    <span class="text-xs">👑</span>
+                </div>
+                <p class="text-[11px] text-[var(--text-secondary)] mt-2 leading-relaxed">
+                    Root <code class="px-1 py-0.2 rounded bg-[var(--bg-surface)] font-mono text-[10px]">/</code> serves the designated client's bespoke event with zero SaaS branding. All platform marketing is hidden from navigation. All events belong to this organization, so visibility toggles are hidden.
+                </p>
+            </label>
+        </div>
+
+        @if ($deploymentMode === 'dedicated')
+            <div class="pt-2 border-t border-[var(--border-hairline)] flex flex-col sm:flex-row sm:items-center gap-3">
+                <label for="homeOrgSlugInput" class="text-xs font-medium text-[var(--text-secondary)] min-w-44">
+                    Flagship Dedicated Client:
+                </label>
+                <div class="flex-1 max-w-md">
+                    <select
+                        id="homeOrgSlugInput"
+                        wire:model.live="homeOrgSlug"
+                        class="w-full px-3 py-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-xs text-[var(--text-primary)] focus:border-[var(--text-primary)] focus:outline-hidden"
+                    >
+                        <option value="">-- Choose organization as dedicated client --</option>
+                        @foreach ($allOrganizations as $org)
+                            <option value="{{ $org->slug }}">
+                                {{ $org->name }} (slug: {{ $org->slug }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                @if ($homeOrgSlug)
+                    <div class="text-[11px] text-[var(--text-tertiary)]">
+                        Custom template path: <code class="font-mono text-[10px]">resources/views/tenants/{{ $homeOrgSlug }}/home.blade.php</code>
+                    </div>
+                @endif
+            </div>
+        @endif
+    </div>
+
     <!-- Tenant Roster & Drilldown Section -->
     <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xs overflow-hidden">
         

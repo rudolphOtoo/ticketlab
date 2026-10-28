@@ -24,6 +24,7 @@ class Event extends Model
         'start_at',
         'end_at',
         'status',
+        'is_public',
         'customization',
     ];
 
@@ -32,6 +33,7 @@ class Event extends Model
         return [
             'start_at' => 'datetime',
             'end_at' => 'datetime',
+            'is_public' => 'boolean',
             'customization' => 'array',
         ];
     }

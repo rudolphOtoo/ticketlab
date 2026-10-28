@@ -16,6 +16,7 @@
         @php
             $featuredEvents = \App\Models\Event::with(['organization', 'ticketTypes'])
                 ->where('status', 'published')
+                ->where('is_public', true)
                 ->latest('id')
                 ->take(3)
                 ->get();

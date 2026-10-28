@@ -62,6 +62,8 @@ class EventCustomizer extends Component
 
     public bool $show_faqs = true;
 
+    public bool $is_public = true;
+
     public function mount(?int $eventId = null): void
     {
         $user = auth()->user();
@@ -115,6 +117,7 @@ class EventCustomizer extends Component
         $this->show_speakers = (bool) ($custom['show_speakers'] ?? true);
         $this->show_schedule = (bool) ($custom['show_schedule'] ?? true);
         $this->show_faqs = (bool) ($custom['show_faqs'] ?? true);
+        $this->is_public = (bool) ($event->is_public ?? true);
     }
 
     public function saveBrandAndHero(): void
@@ -133,6 +136,7 @@ class EventCustomizer extends Component
             'show_speakers' => ['boolean'],
             'show_schedule' => ['boolean'],
             'show_faqs' => ['boolean'],
+            'is_public' => ['boolean'],
         ]);
 
         $event = $this->getCurrentEvent();
@@ -160,6 +164,7 @@ class EventCustomizer extends Component
             'start_at' => filled($this->start_at) ? $this->start_at : null,
             'end_at' => filled($this->end_at) ? $this->end_at : null,
             'banner_path' => $this->banner_path,
+            'is_public' => $this->is_public,
             'customization' => $customization,
         ]);
 
@@ -210,6 +215,7 @@ class EventCustomizer extends Component
             'schedules' => $schedules,
             'formFields' => $formFields,
             'faqs' => $faqs,
+            'isDedicatedMode' => \App\Models\PlatformSetting::isDedicatedMode(),
         ]);
     }
 }

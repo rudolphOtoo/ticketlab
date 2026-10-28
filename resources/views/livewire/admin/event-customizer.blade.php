@@ -338,6 +338,20 @@
                                     <span>FAQ Accordion</span>
                                     <input type="checkbox" wire:model="show_faqs" class="size-4 rounded-md text-[var(--color-primary)] cursor-pointer" />
                                 </label>
+
+                                @if (!$isDedicatedMode)
+                                    <div class="border-t border-[var(--border-hairline)] pt-3">
+                                        <label class="flex items-start justify-between gap-3 text-xs font-medium text-[var(--text-primary)] cursor-pointer">
+                                            <div>
+                                                <span class="font-bold">Public Directory Listing</span>
+                                                <p class="text-[10px] text-[var(--text-secondary)] font-normal mt-0.5">
+                                                    When enabled, event is listed on public <code class="font-mono text-[10px]">/events</code>. When uncheck, event is private (direct link only).
+                                                </p>
+                                            </div>
+                                            <input type="checkbox" wire:model="is_public" class="size-4 rounded-md text-[var(--color-primary)] cursor-pointer mt-0.5" />
+                                        </label>
+                                    </div>
+                                @endif
                             </div>
                         </div>
 

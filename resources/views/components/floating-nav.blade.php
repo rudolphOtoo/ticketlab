@@ -69,16 +69,18 @@
             Home
         </a>
 
-        <a
-            href="{{ route('public.events.index') }}"
-            @class([
-                'hidden sm:inline-flex px-3 py-1.5 rounded-full transition-colors duration-150 press-scale cursor-pointer',
-                'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => request()->routeIs('public.events.*') || request()->is('events*'),
-                'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]' => !(request()->routeIs('public.events.*') || request()->is('events*')),
-            ])
-        >
-            Events
-        </a>
+        @if(!\App\Models\PlatformSetting::isDedicatedMode())
+            <a
+                href="{{ route('public.events.index') }}"
+                @class([
+                    'hidden sm:inline-flex px-3 py-1.5 rounded-full transition-colors duration-150 press-scale cursor-pointer',
+                    'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => request()->routeIs('public.events.*') || request()->is('events*'),
+                    'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]' => !(request()->routeIs('public.events.*') || request()->is('events*')),
+                ])
+            >
+                Events
+            </a>
+        @endif
 
         @auth
             <a

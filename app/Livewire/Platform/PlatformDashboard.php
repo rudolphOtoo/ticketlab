@@ -32,12 +32,42 @@ class PlatformDashboard extends Component
 
     public int $paidTicketsCount = 0;
 
+    public string $deploymentMode = 'platform';
+
+    public ?string $homeOrgSlug = null;
+
+    public ?string $settingSuccessMessage = null;
+
     public function mount(): void
     {
         $user = auth()->user();
         if ($user === null || !$user->isSuperAdmin()) {
             abort(403, 'Platform Super Admin clearance required.');
         }
+
+        $this->deploymentMode = (string) \App\Models\PlatformSetting::get('deployment_mode', 'platform');
+        $this->homeOrgSlug = \App\Models\PlatformSetting::getHomeOrgSlug();
+    }
+
+    public function savePlatformSettings(): void
+    {
+        $rules = [
+            'deploymentMode' => ['required', 'string', 'in:platform,dedicated'],
+            'homeOrgSlug' => ['nullable', 'string', 'max:100'],
+        ];
+
+        if ($this->deploymentMode === 'dedicated') {
+            $rules['homeOrgSlug'] = ['required', 'string', 'exists:organizations,slug'];
+        }
+
+        $this->validate($rules);
+
+        \App\Models\PlatformSetting::set('deployment_mode', $this->deploymentMode);
+        \App\Models\PlatformSetting::set('home_org_slug', $this->deploymentMode === 'dedicated' ? (string) $this->homeOrgSlug : '');
+
+        $this->settingSuccessMessage = $this->deploymentMode === 'dedicated'
+            ? "Runtime mode updated to Dedicated Bespoke Client ({$this->homeOrgSlug}). Root / now serves this client."
+            : 'Runtime mode updated to Multi-Tenant Platform Hub. Root / now serves discovery hub.';
     }
 
     public function viewTenant(int $tenantId): void
@@ -132,6 +162,7 @@ class PlatformDashboard extends Component
             'tenants' => $tenants,
             'selectedTenant' => $selectedTenant,
             'tenantEvents' => $tenantEvents,
+            'allOrganizations' => Organization::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);
     }
 }
