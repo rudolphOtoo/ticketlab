@@ -156,9 +156,6 @@ trait ManagesEventFormFields
             return null;
         }
 
-        return EventFormField::query()
-            ->where('organization_id', $this->organizationId)
-            ->whereKey($id)
-            ->first();
+        return EventFormField::query()->where('organization_id', $this->organizationId)->whereKey($id)->first();
     }
 }

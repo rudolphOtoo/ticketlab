@@ -19,6 +19,8 @@ class EventSpeaker extends Model
         'event_id',
         'name',
         'title_role',
+        'title',
+        'organization',
         'topic',
         'bio',
         'photo_path',
@@ -34,6 +36,16 @@ class EventSpeaker extends Model
             'is_featured' => 'boolean',
             'social_links' => 'array',
         ];
+    }
+
+    public function getTitleAttribute(): ?string
+    {
+        return $this->attributes['title_role'] ?? null;
+    }
+
+    public function setTitleAttribute(?string $value): void
+    {
+        $this->attributes['title_role'] = $value;
     }
 
     public function event(): BelongsTo

@@ -129,7 +129,10 @@ test('root route resolves developer custom view if tenants slug home exists', fu
 
     $customViewDir = resource_path('views/tenants/custom-client');
     File::ensureDirectoryExists($customViewDir);
-    File::put($customViewDir . '/home.blade.php', '<div id="developer-custom-tenant-view">Custom Tenant Portal for {{ $organization->name }}</div>');
+    File::put(
+        $customViewDir . '/home.blade.php',
+        '<div id="developer-custom-tenant-view">Custom Tenant Portal for {{ $organization->name }}</div>',
+    );
 
     try {
         PlatformSetting::set('deployment_mode', 'dedicated');
@@ -165,9 +168,7 @@ test('unlisted events are excluded from public event directory but accessible vi
     ]);
 
     // Test directory hides private event
-    Livewire::test(EventDirectory::class)
-        ->assertSee('Open Public Summit')
-        ->assertDontSee('VIP Closed Door Gathering');
+    Livewire::test(EventDirectory::class)->assertSee('Open Public Summit')->assertDontSee('VIP Closed Door Gathering');
 
     // Test direct slug access works for private event
     $response = $this->get(route('public.event.show', [

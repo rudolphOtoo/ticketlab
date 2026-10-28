@@ -39,7 +39,8 @@ class EventDirectory extends Component
         if (trim($this->search) !== '') {
             $term = '%' . trim($this->search) . '%';
             $query->where(function (Builder $builder) use ($term): void {
-                $builder->where('title', 'like', $term)
+                $builder
+                    ->where('title', 'like', $term)
                     ->orWhere('description', 'like', $term)
                     ->orWhere('venue', 'like', $term)
                     ->orWhereHas('organization', function (Builder $orgQuery) use ($term): void {
@@ -50,8 +51,7 @@ class EventDirectory extends Component
 
         if ($this->filter === 'upcoming') {
             $query->where(function (Builder $builder): void {
-                $builder->whereNull('start_at')
-                    ->orWhere('start_at', '>=', now()->startOfDay());
+                $builder->whereNull('start_at')->orWhere('start_at', '>=', now()->startOfDay());
             });
         } elseif ($this->filter === 'free') {
             $query->whereHas('ticketTypes', function (Builder $builder): void {
@@ -64,9 +64,7 @@ class EventDirectory extends Component
         }
 
         /** @var Collection<int, Event> $events */
-        $events = $query->orderByRaw('CASE WHEN start_at IS NULL THEN 1 ELSE 0 END, start_at ASC')
-            ->latest('id')
-            ->get();
+        $events = $query->orderByRaw('CASE WHEN start_at IS NULL THEN 1 ELSE 0 END, start_at ASC')->latest('id')->get();
 
         return view('livewire.public.event-directory', [
             'events' => $events,

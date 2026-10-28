@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Admin\DataExportCentral;
 use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\EventFormField;
@@ -9,7 +10,6 @@ use App\Models\Order;
 use App\Models\Organization;
 use App\Models\TicketType;
 use App\Models\User;
-use App\Livewire\Admin\DataExportCentral;
 use Livewire\Livewire;
 
 test('org admin can access data export central', function () {
@@ -19,7 +19,8 @@ test('org admin can access data export central', function () {
         'role' => 'org_admin',
     ]);
 
-    $this->actingAs($user)
+    $this
+        ->actingAs($user)
         ->get(route('admin.exports'))
         ->assertOk()
         ->assertSee('Data Export &amp; Sovereignty Central', false)
@@ -69,8 +70,7 @@ test('attendee csv export streams rows and expands dynamic custom form fields', 
         ],
     ]);
 
-    $component = Livewire::actingAs($user)
-        ->test(DataExportCentral::class, ['eventId' => $event->id]);
+    $component = Livewire::actingAs($user)->test(DataExportCentral::class, ['eventId' => $event->id]);
 
     $response = $component->instance()->exportAttendeeCsv();
 
@@ -80,7 +80,8 @@ test('attendee csv export streams rows and expands dynamic custom form fields', 
     $response->sendContent();
     $content = ob_get_clean();
 
-    expect($content)->toContain('Kofi Mensah')
+    expect($content)
+        ->toContain('Kofi Mensah')
         ->toContain('kofi@example.com')
         ->toContain('VIP Delegate')
         ->toContain('Bus Route Pickup')
@@ -110,8 +111,7 @@ test('json backup export generates complete schema footprint of the tenant', fun
         'price' => 50.00,
     ]);
 
-    $component = Livewire::actingAs($user)
-        ->test(DataExportCentral::class);
+    $component = Livewire::actingAs($user)->test(DataExportCentral::class);
 
     $response = $component->instance()->exportJsonBackup();
 
@@ -123,10 +123,7 @@ test('json backup export generates complete schema footprint of the tenant', fun
 
     $data = json_decode($rawJson, true);
 
-    expect($data)->toBeArray()
-        ->toHaveKey('generator')
-        ->toHaveKey('organization')
-        ->toHaveKey('events');
+    expect($data)->toBeArray()->toHaveKey('generator')->toHaveKey('organization')->toHaveKey('events');
 
     expect($data['organization']['name'])->toBe('Grace Assembly');
     expect($data['events'][0]['title'])->toBe('Annual Convocation');
@@ -138,8 +135,7 @@ test('data export fails closed with 403 when user has no organization context', 
         'organization_id' => null,
     ]);
 
-    $component = Livewire::actingAs($userWithoutOrg)
-        ->test(DataExportCentral::class);
+    $component = Livewire::actingAs($userWithoutOrg)->test(DataExportCentral::class);
 
     expect(fn() => $component->instance()->exportAttendeeCsv())
         ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);

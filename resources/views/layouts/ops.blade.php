@@ -70,12 +70,21 @@
                     </a>
 
                     <a href="{{ route('admin.studio') }}"
-                       class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition {{ request()->routeIs('admin.studio*') ? 'bg-[var(--bg-subtle)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' }}"
+                       class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition {{ request()->routeIs('admin.studio') ? 'bg-[var(--bg-subtle)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' }}"
                        wire:navigate>
                         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
                         </svg>
                         Customizer Studio
+                    </a>
+
+                    <a href="{{ route('admin.studio.marketing') }}"
+                       class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition {{ request()->routeIs('admin.studio.marketing*') ? 'bg-[var(--bg-subtle)] text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' }}"
+                       wire:navigate>
+                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                        </svg>
+                        Marketing Studio
                     </a>
 
                     <a href="{{ route('admin.exports') }}"
@@ -87,18 +96,7 @@
                         Data Exports
                     </a>
 
-                    @if (auth()->check() && auth()->user()->isSuperAdmin())
-                        <div class="my-1 border-t border-[var(--border-hairline)]"></div>
-                        <a href="{{ route('platform.dashboard') }}"
-                           class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition {{ request()->routeIs('platform.dashboard*') ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 font-semibold' : 'text-purple-600 dark:text-purple-400 hover:bg-purple-500/10' }}"
-                           wire:navigate>
-                            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
-                            </svg>
-                            Super Admin
-                        </a>
-                    @endif
+
                 </nav>
             </div>
 

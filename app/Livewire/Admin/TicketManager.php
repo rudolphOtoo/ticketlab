@@ -61,17 +61,11 @@ class TicketManager extends Component
         $event = null;
 
         if ($eventId !== null && $this->organizationId !== null) {
-            $event = Event::query()
-                ->where('organization_id', $this->organizationId)
-                ->whereKey($eventId)
-                ->first();
+            $event = Event::query()->where('organization_id', $this->organizationId)->whereKey($eventId)->first();
         }
 
         if ($event === null && $this->organizationId !== null) {
-            $event = Event::query()
-                ->where('organization_id', $this->organizationId)
-                ->latest('id')
-                ->first();
+            $event = Event::query()->where('organization_id', $this->organizationId)->latest('id')->first();
         }
 
         $this->selectedEventId = $event?->id;
@@ -289,27 +283,20 @@ class TicketManager extends Component
         $events = Collection::empty();
 
         if ($this->organizationId !== null) {
-            $events = Event::query()
-                ->where('organization_id', $this->organizationId)
-                ->orderByDesc('id')
-                ->get();
+            $events = Event::query()->where('organization_id', $this->organizationId)->orderByDesc('id')->get();
         }
 
         $ticketTypes = Collection::empty();
         $currentEvent = $this->getCurrentEvent();
 
         if ($currentEvent !== null) {
-            $query = TicketType::query()
-                ->where('event_id', $currentEvent->id);
+            $query = TicketType::query()->where('event_id', $currentEvent->id);
 
             if ($this->search !== '') {
                 $query->where('name', 'like', '%' . $this->search . '%');
             }
 
-            $ticketTypes = $query
-                ->withCount('attendees')
-                ->orderBy('price')
-                ->get();
+            $ticketTypes = $query->withCount('attendees')->orderBy('price')->get();
         }
 
         return view('livewire.admin.ticket-manager', [

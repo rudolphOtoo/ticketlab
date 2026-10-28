@@ -2,16 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Public\EventDirectory;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\TicketType;
-use App\Livewire\Public\EventDirectory;
 use Livewire\Livewire;
 
 test('public events directory page renders successfully', function () {
-    $this->get(route('public.events.index'))
-        ->assertOk()
-        ->assertSee('Explore Upcoming Events');
+    $this->get(route('public.events.index'))->assertOk()->assertSee('Explore Upcoming Events');
 });
 
 test('public events directory lists published events', function () {
@@ -23,9 +21,7 @@ test('public events directory lists published events', function () {
         'venue' => 'National Theatre',
     ]);
 
-    Livewire::test(EventDirectory::class)
-        ->assertSee('Accra Gospel Summit')
-        ->assertSee('National Theatre');
+    Livewire::test(EventDirectory::class)->assertSee('Accra Gospel Summit')->assertSee('National Theatre');
 });
 
 test('public events directory filters events by search query', function () {

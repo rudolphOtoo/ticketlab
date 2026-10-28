@@ -50,7 +50,8 @@ test('authenticated admin can view ticket tier manager for their organization', 
         'perks' => ['Front Row', 'Buffet Lunch'],
     ]);
 
-    $this->actingAs($user)
+    $this
+        ->actingAs($user)
         ->get(route('admin.tickets'))
         ->assertOk()
         ->assertSee('Early Bird VIP')
@@ -99,11 +100,16 @@ test('org admin can create a new ticket tier with perks', function () {
     expect(TicketType::query()->where('name', 'Executive All-Access')->exists())->toBeTrue();
 
     $created = TicketType::query()->where('name', 'Executive All-Access')->first();
-    expect((float) $created->price)->toBe(250.00)
-        ->and($created->total_capacity)->toBe(50)
-        ->and($created->available_quantity)->toBe(50)
-        ->and($created->perks)->toContain('Keynote Priority', 'Exclusive Swag Bag')
-        ->and($created->is_active)->toBeTrue();
+    expect((float) $created->price)
+        ->toBe(250.00)
+        ->and($created->total_capacity)
+        ->toBe(50)
+        ->and($created->available_quantity)
+        ->toBe(50)
+        ->and($created->perks)
+        ->toContain('Keynote Priority', 'Exclusive Swag Bag')
+        ->and($created->is_active)
+        ->toBeTrue();
 });
 
 test('org admin cannot reduce total capacity below sold tickets count', function () {
@@ -154,8 +160,7 @@ test('org admin cannot reduce total capacity below sold tickets count', function
         ->assertHasNoErrors();
 
     $tier->refresh();
-    expect($tier->total_capacity)->toBe(80)
-        ->and($tier->available_quantity)->toBe(40); // 80 - 40 sold = 40 remaining
+    expect($tier->total_capacity)->toBe(80)->and($tier->available_quantity)->toBe(40); // 80 - 40 sold = 40 remaining
 });
 
 test('org admin can toggle active sales status', function () {
@@ -190,15 +195,11 @@ test('org admin can toggle active sales status', function () {
         'is_active' => true,
     ]);
 
-    Livewire::actingAs($user)
-        ->test(TicketManager::class, ['eventId' => $event->id])
-        ->call('toggleActive', $tier->id);
+    Livewire::actingAs($user)->test(TicketManager::class, ['eventId' => $event->id])->call('toggleActive', $tier->id);
 
     expect($tier->fresh()->is_active)->toBeFalse();
 
-    Livewire::actingAs($user)
-        ->test(TicketManager::class, ['eventId' => $event->id])
-        ->call('toggleActive', $tier->id);
+    Livewire::actingAs($user)->test(TicketManager::class, ['eventId' => $event->id])->call('toggleActive', $tier->id);
 
     expect($tier->fresh()->is_active)->toBeTrue();
 });
@@ -316,15 +317,10 @@ test('multi-tenant isolation prevents admin from seeing or mutating another orga
     ]);
 
     // Admin A visits ticket manager: cannot see Tier B
-    $this->actingAs($adminA)
-        ->get(route('admin.tickets'))
-        ->assertOk()
-        ->assertDontSee('Confidential Tier B');
+    $this->actingAs($adminA)->get(route('admin.tickets'))->assertOk()->assertDontSee('Confidential Tier B');
 
     // Admin A tries to edit or delete Tier B: fails silently or is ignored
-    Livewire::actingAs($adminA)
-        ->test(TicketManager::class)
-        ->call('deleteTicketType', $tierB->id);
+    Livewire::actingAs($adminA)->test(TicketManager::class)->call('deleteTicketType', $tierB->id);
 
     expect(TicketType::query()->whereKey($tierB->id)->exists())->toBeTrue();
 });

@@ -20,6 +20,7 @@ class EventFormField extends Model
         'field_key',
         'label',
         'input_type',
+        'field_type',
         'placeholder',
         'options',
         'validation_rules',
@@ -37,6 +38,16 @@ class EventFormField extends Model
             'sort_order' => 'integer',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function getFieldTypeAttribute(): ?string
+    {
+        return $this->attributes['input_type'] ?? null;
+    }
+
+    public function setFieldTypeAttribute(?string $value): void
+    {
+        $this->attributes['input_type'] = $value;
     }
 
     public function event(): BelongsTo

@@ -48,10 +48,7 @@ class PlatformSetting extends Model
     {
         $stringValue = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
 
-        static::query()->updateOrCreate(
-            ['key' => $key],
-            ['value' => $stringValue]
-        );
+        static::query()->updateOrCreate(['key' => $key], ['value' => $stringValue]);
 
         Cache::forget("platform_setting:{$key}");
     }

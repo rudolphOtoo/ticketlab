@@ -47,19 +47,31 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 3. Create Users
-        // Admin User (Cross-Zone Access)
-        User::firstOrCreate(['email' => 'admin@ticketlab.test'], [
+        // Platform Super Admin (Global Cross-Tenant Developer Console Access)
+        User::updateOrCreate(['email' => 'superadmin@ticketlab.test'], [
+            'name' => 'Platform Super Admin',
+            'password' => Hash::make('password'),
+            'role' => 'super_admin',
+            'organization_id' => null,
+            'subdivision_id' => null,
+            'email_verified_at' => now(),
+        ]);
+
+        // Organization Admin User (Cross-Zone Access & Super Admin clearance)
+        User::updateOrCreate(['email' => 'admin@ticketlab.test'], [
             'name' => 'Admin User',
             'password' => Hash::make('password'),
+            'role' => 'super_admin',
             'organization_id' => $org->id,
-            'subdivision_id' => null, // Superadmin access across all zones
+            'subdivision_id' => null,
             'email_verified_at' => now(),
         ]);
 
         // Door Usher User (Scoped to Kumasi)
-        User::firstOrCreate(['email' => 'usher@summit.org'], [
+        User::updateOrCreate(['email' => 'usher@summit.org'], [
             'name' => 'Kwame Mensah (Lead Usher)',
             'password' => Hash::make('password'),
+            'role' => 'staff',
             'organization_id' => $org->id,
             'subdivision_id' => $kumasi->id,
             'email_verified_at' => now(),

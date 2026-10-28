@@ -135,9 +135,6 @@ trait ManagesEventSpeakers
             return null;
         }
 
-        return EventSpeaker::query()
-            ->where('organization_id', $this->organizationId)
-            ->whereKey($id)
-            ->first();
+        return EventSpeaker::query()->where('organization_id', $this->organizationId)->whereKey($id)->first();
     }
 }

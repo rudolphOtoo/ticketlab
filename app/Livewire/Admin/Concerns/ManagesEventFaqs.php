@@ -120,9 +120,6 @@ trait ManagesEventFaqs
             return null;
         }
 
-        return EventFaq::query()
-            ->where('organization_id', $this->organizationId)
-            ->whereKey($id)
-            ->first();
+        return EventFaq::query()->where('organization_id', $this->organizationId)->whereKey($id)->first();
     }
 }

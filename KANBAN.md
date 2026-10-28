@@ -55,17 +55,17 @@
 **Branch**: `feat/marketing-flyer-studio`  
 **Rationale**: Empower event organizers to generate on-brand promotional flyers with custom aspect ratios and instant vector QR codes for social campaigns.
 
-- [ ] **`[MKT-01]` Vector Event Link QR Code Studio**
+- [x] **`[MKT-01]` Vector Event Link QR Code Studio**
   - Create Livewire component `App\Livewire\Admin\MarketingStudio` at `GET /admin/studio/marketing`.
   - Dynamic QR pass generation with customizable foreground/background colors and 1-click SVG/PNG instant download.
-- [ ] **`[MKT-02]` Social Media Flyer Generator with Aspect Ratio Presets**
+- [x] **`[MKT-02]` Social Media Flyer Generator with Aspect Ratio Presets**
   - Interactive HTML5 Canvas / SVG rendering with aspect ratio switcher:
     - `1:1` Square (Instagram / Facebook Post)
     - `9:16` Story / Status (WhatsApp Status / Instagram Story / TikTok)
     - `16:9` Landscape (Twitter/X / Facebook Banner / Website)
   - Real-time preview with event title, date, venue, guest speaker photo/badge, and direct ticket QR code.
   - Client-side 1-click export to PNG.
-- [ ] **`[MKT-03]` Marketing Studio Feature Tests**
+- [x] **`[MKT-03]` Marketing Studio Feature Tests**
   - Author `tests/Feature/Admin/MarketingStudioTest.php` verifying route access, permission gating, and payload generation.
 
 ---
@@ -89,16 +89,16 @@
 **Branch**: `feat/public-dynamic-checkout`  
 **Rationale**: Render the customized event website dynamically with countdown timer, speaker drawers, schedule tabs, and inject custom questionnaire inputs into checkout.
 
-- [ ] **`[PUB-01]` Dynamic CMS Landing Page Sections**
+- [x] **`[PUB-01]` Dynamic CMS Landing Page Sections**
   - Update `App\Livewire\Public\EventShow` and `resources/views/livewire/public/event-show.blade.php`:
     - Dynamic Hero with countdown timer (Days, Hours, Mins, Secs) and banner.
     - Speakers grid with photo, topic, and bio modal.
     - Program schedule filterable by Day (Day 1 / Day 2 / Day 3).
     - FAQ expandable accordion with search filter.
-- [ ] **`[PUB-02]` Custom Registration Form Checkout Injection**
+- [x] **`[PUB-02]` Custom Registration Form Checkout Injection**
   - Render dynamic questionnaire fields (`event_form_fields`) inside the ticket checkout flow.
   - Validate responses against field rules; store answers in `attendees.custom_fields` upon successful payment verification.
-- [ ] **`[PUB-03]` Dynamic Event Page Feature Tests**
+- [x] **`[PUB-03]` Dynamic Event Page Feature Tests**
   - Author `tests/Feature/Public/DynamicEventPageTest.php` validating dynamic block rendering and custom questionnaire persistence.
 
 ---
@@ -122,12 +122,12 @@
 **Branch**: `feat/anti-lockin-exports`  
 **Rationale**: Ensure organizations have complete ownership of their data with streaming CSV/Excel exports and 1-click full JSON tenant backups.
 
-- [ ] **`[EXP-01]` Dynamic Column Streaming Roster Export**
+- [x] **`[EXP-01]` Dynamic Column Streaming Roster Export**
   - Create `App\Livewire\Admin\DataExportCentral` at `GET /admin/exports`.
   - Spatie SimpleExcel streaming export dynamically flattening custom questionnaire columns from `attendees.custom_fields` into distinct CSV columns.
-- [ ] **`[EXP-02]` Full JSON Tenant Backup Generator**
+- [x] **`[EXP-02]` Full JSON Tenant Backup Generator**
   - Generate comprehensive tenant JSON archive (events, ticket tiers, orders, attendees with custom fields, schedules, speakers, FAQs).
-- [ ] **`[EXP-03]` Data Export Feature Tests**
+- [x] **`[EXP-03]` Data Export Feature Tests**
   - Author `tests/Feature/Admin/DataExportTest.php` validating streaming export and JSON backup structure.
 
 ---
@@ -136,8 +136,8 @@
 **Branch**: `feat/bespoke-error-pages`  
 **Rationale**: Elevate user experience with high-craft error pages matching Serene Studio tokens (`#faf9f6`, `#121316`).
 
-- [ ] **`[ERR-01]` Serene Studio Error Layout & HTTP Views**
+- [x] **`[ERR-01]` Serene Studio Error Layout & HTTP Views**
   - Create `resources/views/errors/layout.blade.php`.
   - Views: `401.blade.php`, `403.blade.php`, `404.blade.php`, `419.blade.php`, `429.blade.php`, `500.blade.php`, `503.blade.php`.
-- [ ] **`[ERR-02]` Error Pages Feature Tests**
+- [x] **`[ERR-02]` Error Pages Feature Tests**
   - Author `tests/Feature/Errors/BrandedErrorPagesTest.php` verifying HTTP response codes and branded view rendering.

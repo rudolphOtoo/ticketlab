@@ -72,17 +72,11 @@ class EventCustomizer extends Component
         $event = null;
 
         if ($eventId !== null && $this->organizationId !== null) {
-            $event = Event::query()
-                ->where('organization_id', $this->organizationId)
-                ->whereKey($eventId)
-                ->first();
+            $event = Event::query()->where('organization_id', $this->organizationId)->whereKey($eventId)->first();
         }
 
         if ($event === null && $this->organizationId !== null) {
-            $event = Event::query()
-                ->where('organization_id', $this->organizationId)
-                ->latest('id')
-                ->first();
+            $event = Event::query()->where('organization_id', $this->organizationId)->latest('id')->first();
         }
 
         if ($event !== null) {
@@ -188,10 +182,7 @@ class EventCustomizer extends Component
         $events = Collection::empty();
 
         if ($this->organizationId !== null) {
-            $events = Event::query()
-                ->where('organization_id', $this->organizationId)
-                ->orderByDesc('id')
-                ->get();
+            $events = Event::query()->where('organization_id', $this->organizationId)->orderByDesc('id')->get();
         }
 
         $currentEvent = $this->getCurrentEvent();

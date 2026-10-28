@@ -9,7 +9,6 @@ use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Organization;
-use App\Models\TicketType;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -63,7 +62,10 @@ class PlatformDashboard extends Component
         $this->validate($rules);
 
         \App\Models\PlatformSetting::set('deployment_mode', $this->deploymentMode);
-        \App\Models\PlatformSetting::set('home_org_slug', $this->deploymentMode === 'dedicated' ? (string) $this->homeOrgSlug : '');
+        \App\Models\PlatformSetting::set(
+            'home_org_slug',
+            $this->deploymentMode === 'dedicated' ? (string) $this->homeOrgSlug : '',
+        );
 
         $this->settingSuccessMessage = $this->deploymentMode === 'dedicated'
             ? "Runtime mode updated to Dedicated Bespoke Client ({$this->homeOrgSlug}). Root / now serves this client."
@@ -111,9 +113,9 @@ class PlatformDashboard extends Component
         $totalEvents = Event::query()->where('status', 'published')->count();
 
         // Calculate GMV from paid orders
-        $this->grossMerchandiseValue = (float) Order::query()
-            ->where('payment_status', OrderStatus::Paid->value)
-            ->sum('gross_amount');
+        $this->grossMerchandiseValue = (float) Order::query()->where('payment_status', OrderStatus::Paid->value)->sum(
+            'gross_amount',
+        );
 
         // Total paid tickets count across all organizations
         $this->paidTicketsCount = Attendee::query()
@@ -131,8 +133,7 @@ class PlatformDashboard extends Component
         if (trim($this->tenantSearch) !== '') {
             $term = '%' . trim($this->tenantSearch) . '%';
             $tenantQuery->where(function ($q) use ($term): void {
-                $q->where('name', 'like', $term)
-                    ->orWhere('slug', 'like', $term);
+                $q->where('name', 'like', $term)->orWhere('slug', 'like', $term);
             });
         }
 
@@ -145,10 +146,7 @@ class PlatformDashboard extends Component
         if ($this->selectedTenantId !== null) {
             $selectedTenant = Organization::query()->find($this->selectedTenantId);
             if ($selectedTenant !== null) {
-                $tenantEvents = $selectedTenant->events()
-                    ->with('ticketTypes')
-                    ->latest('id')
-                    ->get();
+                $tenantEvents = $selectedTenant->events()->with('ticketTypes')->latest('id')->get();
             }
         }
 

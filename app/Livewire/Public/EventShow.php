@@ -57,6 +57,21 @@ class EventShow extends Component
 
     public ?string $flashMessage = null;
 
+    /** @var array<string, mixed> */
+    public array $customFieldResponses = [];
+
+    public ?int $viewingSpeakerId = null;
+
+    public function viewSpeaker(int $speakerId): void
+    {
+        $this->viewingSpeakerId = $speakerId;
+    }
+
+    public function closeSpeakerModal(): void
+    {
+        $this->viewingSpeakerId = null;
+    }
+
     public function mount(string $org_slug, string $event_slug): void
     {
         $organization = Organization::query()->where('slug', $org_slug)->firstOrFail();
@@ -119,7 +134,7 @@ class EventShow extends Component
     {
         $quantity = (int) $value;
         $ticketType = $this->selectedTicketType();
-        $maximum = $ticketType?->available_quantity ?? 20;
+        $maximum = $ticketType->available_quantity ?? 20;
         $maximum = max(1, min(20, $maximum));
 
         $this->quantity = max(1, min($quantity, $maximum));
@@ -144,24 +159,61 @@ class EventShow extends Component
 
     public function startCheckout(TicketReservationService $reservations): void
     {
-        $validated = $this->validate([
+        $event = $this->event();
+        /** @var Organization $organization */
+        $organization = Organization::query()->findOrFail($event->organization_id);
+
+        $rules = [
             'ticketTypeId' => ['required', 'integer'],
             'quantity' => ['required', 'integer', 'min:1', 'max:20'],
             'subdivisionId' => ['nullable', 'integer'],
             'customerName' => ['required', 'string', 'max:255'],
             'customerEmail' => ['required', 'string', 'email', 'max:255'],
             'customerPhone' => ['required', 'string', 'max:50'],
-        ]);
+        ];
+
+        $formFields = $event->formFields()->orderBy('sort_order')->get();
+        $messages = [];
+
+        foreach ($formFields as $field) {
+            $key = 'customFieldResponses.' . $field->field_key;
+            $fieldRules = [];
+
+            if ($field->is_required) {
+                if ($field->field_type === 'checkbox') {
+                    $fieldRules[] = 'accepted';
+                    $messages[$key . '.accepted'] = "Please confirm/check {$field->label}.";
+                } else {
+                    $fieldRules[] = 'required';
+                    $messages[$key . '.required'] = "Please provide an answer for {$field->label}.";
+                }
+            } else {
+                $fieldRules[] = 'nullable';
+            }
+
+            if ($field->field_type === 'textarea') {
+                $fieldRules[] = 'string';
+                $fieldRules[] = 'max:1000';
+            } elseif ($field->field_type === 'select' || $field->field_type === 'radio') {
+                $fieldRules[] = 'string';
+                if ($field->options !== null && $field->options !== []) {
+                    $fieldRules[] = 'in:' . implode(',', $field->options);
+                    $messages[$key . '.in'] = "Please select a valid option for {$field->label}.";
+                }
+            } elseif ($field->field_type !== 'checkbox') {
+                $fieldRules[] = 'string';
+                $fieldRules[] = 'max:255';
+            }
+
+            $rules[$key] = $fieldRules;
+        }
+
+        $validated = $this->validate($rules, $messages);
 
         $ticketTypeId = (int) $validated['ticketTypeId'];
         $quantity = (int) $validated['quantity'];
-        $subdivisionId = isset($validated['subdivisionId']) && $validated['subdivisionId'] !== null
-            ? (int) $validated['subdivisionId']
-            : null;
+        $subdivisionId = ($validated['subdivisionId'] ?? null) !== null ? (int) $validated['subdivisionId'] : null;
 
-        $event = $this->event();
-        /** @var Organization $organization */
-        $organization = Organization::query()->findOrFail($event->organization_id);
         /** @var TicketType|null $ticketType */
         $ticketType = $event->ticketTypes()->whereKey($ticketTypeId)->first();
 
@@ -189,7 +241,10 @@ class EventShow extends Component
             }
         }
 
-        $sessionId = session()->getId() ?: Str::uuid()->toString();
+        $sessionId = (string) session()->getId();
+        if ($sessionId === '') {
+            $sessionId = Str::uuid()->toString();
+        }
 
         try {
             $reservation = $reservations->holdOrReuse($ticketType, $quantity, $sessionId, $subdivision?->id);
@@ -204,7 +259,18 @@ class EventShow extends Component
             return;
         }
 
-        $netAmount = round((float) $ticketType->price * $validated['quantity'], 2);
+        $customFieldsData = [];
+        foreach ($formFields as $field) {
+            $val = $this->customFieldResponses[$field->field_key] ?? null;
+            if ($val !== null && $val !== '') {
+                $customFieldsData[$field->field_key] = [
+                    'label' => $field->label,
+                    'value' => $val,
+                ];
+            }
+        }
+
+        $netAmount = round((float) $ticketType->price * $validated['quantity'], precision: 2);
         $platformFee = $this->platformFee($organization);
         $breakdown = PaystackFeeCalculator::breakdown($netAmount, $platformFee);
 
@@ -227,6 +293,7 @@ class EventShow extends Component
                 'subdivision_name' => $subdivision?->name,
                 'platform_fee' => $breakdown['platform_fee'],
                 'reservation_expires_at' => $reservation->expires_at?->toIso8601String(),
+                'custom_fields' => $customFieldsData,
             ],
         ];
 
@@ -245,7 +312,7 @@ class EventShow extends Component
             'key' => app(PayZephyrService::class)->publicKey(),
             'email' => $order->customer_email,
             'amount' => $order->gross_pesewas,
-            'currency' => $order->currency ?: 'GHS',
+            'currency' => $order->currency ?? 'GHS',
             'reference' => $order->reference,
             'subaccount' => $subdivision?->paystack_subaccount_code,
             'metadata' => [
@@ -275,9 +342,11 @@ class EventShow extends Component
             if ($payZephyr->isSuccessful($verification)) {
                 app(OrderFulfillmentService::class)->fulfill($order, $verification);
             }
-        } catch (\Throwable) {
-            // The asynchronous Paystack webhook remains the fail-safe if the
-            // browser loses connectivity during callback verification.
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Paystack browser callback verification deferred to webhook', [
+                'reference' => $reference,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         $this->redirect(route('public.tickets.show', ['order' => $order->reference]), navigate: true);
@@ -324,6 +393,15 @@ class EventShow extends Component
 
         $breakdown = PaystackFeeCalculator::breakdown($subtotal, $this->platformFee($organization));
 
+        $speakers = $event->speakers()->get();
+        $schedules = $event->schedules()->get();
+        $faqs = $event->faqs()->get();
+        $formFields = $event->formFields()->orderBy('sort_order')->get();
+        $customization = is_array($event->customization) ? $event->customization : [];
+        $viewingSpeaker = $this->viewingSpeakerId !== null
+            ? $speakers->firstWhere('id', $this->viewingSpeakerId)
+            : null;
+
         return view('livewire.public.event-show', [
             'organization' => $organization,
             'event' => $event,
@@ -332,11 +410,17 @@ class EventShow extends Component
             'selectedTicketType' => $selectedTicketType,
             'subtotal' => $subtotal,
             'breakdown' => $breakdown,
+            'speakers' => $speakers,
+            'schedules' => $schedules,
+            'faqs' => $faqs,
+            'formFields' => $formFields,
+            'customization' => $customization,
+            'viewingSpeaker' => $viewingSpeaker,
         ]);
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     private function persistOrder(Reservation $reservation, array $attributes): Order
     {
@@ -354,7 +438,7 @@ class EventShow extends Component
     }
 
     /**
-     * @param array<string, mixed> $attributes
+     * @param  array<string, mixed>  $attributes
      */
     private function storeOrder(Reservation $reservation, array $attributes): Order
     {

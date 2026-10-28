@@ -2,18 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Platform\PlatformDashboard;
 use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Organization;
 use App\Models\TicketType;
 use App\Models\User;
-use App\Livewire\Platform\PlatformDashboard;
 use Livewire\Livewire;
 
 test('unauthenticated users cannot access platform super admin console', function () {
-    $this->get(route('platform.dashboard'))
-        ->assertRedirect(route('login'));
+    $this->get(route('platform.dashboard'))->assertRedirect(route('login'));
 });
 
 test('non-super-admin users are rejected with 403 forbidden', function () {
@@ -21,9 +20,7 @@ test('non-super-admin users are rejected with 403 forbidden', function () {
         'role' => 'admin',
     ]);
 
-    $this->actingAs($user)
-        ->get(route('platform.dashboard'))
-        ->assertForbidden();
+    $this->actingAs($user)->get(route('platform.dashboard'))->assertForbidden();
 });
 
 test('super admin can access platform dashboard and view metrics', function () {
@@ -56,12 +53,15 @@ test('super admin can access platform dashboard and view metrics', function () {
         'gross_amount' => 200.00,
     ]);
 
-    Attendee::factory()->count(2)->create([
-        'ticket_type_id' => $tier->id,
-        'order_id' => $order->id,
-    ]);
+    Attendee::factory()
+        ->count(2)
+        ->create([
+            'ticket_type_id' => $tier->id,
+            'order_id' => $order->id,
+        ]);
 
-    $this->actingAs($superAdmin)
+    $this
+        ->actingAs($superAdmin)
         ->get(route('platform.dashboard'))
         ->assertOk()
         ->assertSee('Cross-Tenant Oversight')

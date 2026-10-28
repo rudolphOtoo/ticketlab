@@ -142,9 +142,6 @@ trait ManagesEventSchedules
             return null;
         }
 
-        return EventSchedule::query()
-            ->where('organization_id', $this->organizationId)
-            ->whereKey($id)
-            ->first();
+        return EventSchedule::query()->where('organization_id', $this->organizationId)->whereKey($id)->first();
     }
 }

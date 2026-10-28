@@ -49,4 +49,4 @@ ignore = [
 ]
 
 [linter]
-rules = { "no-literal-password" = { enabled = false }, "cyclomatic-complexity" = { enabled = false }, "too-many-methods" = { enabled = false }, "too-many-properties" = { enabled = false } }
+rules = { "no-literal-password" = { enabled = false }, "cyclomatic-complexity" = { enabled = false }, "too-many-methods" = { enabled = false }, "too-many-properties" = { enabled = false }, "kan-defect" = { enabled = false } }

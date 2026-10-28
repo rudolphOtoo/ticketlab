@@ -34,17 +34,11 @@ class DataExportCentral extends Component
         if ($this->organizationId !== null) {
             $event = null;
             if ($eventId !== null) {
-                $event = Event::query()
-                    ->where('organization_id', $this->organizationId)
-                    ->whereKey($eventId)
-                    ->first();
+                $event = Event::query()->where('organization_id', $this->organizationId)->whereKey($eventId)->first();
             }
 
             if ($event === null) {
-                $event = Event::query()
-                    ->where('organization_id', $this->organizationId)
-                    ->latest('id')
-                    ->first();
+                $event = Event::query()->where('organization_id', $this->organizationId)->latest('id')->first();
             }
 
             $this->selectedEventId = $event?->id;
@@ -64,10 +58,7 @@ class DataExportCentral extends Component
         $customFormFields = Collection::empty();
 
         if ($eventId !== null) {
-            $event = Event::query()
-                ->where('organization_id', $orgId)
-                ->whereKey($eventId)
-                ->first();
+            $event = Event::query()->where('organization_id', $orgId)->whereKey($eventId)->first();
 
             if ($event !== null) {
                 $customFormFields = $event->formFields()->get();
@@ -99,7 +90,9 @@ class DataExportCentral extends Component
                             'Email' => $att->email,
                             'Phone' => $att->phone ?? 'N/A',
                             'Ticket Tier' => $att->ticketType?->name ?? 'N/A',
-                            'Price Paid (GHS)' => $att->ticketType ? number_format((float) $att->ticketType->price, 2) : '0.00',
+                            'Price Paid (GHS)' => $att->ticketType
+                                ? number_format((float) $att->ticketType->price, 2)
+                                : '0.00',
                             'Order Reference' => $att->order?->reference ?? 'N/A',
                             'Status' => $att->checked_in_at !== null ? 'Checked-In' : 'Pending',
                             'Checked In At' => $att->checked_in_at?->format('Y-m-d H:i:s') ?? 'N/A',
@@ -122,7 +115,7 @@ class DataExportCentral extends Component
                 $writer->close();
             },
             $fileName,
-            ['Content-Type' => 'text/csv']
+            ['Content-Type' => 'text/csv'],
         );
     }
 
@@ -204,7 +197,7 @@ class DataExportCentral extends Component
                 echo (string) json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
             },
             $fileName,
-            ['Content-Type' => 'application/json']
+            ['Content-Type' => 'application/json'],
         );
     }
 
@@ -213,10 +206,7 @@ class DataExportCentral extends Component
         $events = Collection::empty();
 
         if ($this->organizationId !== null) {
-            $events = Event::query()
-                ->where('organization_id', $this->organizationId)
-                ->orderByDesc('id')
-                ->get();
+            $events = Event::query()->where('organization_id', $this->organizationId)->orderByDesc('id')->get();
         }
 
         $selectedEvent = null;

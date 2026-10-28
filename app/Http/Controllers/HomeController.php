@@ -25,12 +25,7 @@ class HomeController extends Controller
                         ->where('status', 'published')
                         ->with(['ticketTypes', 'speakers', 'schedules', 'faqs'])
                         ->latest('id')
-                        ->first()
-                        ?? Event::query()
-                            ->where('organization_id', $organization->id)
-                            ->with(['ticketTypes', 'speakers', 'schedules', 'faqs'])
-                            ->latest('id')
-                            ->first();
+                        ->first() ?? Event::query()->where('organization_id', $organization->id)->with(['ticketTypes', 'speakers', 'schedules', 'faqs'])->latest('id')->first();
 
                     // Developer custom tenant template override
                     if (view()->exists("tenants.{$homeSlug}.home")) {

@@ -57,11 +57,16 @@ test('org admin can update branding, theme preset, and hero copy', function () {
         ->assertHasNoErrors();
 
     $event->refresh();
-    expect($event->customization)->toBeArray()
-        ->and($event->customization['headline'])->toBe('Empowering 5,000 Next-Gen Creators')
-        ->and($event->customization['tagline'])->toBe('The ultimate technology summit in West Africa.')
-        ->and($event->customization['theme_preset'])->toBe('royal')
-        ->and($event->customization['accent_hex'])->toBe('#6366f1');
+    expect($event->customization)
+        ->toBeArray()
+        ->and($event->customization['headline'])
+        ->toBe('Empowering 5,000 Next-Gen Creators')
+        ->and($event->customization['tagline'])
+        ->toBe('The ultimate technology summit in West Africa.')
+        ->and($event->customization['theme_preset'])
+        ->toBe('royal')
+        ->and($event->customization['accent_hex'])
+        ->toBe('#6366f1');
 });
 
 test('org admin can add, edit, and delete speakers', function () {
@@ -100,8 +105,7 @@ test('org admin can add, edit, and delete speakers', function () {
 
     expect(EventSpeaker::query()->where('name', 'Dr. Angela Osei')->exists())->toBeTrue();
     $speaker = EventSpeaker::query()->where('name', 'Dr. Angela Osei')->first();
-    expect($speaker->organization_id)->toBe($org->id)
-        ->and($speaker->is_featured)->toBeTrue();
+    expect($speaker->organization_id)->toBe($org->id)->and($speaker->is_featured)->toBeTrue();
 
     // Edit Speaker
     Livewire::actingAs($user)
@@ -159,8 +163,7 @@ test('org admin can manage program schedule sessions', function () {
 
     expect(EventSchedule::query()->where('session_title', 'Opening Keynote & Welcome')->exists())->toBeTrue();
     $session = EventSchedule::query()->where('session_title', 'Opening Keynote & Welcome')->first();
-    expect($session->organization_id)->toBe($org->id)
-        ->and($session->day_label)->toBe('Day 1');
+    expect($session->organization_id)->toBe($org->id)->and($session->day_label)->toBe('Day 1');
 
     // Delete Session
     Livewire::actingAs($user)
@@ -206,10 +209,14 @@ test('org admin can add dynamic checkout questionnaire fields with auto-slug key
 
     expect(EventFormField::query()->where('label', 'Bus Pickup Location')->exists())->toBeTrue();
     $field = EventFormField::query()->where('label', 'Bus Pickup Location')->first();
-    expect($field->field_key)->toBe('bus_pickup_location')
-        ->and($field->input_type)->toBe('select')
-        ->and($field->options)->toContain('Circle Station', 'Madina Zongo', 'Kasoa Toll Booth')
-        ->and($field->is_required)->toBeTrue();
+    expect($field->field_key)
+        ->toBe('bus_pickup_location')
+        ->and($field->input_type)
+        ->toBe('select')
+        ->and($field->options)
+        ->toContain('Circle Station', 'Madina Zongo', 'Kasoa Toll Booth')
+        ->and($field->is_required)
+        ->toBeTrue();
 });
 
 test('org admin can manage FAQs', function () {
@@ -247,13 +254,10 @@ test('org admin can manage FAQs', function () {
 
     expect(EventFaq::query()->where('question', 'Can I transfer my pass to a friend?')->exists())->toBeTrue();
     $faq = EventFaq::query()->where('question', 'Can I transfer my pass to a friend?')->first();
-    expect($faq->organization_id)->toBe($org->id)
-        ->and($faq->category)->toBe('Tickets');
+    expect($faq->organization_id)->toBe($org->id)->and($faq->category)->toBe('Tickets');
 
     // Delete FAQ
-    Livewire::actingAs($user)
-        ->test(EventCustomizer::class, ['eventId' => $event->id])
-        ->call('deleteFaq', $faq->id);
+    Livewire::actingAs($user)->test(EventCustomizer::class, ['eventId' => $event->id])->call('deleteFaq', $faq->id);
 
     expect(EventFaq::query()->whereKey($faq->id)->exists())->toBeFalse();
 });
@@ -286,9 +290,7 @@ test('multi-tenant isolation prevents admin from seeing or editing another tenan
     ]);
 
     // Admin A tries to edit or delete Speaker B: fails silently / unaffected
-    Livewire::actingAs($adminA)
-        ->test(EventCustomizer::class)
-        ->call('deleteSpeaker', $speakerB->id);
+    Livewire::actingAs($adminA)->test(EventCustomizer::class)->call('deleteSpeaker', $speakerB->id);
 
     expect(EventSpeaker::query()->whereKey($speakerB->id)->exists())->toBeTrue();
 });
