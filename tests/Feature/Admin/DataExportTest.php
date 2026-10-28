@@ -132,3 +132,18 @@ test('json backup export generates complete schema footprint of the tenant', fun
     expect($data['events'][0]['title'])->toBe('Annual Convocation');
     expect($data['events'][0]['ticket_types'][0]['name'])->toBe('Standard Pass');
 });
+
+test('data export fails closed with 403 when user has no organization context', function () {
+    $userWithoutOrg = User::factory()->create([
+        'organization_id' => null,
+    ]);
+
+    $component = Livewire::actingAs($userWithoutOrg)
+        ->test(DataExportCentral::class);
+
+    expect(fn() => $component->instance()->exportAttendeeCsv())
+        ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+
+    expect(fn() => $component->instance()->exportJsonBackup())
+        ->toThrow(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+});

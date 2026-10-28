@@ -32,6 +32,14 @@ class PlatformDashboard extends Component
 
     public int $paidTicketsCount = 0;
 
+    public function mount(): void
+    {
+        $user = auth()->user();
+        if ($user === null || !$user->isSuperAdmin()) {
+            abort(403, 'Platform Super Admin clearance required.');
+        }
+    }
+
     public function viewTenant(int $tenantId): void
     {
         $this->selectedTenantId = $tenantId;

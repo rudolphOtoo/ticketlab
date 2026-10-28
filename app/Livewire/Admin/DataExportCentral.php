@@ -53,13 +53,17 @@ class DataExportCentral extends Component
 
     public function exportAttendeeCsv(): StreamedResponse
     {
+        if ($this->organizationId === null) {
+            abort(403, 'Unauthorized organization context.');
+        }
+
         $orgId = $this->organizationId;
         $eventId = $this->selectedEventId;
 
         $event = null;
         $customFormFields = Collection::empty();
 
-        if ($eventId !== null && $orgId !== null) {
+        if ($eventId !== null) {
             $event = Event::query()
                 ->where('organization_id', $orgId)
                 ->whereKey($eventId)
@@ -67,6 +71,8 @@ class DataExportCentral extends Component
 
             if ($event !== null) {
                 $customFormFields = $event->formFields()->get();
+            } else {
+                $eventId = null;
             }
         }
 
@@ -79,9 +85,7 @@ class DataExportCentral extends Component
                 $query = Attendee::query()
                     ->with(['ticketType', 'order', 'subdivision'])
                     ->whereHas('ticketType.event', function (Builder $q) use ($orgId, $eventId): void {
-                        if ($orgId !== null) {
-                            $q->where('organization_id', $orgId);
-                        }
+                        $q->where('organization_id', $orgId);
                         if ($eventId !== null) {
                             $q->where('id', $eventId);
                         }
@@ -124,22 +128,22 @@ class DataExportCentral extends Component
 
     public function exportJsonBackup(): StreamedResponse
     {
-        $orgId = $this->organizationId;
-        $org = Organization::query()->find($orgId);
+        if ($this->organizationId === null) {
+            abort(403, 'Unauthorized organization context.');
+        }
 
-        $orgName = $org?->slug ?? 'organization';
+        $orgId = $this->organizationId;
+        $org = Organization::query()->findOrFail($orgId);
+
+        $orgName = $org->slug;
         $fileName = $orgName . '_complete_backup_' . now()->format('Y_m_d_His') . '.json';
 
         return response()->streamDownload(
             function () use ($orgId, $org): void {
-                $events = Collection::empty();
-
-                if ($orgId !== null) {
-                    $events = Event::query()
-                        ->where('organization_id', $orgId)
-                        ->with(['ticketTypes', 'speakers', 'schedules', 'faqs', 'formFields'])
-                        ->get();
-                }
+                $events = Event::query()
+                    ->where('organization_id', $orgId)
+                    ->with(['ticketTypes', 'speakers', 'schedules', 'faqs', 'formFields'])
+                    ->get();
 
                 $payload = [
                     'generator' => 'TicketLab Data Sovereignty Engine v1.0',
