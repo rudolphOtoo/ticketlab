@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use Database\Factories\AttendeeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Attendee extends Model
 {
     use BelongsToOrganization;
+    /** @use HasFactory<AttendeeFactory> */
     use HasFactory;
+
+    protected static function newFactory(): AttendeeFactory
+    {
+        return AttendeeFactory::new();
+    }
 
     protected $fillable = [
         'order_id',

@@ -5,12 +5,21 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use Database\Factories\EventSpeakerFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EventSpeaker extends Model
 {
+    /** @use HasFactory<EventSpeakerFactory> */
+    use HasFactory;
+
+    protected static function newFactory(): EventSpeakerFactory
+    {
+        return EventSpeakerFactory::new();
+    }
+
     use BelongsToOrganization;
     use HasFactory;
 
@@ -19,6 +28,8 @@ class EventSpeaker extends Model
         'event_id',
         'name',
         'title_role',
+        'title',
+        'organization',
         'topic',
         'bio',
         'photo_path',
@@ -34,6 +45,16 @@ class EventSpeaker extends Model
             'is_featured' => 'boolean',
             'social_links' => 'array',
         ];
+    }
+
+    public function getTitleAttribute(): ?string
+    {
+        return $this->attributes['title_role'] ?? null;
+    }
+
+    public function setTitleAttribute(?string $value): void
+    {
+        $this->attributes['title_role'] = $value;
     }
 
     public function event(): BelongsTo

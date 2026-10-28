@@ -12,12 +12,13 @@ use Illuminate\Support\Str;
 class AttendeeIssuer
 {
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function issue(Order $order, TicketType $ticketType, int $quantity, array $metadata): void
     {
         $attendeeNames = $metadata['attendee_names'] ?? [];
         $attendeeEmails = $metadata['attendee_emails'] ?? [];
+        $customFields = $metadata['custom_fields'] ?? $metadata['form_responses'] ?? [];
 
         for ($index = 0; $index < $quantity; $index++) {
             $name =
@@ -35,8 +36,10 @@ class AttendeeIssuer
                 'email' => $email,
                 'phone' => $order->customer_phone,
                 'qr_code_hash' => $this->generateQrHash($order, $index),
+                'custom_fields' => $metadata['custom_fields'] ?? null,
                 'checked_in_at' => null,
                 'checked_in_by' => null,
+                'custom_fields' => is_array($customFields) ? $customFields : null,
             ]);
         }
     }

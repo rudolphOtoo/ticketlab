@@ -75,8 +75,8 @@ jobs:
       - name: Security Audit - NPM
         run: npm audit --audit-level=moderate || true
 
-      - name: Code Style Check (Laravel Pint)
-        run: vendor/bin/pint --test
+      - name: Code Style Check (Mago)
+        run: vendor/bin/mago format --check
 
       - name: Static Analysis (PHPStan/Larastan)
         run: composer types:check || vendor/bin/phpstan analyse --no-progress

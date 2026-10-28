@@ -14,6 +14,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -21,6 +22,7 @@ use Livewire\Component;
 #[Title('Walk-In Cash Desk Register')]
 class CashDeskTerminal extends Component
 {
+    #[Locked]
     public ?int $eventId = null;
 
     public ?int $selectedTierId = null;
@@ -49,7 +51,7 @@ class CashDeskTerminal extends Component
 
         $event = $this->getActiveEvent();
         if ($event) {
-            $defaultTier = TicketType::where('event_id', $event->id)->first();
+            $defaultTier = $event->ticketTypes()->first();
             if ($defaultTier) {
                 $this->selectedTierId = $defaultTier->id;
                 $this->cashTendered = (string) $defaultTier->price;
@@ -120,11 +122,12 @@ class CashDeskTerminal extends Component
 
     public function calculateTotal(): float
     {
-        if (!$this->selectedTierId) {
+        $tierId = $this->selectedTierId;
+        if ($tierId === null) {
             return 0.00;
         }
 
-        $tier = TicketType::find($this->selectedTierId);
+        $tier = $this->getActiveEvent()?->ticketTypes()->find($tierId);
 
         return $tier ? (float) $tier->price * $this->quantity : 0.00;
     }
@@ -168,7 +171,12 @@ class CashDeskTerminal extends Component
         }
 
         $result = DB::transaction(function () use ($event, $total, $tendered) {
-            $tier = TicketType::where('id', $this->selectedTierId)->lockForUpdate()->first();
+            // Pin the tier to the active event so a tampered tier id cannot sell another tenant's stock.
+            $tier = TicketType::query()
+                ->whereKey($this->selectedTierId)
+                ->where('event_id', $event->id)
+                ->lockForUpdate()
+                ->first();
 
             if (!$tier || $tier->available_quantity < $this->quantity) {
                 return [
@@ -185,7 +193,7 @@ class CashDeskTerminal extends Component
             $customerName = trim($this->attendeeName) !== '' ? trim($this->attendeeName) : 'Walk-In Guest';
             $customerPhone = trim($this->attendeePhone) !== '' ? trim($this->attendeePhone) : 'N/A';
             $customerEmail = 'walkin_' . strtolower(bin2hex(random_bytes(4))) . '@cashdesk.local';
-            $reference = 'TL-ORD-CASH-' . strtoupper(bin2hex(random_bytes(4)));
+            $reference = 'TL-ORD-CASH-' . strtoupper(bin2hex(random_bytes(8)));
 
             $order = Order::create([
                 'organization_id' => $orgId,
@@ -264,14 +272,18 @@ class CashDeskTerminal extends Component
 
     private function getActiveEvent(): ?Event
     {
-        return $this->eventId ? Event::find($this->eventId) : Event::latest()->first();
+        $orgId = auth()->user()?->organization_id;
+
+        $events = Event::query()->when($orgId, static fn($q) => $q->where('organization_id', $orgId));
+
+        return $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
     }
 
     public function render(): View
     {
         $event = $this->getActiveEvent();
         /** @var Collection<int, TicketType> $tiers */
-        $tiers = $event ? TicketType::where('event_id', $event->id)->get() : collect();
+        $tiers = $event ? $event->ticketTypes()->get() : collect();
 
         return view('livewire.ops.cash-desk-terminal', [
             'event' => $event,

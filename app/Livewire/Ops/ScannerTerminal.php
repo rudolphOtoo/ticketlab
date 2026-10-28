@@ -10,6 +10,7 @@ use App\Models\Subdivision;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -17,6 +18,7 @@ use Livewire\Component;
 #[Title('Gate Door Scanner Terminal')]
 class ScannerTerminal extends Component
 {
+    #[Locked]
     public ?int $eventId = null;
 
     public string $manualSearch = '';
@@ -121,15 +123,21 @@ class ScannerTerminal extends Component
 
     public function render(): View
     {
-        $event = $this->eventId ? Event::find($this->eventId) : Event::latest()->first();
+        $user = auth()->user();
+        $orgId = $user?->organization_id;
+        $forOrg = static fn($q) => $q->where('organization_id', $orgId);
 
-        $activeSubdivision = auth()->user()?->subdivision_id
-            ? Subdivision::find(auth()->user()->subdivision_id)
-            : Subdivision::first();
+        $events = Event::query()->when($orgId, $forOrg);
+        $event = $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
+
+        $activeSubdivision = $user?->subdivision_id
+            ? Subdivision::find($user->subdivision_id)
+            : Subdivision::query()->when($orgId, $forOrg)->first();
 
         // Calculate gate turnout counts
-        $totalCheckedIn = Attendee::whereNotNull('checked_in_at')->count();
-        $totalExpected = Attendee::count();
+        $attendees = Attendee::query()->when($orgId, $forOrg);
+        $totalCheckedIn = (clone $attendees)->whereNotNull('checked_in_at')->count();
+        $totalExpected = $attendees->count();
         $turnoutPercent = $totalExpected > 0 ? (int) round(($totalCheckedIn / $totalExpected) * 100) : 0;
 
         return view('livewire.ops.scanner-terminal', [

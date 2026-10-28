@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 use App\Livewire\Admin\AttendeeRoster;
 use App\Livewire\Admin\DailySessionLedger;
+use App\Livewire\Admin\DataExportCentral;
+use App\Livewire\Admin\EventCustomizer;
+use App\Livewire\Admin\MarketingStudio;
+use App\Livewire\Admin\TicketManager;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
+use App\Livewire\Platform\PlatformDashboard;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,7 +22,9 @@ use Illuminate\Support\Facades\Route;
  | daily session closure PDF statements, and scoped attendee rosters.
  */
 
-Route::middleware(['auth'])
+Route::middleware(['auth', 'super_admin'])->get('platform', PlatformDashboard::class)->name('platform.dashboard');
+
+Route::middleware(['auth', 'subdivision.access:ops'])
     ->prefix('ops')
     ->name('ops.')
     ->group(function () {
@@ -42,4 +49,16 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Scoped attendee rosters & Excel export
         Route::get('attendees', AttendeeRoster::class)->name('attendees');
+
+        // Self-service ticket category & pricing manager
+        Route::get('tickets', TicketManager::class)->name('tickets');
+
+        // Non-coder visual event customizer studio
+        Route::get('studio', EventCustomizer::class)->name('studio');
+
+        // Marketing studio: promotional flyers & vector QR studio
+        Route::get('studio/marketing', MarketingStudio::class)->name('studio.marketing');
+
+        // Anti-vendor-lock-in data export & sovereignty central
+        Route::get('exports', DataExportCentral::class)->name('exports');
     });

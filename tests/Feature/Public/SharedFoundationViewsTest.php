@@ -9,9 +9,9 @@ test('welcome homepage renders cleanly with serene studio branding', function ()
     $response = $this->get('/');
 
     $response->assertOk();
-    $response->assertSee('High-Speed Ticketing');
-    $response->assertSee('Zero-Overselling Engine');
-    $response->assertSee('Mobile Door Scanner');
+    $response->assertSee('Where memorable gatherings begin.');
+    $response->assertSee('Explore Upcoming Events');
+    $response->assertSee('Card Friendly');
     $response->assertDontSee("Let's get started");
 });
 

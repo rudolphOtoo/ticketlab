@@ -25,26 +25,49 @@ new class extends Component {
     }
 }; ?>
 
-<flux:modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg">
-    <form method="POST" wire:submit="deleteUser" class="space-y-6">
+<x-ui.modal name="confirm-user-deletion" maxWidth="md">
+    <div class="space-y-4">
         <div>
-            <flux:heading size="lg">{{ __('Are you sure you want to delete your account?') }}</flux:heading>
-
-            <flux:subheading>
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">
+                {{ __('Are you sure you want to delete your account?') }}
+            </h3>
+            <p class="mt-1.5 text-xs leading-relaxed text-[var(--text-secondary)]">
                 {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
-            </flux:subheading>
+            </p>
         </div>
 
-        <flux:input wire:model="password" :label="__('Password')" type="password" viewable />
+        <form method="POST" wire:submit="deleteUser" class="space-y-4">
+            <div class="flex flex-col gap-1.5">
+                <label for="delete_password" class="text-xs font-medium text-[var(--text-secondary)]">{{ __('Password') }}</label>
+                <input
+                    id="delete_password"
+                    wire:model="password"
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-hidden transition focus:border-[var(--border-focused)] focus:bg-[var(--bg-surface)]"
+                />
+                @error('password')
+                    <p class="text-xs text-[var(--status-danger)]">{{ $message }}</p>
+                @enderror
+            </div>
 
-        <div class="flex justify-end space-x-2 rtl:space-x-reverse">
-            <flux:modal.close>
-                <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
-            </flux:modal.close>
-
-            <flux:button variant="danger" type="submit" data-test="confirm-delete-user-button">
-                {{ __('Delete account') }}
-            </flux:button>
-        </div>
-    </form>
-</flux:modal>
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button
+                    type="button"
+                    x-on:click="$dispatch('close-modal', 'confirm-user-deletion')"
+                    class="cursor-pointer rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition"
+                >
+                    {{ __('Cancel') }}
+                </button>
+                <button
+                    type="submit"
+                    class="cursor-pointer rounded-lg bg-[var(--status-danger)] px-3.5 py-2 text-xs font-semibold text-white hover:opacity-90 transition"
+                    data-test="confirm-delete-user-button"
+                >
+                    {{ __('Delete account') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</x-ui.modal>

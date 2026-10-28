@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,7 +13,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Event extends Model
 {
     use BelongsToOrganization;
+    /** @use HasFactory<EventFactory> */
     use HasFactory;
+
+    protected static function newFactory(): EventFactory
+    {
+        return EventFactory::new();
+    }
 
     protected $fillable = [
         'organization_id',
@@ -24,6 +31,7 @@ class Event extends Model
         'start_at',
         'end_at',
         'status',
+        'is_public',
         'customization',
     ];
 
@@ -32,6 +40,7 @@ class Event extends Model
         return [
             'start_at' => 'datetime',
             'end_at' => 'datetime',
+            'is_public' => 'boolean',
             'customization' => 'array',
         ];
     }

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Models\Concerns\BelongsToOrganization;
+use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Order extends Model
 {
     use BelongsToOrganization;
+    /** @use HasFactory<OrderFactory> */
     use HasFactory;
+
+    protected static function newFactory(): OrderFactory
+    {
+        return OrderFactory::new();
+    }
 
     protected $fillable = [
         'organization_id',
