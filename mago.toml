@@ -9,6 +9,7 @@ includes = [
     "vendor/laravel/framework/src/Illuminate/**/*.php",
     "vendor/bacon/bacon-qr-code/src/**/*.php"
 ]
+excludes = ["bootstrap/cache/**"]
 
 [formatter]
 print-width = 120
@@ -49,4 +50,7 @@ ignore = [
 ]
 
 [linter]
-rules = { "no-literal-password" = { enabled = false }, "cyclomatic-complexity" = { enabled = false }, "too-many-methods" = { enabled = false }, "too-many-properties" = { enabled = false } }
+# literal-named-argument: named args would couple us to vendor parameter names, which Laravel does not treat as API.
+# halstead: long scenario tests and the dev seeder are linear by design; app code stays under the threshold.
+# prefer-static-closure: Factory::state() binds closures to the factory, which a static closure cannot accept.
+rules = { "no-literal-password" = { enabled = false }, "cyclomatic-complexity" = { enabled = false }, "too-many-methods" = { enabled = false }, "too-many-properties" = { enabled = false }, "literal-named-argument" = { enabled = false }, "halstead" = { exclude = ["tests/", "database/seeders/"] }, "prefer-static-closure" = { exclude = ["database/factories/"] } }

@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace App\Models\Concerns;
 
 use App\Models\Organization;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Stancl\Tenancy\Database\Concerns\BelongsToTenant;
 
+/**
+ * Tenant ownership is explicit: every org-scoped query must constrain organization_id itself.
+ *
+ * @phpstan-require-extends Model
+ */
 trait BelongsToOrganization
 {
-    use BelongsToTenant;
-
-    public function getTenantIdColumn(): string
-    {
-        return 'organization_id';
-    }
-
+    /**
+     * @return BelongsTo<Organization, $this>
+     */
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class, 'organization_id');

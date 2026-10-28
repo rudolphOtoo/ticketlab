@@ -12,11 +12,13 @@ use App\Models\Order;
 use App\Models\SessionLedger;
 use App\Models\Subdivision;
 use App\Models\TicketType;
+use App\Models\User;
 use App\Services\Ledger\SessionReportService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -25,6 +27,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 #[Title('Financial Closeout & Attendance')]
 class DailySessionLedger extends Component
 {
+    #[Locked]
     public ?int $eventId = null;
 
     public ?int $activeSessionId = null;
@@ -33,16 +36,17 @@ class DailySessionLedger extends Component
     {
         $this->eventId = $eventId;
 
-        $orgId = auth()->user()?->organization_id;
-
-        $session = SessionLedger::query()
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
-            ->latest('opened_at')
-            ->first();
+        $session = $this->sessions()->latest('opened_at')->first();
 
         if (!$session) {
+            $orgId = $this->orgId() ?? $this->getActiveEvent()?->organization_id;
+
+            if ($orgId === null) {
+                return;
+            }
+
             $session = SessionLedger::create([
-                'organization_id' => $orgId ?? 1,
+                'organization_id' => $orgId,
                 'session_name' => 'Session Day 1 — ' . now()->format('M d, Y'),
                 'opened_at' => now(),
             ]);
@@ -53,66 +57,52 @@ class DailySessionLedger extends Component
 
     public function lockSession(SessionReportService $reportService): void
     {
-        $session = SessionLedger::find($this->activeSessionId);
-        if (!$session || $session->isLocked()) {
-            return;
-        }
-
         $event = $this->getActiveEvent();
-        $orgId = auth()->user()->organization_id ?? $session->organization_id;
+        $capacityTotal = $this->capacityTotal($event);
 
-        $totalOnline = (float) Order::where('payment_method', '!=', PaymentMethod::PhysicalCash->value)
-            ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
-            ->sum('gross_amount');
+        $locked = DB::transaction(function () use ($reportService, $event, $capacityTotal): bool {
+            $session = $this->sessions()->whereKey($this->activeSessionId)->lockForUpdate()->first();
 
-        $totalCash = (float) Order::where('payment_method', PaymentMethod::PhysicalCash->value)
-            ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
-            ->sum('gross_amount');
+            // Re-checked under the row lock so two concurrent closeouts cannot both freeze figures.
+            if (!$session || $session->isLocked()) {
+                return false;
+            }
 
-        $totalAttendees = Attendee::whereNotNull('checked_in_at')
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
-            ->count();
+            $orgId = $session->organization_id;
+            $totals = $this->ledgerTotals($orgId);
 
-        $capacityTotal = (int) TicketType::when($event, static fn($q) => $q->where('event_id', $event->id))->sum(
-            'total_capacity',
-        );
+            $zoneBreakdown = Subdivision::query()
+                ->where('organization_id', $orgId)
+                ->withCount(['attendees as admitted' => static fn($q) => $q->whereNotNull('checked_in_at')])
+                ->get()
+                ->map(static fn(Subdivision $sub) => [
+                    'name' => $sub->name,
+                    'code' => $sub->slug,
+                    'admitted' => (int) $sub->getAttribute('admitted'),
+                ])
+                ->all();
 
-        $subdivisions = Subdivision::when($orgId, static fn($q) => $q->where('organization_id', $orgId))->get();
-        $zoneBreakdown = $subdivisions->map(static fn(Subdivision $sub) => [
-            'name' => $sub->name,
-            'code' => $sub->slug,
-            'admitted' => Attendee::where('subdivision_id', $sub->id)->whereNotNull('checked_in_at')->count(),
-        ])->toArray();
-
-        DB::transaction(static function () use (
-            $session,
-            $totalOnline,
-            $totalCash,
-            $totalAttendees,
-            $reportService,
-            $event,
-            $capacityTotal,
-            $zoneBreakdown,
-        ): void {
             $session->update([
                 'locked_at' => now(),
                 'locked_by' => auth()->id(),
-                'total_online_momo' => $totalOnline,
-                'total_cash' => $totalCash,
-                'total_attendees' => $totalAttendees,
+                'total_online_momo' => $totals['online'],
+                'total_cash' => $totals['cash'],
+                'total_attendees' => $totals['checked_in'],
             ]);
 
             $reportService->generateReport($session, $event, $capacityTotal, $zoneBreakdown);
+
+            return true;
         });
 
-        $this->dispatch('session-locked');
+        if ($locked) {
+            $this->dispatch('session-locked');
+        }
     }
 
     public function downloadPdfReport(SessionReportService $reportService): ?StreamedResponse
     {
-        $session = SessionLedger::find($this->activeSessionId);
+        $session = $this->activeSession();
         if (!$session) {
             return null;
         }
@@ -120,49 +110,88 @@ class DailySessionLedger extends Component
         return $reportService->downloadReport($session);
     }
 
+    private function orgId(): ?int
+    {
+        $user = auth()->user();
+
+        return $user instanceof User ? $user->organization_id : null;
+    }
+
+    /**
+     * Session ledgers visible to the current user. `activeSessionId` is client-writable,
+     * so every lookup must go through this tenant scope.
+     *
+     * @return Builder<SessionLedger>
+     */
+    private function sessions(): Builder
+    {
+        return SessionLedger::query()->when($this->orgId(), static fn($q, $orgId) => $q->where(
+            'organization_id',
+            $orgId,
+        ));
+    }
+
+    private function activeSession(): ?SessionLedger
+    {
+        return $this->activeSessionId === null ? null : $this->sessions()->find($this->activeSessionId);
+    }
+
     private function getActiveEvent(): ?Event
     {
-        return $this->eventId ? Event::find($this->eventId) : Event::latest()->first();
+        $events = Event::query()->when($this->orgId(), static fn($q, $orgId) => $q->where('organization_id', $orgId));
+
+        return $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
+    }
+
+    private function capacityTotal(?Event $event): int
+    {
+        return $event ? (int) TicketType::query()->where('event_id', $event->id)->sum('total_capacity') : 0;
+    }
+
+    /**
+     * @return array{online: float, cash: float, checked_in: int}
+     */
+    private function ledgerTotals(?int $orgId): array
+    {
+        $paidOrders = Order::query()
+            ->where('payment_status', OrderStatus::Paid->value)
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId));
+
+        return [
+            'online' => (float) (clone $paidOrders)->where(
+                'payment_method',
+                '!=',
+                PaymentMethod::PhysicalCash->value,
+            )->sum('gross_amount'),
+            'cash' => (float) (clone $paidOrders)->where('payment_method', PaymentMethod::PhysicalCash->value)->sum(
+                'gross_amount',
+            ),
+            'checked_in' => Attendee::query()
+                ->whereNotNull('checked_in_at')
+                ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+                ->count(),
+        ];
     }
 
     public function render(): View
     {
         $event = $this->getActiveEvent();
-        $orgId = auth()->user()?->organization_id;
+        $orgId = $this->orgId();
 
-        $session = SessionLedger::find($this->activeSessionId);
+        $totals = $this->ledgerTotals($orgId);
+        $turnoutCount = $totals['checked_in'];
 
-        /** @var Collection<int, Subdivision> $subdivisions */
-        $subdivisions = Subdivision::query()->when($orgId, static fn($q) => $q->where(
-            'organization_id',
-            $orgId,
-        ))->get();
-
-        // Calculate actual totals
-        $totalOnlinePaystack = (float) Order::where('payment_method', '!=', PaymentMethod::PhysicalCash->value)
-            ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
-            ->sum('gross_amount');
-
-        $totalGateCash = (float) Order::where('payment_method', PaymentMethod::PhysicalCash->value)
-            ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
-            ->sum('gross_amount');
-
-        $grossRevenue = $totalOnlinePaystack + $totalGateCash;
-
-        $turnoutCount = Attendee::whereNotNull('checked_in_at')
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
-            ->count();
-
-        $capacityTotal = (int) TicketType::when($event, static fn($q) => $q->where('event_id', $event->id))->sum(
-            'total_capacity',
-        );
+        $capacityTotal = $this->capacityTotal($event);
         if ($capacityTotal === 0) {
-            $capacityTotal = max(1, Attendee::count());
+            $capacityTotal = max(
+                1,
+                Attendee::query()
+                    ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+                    ->count(),
+            );
         }
 
-        $turnoutRate = $capacityTotal > 0 ? (int) round(($turnoutCount / $capacityTotal) * 100) : 0;
+        $turnoutRate = (int) round(($turnoutCount / $capacityTotal) * 100);
 
         $liveGateFeed = Attendee::with(['subdivision', 'ticketType'])
             ->whereNotNull('checked_in_at')
@@ -173,11 +202,10 @@ class DailySessionLedger extends Component
 
         return view('livewire.admin.daily-session-ledger', [
             'event' => $event,
-            'session' => $session,
-            'subdivisions' => $subdivisions,
-            'grossRevenue' => $grossRevenue,
-            'totalOnlinePaystack' => $totalOnlinePaystack,
-            'totalGateCash' => $totalGateCash,
+            'session' => $this->activeSession(),
+            'grossRevenue' => $totals['online'] + $totals['cash'],
+            'totalOnlinePaystack' => $totals['online'],
+            'totalGateCash' => $totals['cash'],
             'turnoutCount' => $turnoutCount,
             'capacityTotal' => $capacityTotal,
             'turnoutRate' => $turnoutRate,

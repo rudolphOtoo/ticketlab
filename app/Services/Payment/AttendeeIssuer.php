@@ -44,7 +44,7 @@ class AttendeeIssuer
     private function generateQrHash(Order $order, int $index): string
     {
         return hash('sha256', implode('|', [
-            (string) $order->reference,
+            $order->reference,
             (string) $order->getKey(),
             (string) $index,
             Str::uuid()->toString(),

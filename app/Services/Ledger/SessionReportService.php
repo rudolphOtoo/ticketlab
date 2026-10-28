@@ -14,6 +14,8 @@ class SessionReportService
 {
     /**
      * Generate and store an immutable PDF audit snapshot for the given session ledger.
+     *
+     * @param array<int, array{name: string, code: string, admitted: int}> $zoneBreakdown
      */
     public function generateReport(
         SessionLedger $ledger,

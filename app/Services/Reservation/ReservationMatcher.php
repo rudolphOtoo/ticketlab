@@ -17,7 +17,6 @@ class ReservationMatcher
         if (
             $reservation === null
             || $reservation->status !== ReservationStatus::Active
-            || $reservation->expires_at === null
             || $reservation->expires_at->isPast()
         ) {
             throw new OrderFulfillmentException(

@@ -25,7 +25,7 @@ test('authenticated usher can view scanner terminal with telemetry and viewfinde
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Usher Kwame',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -46,7 +46,7 @@ test('scanner terminal validates valid qr pass atomically and stamps check in', 
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Usher Kwame',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -126,7 +126,7 @@ test('scanner terminal detects duplicate scan and warns with prior timestamp', f
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Usher Kwame',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -197,7 +197,7 @@ test('scanner terminal rejects invalid or forged qr hash', function () {
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Usher Kwame',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -223,7 +223,7 @@ test('scanner terminal enforces tenant isolation and rejects pass from another o
         'slug' => 'org-beta-' . uniqid(),
     ]);
 
-    $userA = User::create([
+    $userA = User::factory()->create([
         'name' => 'Usher Alpha',
         'email' => 'usher_a_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),

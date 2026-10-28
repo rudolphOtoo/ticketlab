@@ -48,22 +48,20 @@ class DatabaseSeeder extends Seeder
 
         // 3. Create Users
         // Admin User (Cross-Zone Access)
-        User::firstOrCreate(['email' => 'admin@ticketlab.test'], [
+        $admin = User::firstOrCreate(['email' => 'admin@ticketlab.test'], [
             'name' => 'Admin User',
             'password' => Hash::make('password'),
-            'organization_id' => $org->id,
-            'subdivision_id' => null, // Superadmin access across all zones
-            'email_verified_at' => now(),
         ]);
+        $admin->assignMembership('admin', $org->id); // No subdivision: access across all zones
+        $admin->markEmailAsVerified();
 
         // Door Usher User (Scoped to Kumasi)
-        User::firstOrCreate(['email' => 'usher@summit.org'], [
+        $usher = User::firstOrCreate(['email' => 'usher@summit.org'], [
             'name' => 'Kwame Mensah (Lead Usher)',
             'password' => Hash::make('password'),
-            'organization_id' => $org->id,
-            'subdivision_id' => $kumasi->id,
-            'email_verified_at' => now(),
         ]);
+        $usher->assignMembership('usher', $org->id, $kumasi->id);
+        $usher->markEmailAsVerified();
 
         // 4. Create Active Event
         $event = Event::firstOrCreate(['organization_id' => $org->id, 'slug' => 'summit-2026'], [

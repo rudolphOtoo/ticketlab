@@ -66,7 +66,7 @@ docs: update README with setup instructions
 
 ## Code Standards
 
-- **PHP**: Follow PSR-12 standards, enforced by Laravel Pint
+- **PHP**: Follow PSR-12 standards with `declare(strict_types=1);`, enforced by Mago (`composer lint`)
 - **Type Safety**: Use type hints, return types, and proper PHPDoc where appropriate
 - **Testing**: Write tests for new features and bug fixes
 - **Security**: Never commit secrets, API keys, or credentials. Use environment variables

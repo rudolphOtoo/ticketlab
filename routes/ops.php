@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
  | daily session closure PDF statements, and scoped attendee rosters.
  */
 
-Route::middleware(['auth'])
+Route::middleware(['auth', 'subdivision.access:ops'])
     ->prefix('ops')
     ->name('ops.')
     ->group(function () {
@@ -33,9 +33,7 @@ Route::middleware(['auth', 'subdivision.access'])
     ->name('admin.')
     ->group(function () {
         // Root admin route redirects to dashboard
-        Route::get('/', function () {
-            return redirect()->route('dashboard');
-        })->name('index');
+        Route::redirect('/', '/dashboard')->name('index');
 
         // Daily session ledger declaration & lockdown
         Route::get('sessions', DailySessionLedger::class)->name('sessions');

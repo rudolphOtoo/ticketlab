@@ -48,7 +48,7 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
     ]);
 
     // 2. Establish Role Users
-    $superadmin = User::create([
+    $superadmin = User::factory()->create([
         'name' => 'General Overseer Admin',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -57,7 +57,7 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
         'subdivision_id' => null,
     ]);
 
-    $kumasiAdmin = User::create([
+    $kumasiAdmin = User::factory()->create([
         'name' => 'Kumasi Lead Admin',
         'email' => 'kumasi_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -66,7 +66,7 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
         'subdivision_id' => $kumasi->id,
     ]);
 
-    $usher = User::create([
+    $usher = User::factory()->create([
         'name' => 'Door Usher Kwame',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),

@@ -7,10 +7,8 @@ namespace App\Livewire\Public;
 use App\Enums\OrderStatus;
 use App\Models\Attendee;
 use App\Models\Order;
-use App\Models\Organization;
 use App\Services\Payment\QrCodeService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -30,20 +28,17 @@ class TicketShow extends Component
 
     public function render(): View
     {
-        /** @var Order $order */
         $order = Order::query()
-            ->with(['attendees.ticketType.event', 'attendees.subdivision', 'subdivision'])
+            ->with(['organization', 'attendees.ticketType.event', 'attendees.subdivision', 'subdivision'])
             ->findOrFail($this->orderId);
 
-        $organization = Organization::query()->findOrFail($order->organization_id);
-
-        /** @var Collection<int, Attendee> $attendees */
+        $organization = $order->organization;
         $attendees = $order->attendees;
 
         $qrCode = app(QrCodeService::class);
 
-        $qrCodes = $attendees->mapWithKeys(fn(Attendee $attendee): array => [
-            (int) $attendee->id => $qrCode->svg((string) $attendee->qr_code_hash, 240, 1),
+        $qrCodes = $attendees->mapWithKeys(static fn(Attendee $attendee): array => [
+            (int) $attendee->id => $qrCode->svg($attendee->qr_code_hash, 240, 1),
         ]);
 
         return view('livewire.public.ticket-show', [

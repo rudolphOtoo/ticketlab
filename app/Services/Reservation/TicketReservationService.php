@@ -30,7 +30,6 @@ class TicketReservationService
         }
 
         return DB::transaction(function () use ($ticketType, $quantity, $sessionId, $subdivisionId): Reservation {
-            /** @var TicketType $ticket */
             $ticket = TicketType::query()->whereKey($ticketType->getKey())->lockForUpdate()->firstOrFail();
             $organizationId = $this->organizationId($ticket);
 

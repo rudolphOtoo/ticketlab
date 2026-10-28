@@ -75,11 +75,17 @@ jobs:
       - name: Security Audit - NPM
         run: npm audit --audit-level=moderate || true
 
-      - name: Code Style Check (Laravel Pint)
-        run: vendor/bin/pint --test
+      - name: Code Style Check (Mago)
+        run: vendor/bin/mago format --check
+
+      - name: Lint (Mago)
+        run: vendor/bin/mago lint
+
+      - name: Static Analysis (Mago)
+        run: vendor/bin/mago analyze
 
       - name: Static Analysis (PHPStan/Larastan)
-        run: composer types:check || vendor/bin/phpstan analyse --no-progress
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
       - name: Run Tests
         run: php artisan test --no-coverage

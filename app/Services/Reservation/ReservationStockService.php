@@ -18,18 +18,18 @@ class ReservationStockService
         $ticket = $context['ticket'];
         $delta = $quantity - (int) $reservation->quantity;
 
+        if ($delta > 0 && $available < $delta) {
+            throw new TicketSoldOutException('Requested quantity is no longer available.');
+        }
+
         if ($delta > 0) {
-            if ($available < $delta) {
-                throw new TicketSoldOutException('Requested quantity is no longer available.');
-            }
-
             $ticket->decrement('available_quantity', $delta);
-        } elseif ($delta < 0) {
-            $restore = min(abs($delta), max(0, (int) $ticket->total_capacity - $available));
+        }
 
-            if ($restore > 0) {
-                $ticket->increment('available_quantity', $restore);
-            }
+        $restore = $delta < 0 ? min(abs($delta), max(0, (int) $ticket->total_capacity - $available)) : 0;
+
+        if ($restore > 0) {
+            $ticket->increment('available_quantity', $restore);
         }
 
         $currentSubdivisionId = $reservation->subdivision_id !== null ? (int) $reservation->subdivision_id : null;

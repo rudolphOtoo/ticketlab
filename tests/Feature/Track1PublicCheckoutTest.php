@@ -162,7 +162,7 @@ test('the surcharge engine computes exact zero-net-loss gross values in pesewas'
     $standard = PaystackFeeCalculator::breakdown(100.00);
 
     expect(PaystackFeeCalculator::grossPesewas(100.00))
-        ->toBe(10199)
+        ->toBe(10_199)
         ->and(PaystackFeeCalculator::gross(100.00))
         ->toBe(101.99)
         ->and($standard['net'])
@@ -170,12 +170,12 @@ test('the surcharge engine computes exact zero-net-loss gross values in pesewas'
         ->and($standard['processing_fee'])
         ->toBe(1.99)
         ->and($standard['gross_pesewas'])
-        ->toBe(10199);
+        ->toBe(10_199);
 
     $withPlatformFee = PaystackFeeCalculator::breakdown(100.00, 3.00);
 
     expect(PaystackFeeCalculator::grossPesewas(100.00, 3.00))
-        ->toBe(10505)
+        ->toBe(10_505)
         ->and($withPlatformFee['gross'])
         ->toBe(105.05)
         ->and($withPlatformFee['processing_fee'])
@@ -291,7 +291,7 @@ test('a signed charge success webhook fulfils a pending order and issues sha256 
             'status' => 'success',
             'channel' => 'mobile_money',
             'gateway_response' => 'Successful',
-            'amount' => 20398,
+            'amount' => 20_398,
             'currency' => 'GHS',
         ],
     ];
