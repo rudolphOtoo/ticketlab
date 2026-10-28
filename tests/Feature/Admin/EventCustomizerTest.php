@@ -23,7 +23,7 @@ test('org admin can update branding, theme preset, and hero copy', function () {
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Jane',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -75,7 +75,7 @@ test('org admin can add, edit, and delete speakers', function () {
         'slug' => 'kumasi-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Kwame',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -131,7 +131,7 @@ test('org admin can manage program schedule sessions', function () {
         'slug' => 'expo-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Kofi',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -179,7 +179,7 @@ test('org admin can add dynamic checkout questionnaire fields with auto-slug key
         'slug' => 'church-conf-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Pastor',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -225,7 +225,7 @@ test('org admin can manage FAQs', function () {
         'slug' => 'music-fest-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Yaw',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -266,7 +266,7 @@ test('multi-tenant isolation prevents admin from seeing or editing another tenan
     $orgA = Organization::create(['name' => 'Org A', 'slug' => 'org-a-' . uniqid()]);
     $orgB = Organization::create(['name' => 'Org B', 'slug' => 'org-b-' . uniqid()]);
 
-    $adminA = User::create([
+    $adminA = User::forceCreate([
         'name' => 'Admin A',
         'email' => 'admin_a_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
