@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'super_admin'])->get('platform', PlatformDashboard::class)->name('platform.dashboard');
 
-Route::middleware(['auth'])
+Route::middleware(['auth', 'subdivision.access:ops'])
     ->prefix('ops')
     ->name('ops.')
     ->group(function () {

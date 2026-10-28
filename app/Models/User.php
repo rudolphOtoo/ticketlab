@@ -22,6 +22,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $email
  * @property Carbon|null $email_verified_at
  * @property string $password
+ * @property string|null $role
+ * @property int|null $organization_id
+ * @property int|null $subdivision_id
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
@@ -39,6 +42,25 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     use Notifiable;
     use PasskeyAuthenticatable;
     use TwoFactorAuthenticatable;
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'superadmin' || $this->role === 'super_admin';
+    }
+
+    public function isUsher(): bool
+    {
+        return $this->role === 'usher';
+    }
+
+    /**
+     * Tenancy is never initialised globally, so every staff surface must check
+     * organisation membership explicitly instead of trusting the tenant scope.
+     */
+    public function hasOrganizationAccess(): bool
+    {
+        return $this->isSuperadmin() || $this->organization_id !== null;
+    }
 
     public function organization(): BelongsTo
     {
@@ -73,8 +95,4 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return Str::length($initials) > 1 ? Str::substr($initials, 0, 1) . Str::substr($initials, -1) : $initials;
     }
 
-    public function isSuperAdmin(): bool
-    {
-        return $this->role === 'super_admin';
-    }
 }

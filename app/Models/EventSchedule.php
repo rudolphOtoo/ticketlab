@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use Database\Factories\EventScheduleFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EventSchedule extends Model
 {
     use BelongsToOrganization;
+    /** @use HasFactory<EventScheduleFactory> */
     use HasFactory;
+
+    protected static function newFactory(): EventScheduleFactory
+    {
+        return EventScheduleFactory::new();
+    }
 
     protected $fillable = [
         'organization_id',

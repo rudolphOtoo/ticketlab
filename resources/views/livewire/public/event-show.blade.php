@@ -1,231 +1,224 @@
-<div class="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)]">
-    <!-- Floating Island Nav Bar -->
-    <x-floating-nav :showBack="true" :current="$event->title" />
-
-    <header class="border-b border-[var(--border-hairline)] bg-[var(--bg-surface)] pt-16 sm:pt-20">
-        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-            <div class="flex items-center gap-3">
-                @if ($organization->logo_url)
-                    <img src="{{ $organization->logo_url }}" alt="{{ $organization->name }}" class="h-10 w-10 rounded-full object-cover">
-                @else
-                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-subtle)] border border-[var(--border-hairline)] text-sm font-semibold text-[var(--text-primary)]">
-                        {{ \Illuminate\Support\Str::of($organization->name)->explode(' ')->map(fn ($word) => \Illuminate\Support\Str::substr($word, 0, 1))->take(2)->implode('') }}
-                    </div>
-                @endif
+<div class="min-h-screen bg-zinc-50 py-10">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <header class="mb-8">
+            <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-medium uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Official tickets</p>
-                    <p class="text-sm font-semibold text-[var(--text-primary)]">{{ $organization->name }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">{{ $organization->name }}</p>
+                    <h1 class="mt-1 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
+                        {{ $customization['headline'] ?? $event->title }}
+                    </h1>
+                    @if (!empty($customization['tagline']))
+                        <p class="mt-2 text-base text-zinc-600 font-medium">
+                            {{ $customization['tagline'] }}
+                        </p>
+                    @endif
                 </div>
+
+                <a href="#tickets" class="hidden sm:inline-flex items-center justify-center rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-zinc-800 transition press-scale">
+                    Get Tickets
+                </a>
             </div>
+        </header>
 
-            <span class="hidden rounded-full border border-[var(--border-hairline)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)] sm:inline-flex">
-                Secure checkout by Paystack
-            </span>
-        </div>
-    </header>
-
-    <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_26rem]">
-            <section class="space-y-6">
+        <div class="grid gap-8 lg:grid-cols-3">
+            <section class="space-y-8 lg:col-span-2">
+                <!-- Main Event Hero Card -->
                 <div class="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-                    @if ($event->banner_path)
-                        <img src="{{ asset('storage/'.$event->banner_path) }}" alt="{{ $event->title }}" class="h-64 w-full object-cover sm:h-80">
+                    @if ($event->banner_url)
+                        <img
+                            src="{{ $event->banner_url }}"
+                            alt="{{ $event->title }}"
+                            class="h-64 w-full object-cover sm:h-80"
+                        />
                     @else
-                        <div class="flex h-64 w-full items-end bg-gradient-to-br from-zinc-900 via-zinc-800 to-emerald-900 p-8 sm:h-80">
+                        <div class="flex h-56 w-full items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 p-6 text-center text-white">
                             <div>
-                                <p class="text-xs font-medium uppercase tracking-[0.25em] text-emerald-200">You are invited</p>
-                                <h1 class="mt-3 max-w-xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                                    {{ $customization['headline'] ?? $event->title }}
-                                </h1>
-                                @if (!empty($customization['tagline']))
-                                    <p class="mt-2 text-xs sm:text-sm text-zinc-300 max-w-lg">{{ $customization['tagline'] }}</p>
-                                @endif
+                                <p class="text-xs uppercase tracking-[0.3em] text-amber-400 font-bold">{{ $organization->name }}</p>
+                                <p class="mt-2 text-2xl sm:text-3xl font-black">{{ $customization['headline'] ?? $event->title }}</p>
                             </div>
                         </div>
                     @endif
 
-                    <div class="space-y-5 p-6 sm:p-8">
-                        <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-600">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1">
-                                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                                    {{ $event->start_at->format('D, j M Y') }}
-                                    @if (! $event->start_at->isSameDay($event->end_at))
-                                        – {{ $event->end_at->format('D, j M Y') }}
-                                    @endif
-                                </span>
-                                @if ($event->venue)
-                                    <span class="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-3 py-1">{{ $event->venue }}</span>
+                    <div class="space-y-6 p-6 sm:p-8">
+                        <div class="flex flex-wrap items-center gap-3 text-sm text-zinc-600">
+                            <span class="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 font-medium">
+                                <span class="size-2 rounded-full bg-emerald-500"></span>
+                                {{ $event->start_at->format('D, j M Y') }}
+                                @if (! $event->start_at->isSameDay($event->end_at))
+                                    – {{ $event->end_at->format('D, j M Y') }}
                                 @endif
-                            </div>
-
-                            @if (($customization['show_countdown'] ?? true) && $event->start_at)
-                                <div
-                                    x-data="{
-                                        target: new Date('{{ $event->start_at->toIso8601String() }}').getTime(),
-                                        now: new Date().getTime(),
-                                        days: 0, hours: 0, minutes: 0, seconds: 0,
-                                        isPast: false,
-                                        init() {
-                                            this.calc();
-                                            setInterval(() => this.calc(), 1000);
-                                        },
-                                        calc() {
-                                            this.now = new Date().getTime();
-                                            const diff = this.target - this.now;
-                                            if (diff <= 0) {
-                                                this.isPast = true;
-                                                return;
-                                            }
-                                            this.days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                                            this.hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                                            this.minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                                            this.seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                                        }
-                                    }"
-                                    x-show="!isPast"
-                                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-mono font-bold text-amber-800 dark:text-amber-200"
-                                >
-                                    <span class="size-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                    <span>Starts: </span>
-                                    <span x-text="days + 'd ' + hours + 'h ' + minutes + 'm ' + seconds + 's'"></span>
-                                </div>
+                            </span>
+                            @if ($event->venue)
+                                <span class="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 font-medium">
+                                    📍 {{ $event->venue }}
+                                </span>
                             @endif
                         </div>
 
+                        <!-- Countdown Timer -->
+                        @if ($event->start_at)
+                            <div
+                                x-data="{
+                                    target: new Date('{{ $event->start_at->toIso8601String() }}').getTime(),
+                                    now: Date.now(),
+                                    days: 0, hours: 0, minutes: 0, seconds: 0,
+                                    isPast: false,
+                                    init() {
+                                        this.update();
+                                        setInterval(() => { this.now = Date.now(); this.update(); }, 1000);
+                                    },
+                                    update() {
+                                        const diff = this.target - this.now;
+                                        if (diff <= 0) {
+                                            this.isPast = true;
+                                            return;
+                                        }
+                                        this.days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                                        this.hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                        this.minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                        this.seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                                    }
+                                }"
+                                x-show="!isPast"
+                                class="grid grid-cols-4 gap-3 text-center"
+                            >
+                                <div class="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3 shadow-2xs">
+                                    <div class="text-2xl font-black text-zinc-900" x-text="String(days).padStart(2,'0')">00</div>
+                                    <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Days</div>
+                                </div>
+                                <div class="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3 shadow-2xs">
+                                    <div class="text-2xl font-black text-zinc-900" x-text="String(hours).padStart(2,'0')">00</div>
+                                    <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Hours</div>
+                                </div>
+                                <div class="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3 shadow-2xs">
+                                    <div class="text-2xl font-black text-zinc-900" x-text="String(minutes).padStart(2,'0')">00</div>
+                                    <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Minutes</div>
+                                </div>
+                                <div class="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-3 shadow-2xs">
+                                    <div class="text-2xl font-black text-zinc-900" x-text="String(seconds).padStart(2,'0')">00</div>
+                                    <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Seconds</div>
+                                </div>
+                            </div>
+                        @endif
+
                         <div>
-                            <h2 class="text-xl font-semibold tracking-tight text-zinc-900">About this event</h2>
-                            <p class="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">{{ $event->description ?: 'Join us for this special gathering. Select a ticket tier below to reserve your seat.' }}</p>
+                            <h2 class="text-xl font-bold tracking-tight text-zinc-900">About this event</h2>
+                            <p class="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">
+                                {{ $event->description ?: 'Join us for this special gathering. Select a ticket tier below to reserve your seat.' }}
+                            </p>
                         </div>
 
-                        <div class="rounded-2xl bg-zinc-50 p-4 text-sm text-zinc-600">
-                            <p class="font-medium text-zinc-900">{{ $event->start_at->format('l, j F Y') }}</p>
+                        <div class="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600 space-y-1">
+                            <p class="font-semibold text-zinc-900">{{ $event->start_at->format('l, j F Y') }}</p>
                             <p>{{ $event->start_at->format('g:i A') }} – {{ $event->end_at->format('g:i A') }}</p>
                             @if ($event->venue)
-                                <p class="mt-1">{{ $event->venue }}</p>
+                                <p class="mt-1">📍 {{ $event->venue }}</p>
                             @endif
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <h2 class="text-xl font-semibold tracking-tight text-zinc-900">Choose your ticket</h2>
-                            <p class="mt-1 text-sm text-zinc-600">Inventory updates live. Your seats are held for 15 minutes at checkout.</p>
-                        </div>
+                <!-- Ticket Tiers Selection Section -->
+                <div id="tickets" class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 space-y-5">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Tier selection</p>
+                        <h2 class="mt-1 text-xl font-bold tracking-tight text-zinc-900">Choose your ticket</h2>
                     </div>
 
-                    <div class="mt-6 space-y-3">
-                        @forelse ($ticketTypes as $ticketType)
-                            @php($soldOut = $ticketType->available_quantity <= 0)
-                            <button
-                                type="button"
-                                wire:key="ticket-type-{{ $ticketType->id }}"
-                                wire:click="selectTicketType({{ $ticketType->id }})"
-                                @disabled($soldOut)
-                                class="w-full rounded-2xl border p-4 text-left transition {{ $ticketTypeId === $ticketType->id ? 'border-zinc-900 bg-zinc-900 text-white shadow-lg' : 'border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400' }} {{ $soldOut ? 'cursor-not-allowed opacity-60' : '' }}"
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        @foreach ($ticketTypes as $ticketType)
+                            @php
+                                $isSoldOut = (int) ($ticketType->available_quantity ?? 0) <= 0;
+                                $isSelected = $ticketTypeId === $ticketType->id;
+                            @endphp
+                            <div
+                                wire:key="ticket-{{ $ticketType->id }}"
+                                wire:click="{{ $isSoldOut ? '' : "selectTicketType({$ticketType->id})" }}"
+                                class="rounded-2xl border p-4 transition-all {{ $isSoldOut ? 'opacity-50 cursor-not-allowed bg-zinc-100 border-zinc-200' : 'cursor-pointer hover:border-zinc-400' }} {{ $isSelected ? 'border-zinc-900 bg-zinc-900 text-white shadow-md' : 'border-zinc-200 bg-white text-zinc-900' }}"
                             >
-                                <div class="flex items-start justify-between gap-4">
+                                <div class="flex items-start justify-between gap-3">
                                     <div>
-                                        <p class="text-base font-semibold">{{ $ticketType->name }}</p>
-                                        @if ($ticketType->description)
-                                            <p class="mt-1 text-sm {{ $ticketTypeId === $ticketType->id ? 'text-zinc-300' : 'text-zinc-500' }}">{{ $ticketType->description }}</p>
-                                        @endif
-                                        <p class="mt-2 text-xs {{ $ticketTypeId === $ticketType->id ? 'text-zinc-400' : 'text-zinc-500' }}">
-                                            {{ $ticketType->available_quantity }} of {{ $ticketType->total_capacity }} remaining
+                                        <p class="font-bold text-sm">{{ $ticketType->name }}</p>
+                                        <p class="mt-1 text-xs {{ $isSelected ? 'text-zinc-300' : 'text-zinc-500' }}">
+                                            {{ $ticketType->description ?: 'Standard admittance pass' }}
                                         </p>
                                     </div>
-                                    <div class="text-right">
-                                        <p class="text-lg font-semibold">GHS {{ number_format((float) $ticketType->price, 2) }}</p>
-                                        <span class="mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $this->availabilityBadgeClass($ticketType) }}">
-                                            {{ $this->availabilityBadge($ticketType) }}
-                                        </span>
-                                    </div>
+                                    <span class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold {{ $isSelected ? 'bg-white/20 text-white' : $this->availabilityBadgeClass($ticketType) }}">
+                                        {{ $this->availabilityBadge($ticketType) }}
+                                    </span>
                                 </div>
-                            </button>
-                        @empty
-                            <p class="rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500">
-                                Ticket tiers have not been published for this event yet.
-                            </p>
-                        @endforelse
+
+                                <div class="mt-4 flex items-baseline justify-between">
+                                    <span class="text-lg font-black">
+                                        GHS {{ number_format((float) $ticketType->price, 2) }}
+                                    </span>
+                                    <span class="text-[11px] {{ $isSelected ? 'text-zinc-300' : 'text-zinc-500' }}">
+                                        {{ $ticketType->available_quantity }} left
+                                    </span>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
 
                     @error('ticketTypeId')
-                        <p class="mt-3 text-sm font-medium text-rose-600">{{ $message }}</p>
+                        <p class="text-xs font-semibold text-rose-600">{{ $message }}</p>
                     @enderror
 
-                    <div class="mt-6 grid gap-5 sm:grid-cols-2">
-                        <div>
-                            <label for="subdivision" class="block text-sm font-medium text-[var(--text-secondary)]">
+                    @if ($subdivisions->isNotEmpty())
+                        <div class="pt-4 border-t border-zinc-100">
+                            <label for="landingSubdivision" class="block text-xs font-semibold text-zinc-700 mb-1">
                                 Select your {{ $organization->subdivision_label }}
                             </label>
-                            <div class="relative mt-2">
-                                <select
-                                    id="subdivision"
-                                    wire:model.live="subdivisionId"
-                                    class="w-full appearance-none rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2.5 pr-10 text-sm font-medium text-[var(--text-primary)] shadow-xs focus:border-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-[var(--text-primary)] transition cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
-                                >
-                                    <option value="" class="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
-                                        No {{ strtolower($organization->subdivision_label) }} / general admission
-                                    </option>
-                                    @foreach ($subdivisions as $subdivision)
-                                        <option value="{{ $subdivision->id }}" class="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
-                                            {{ $subdivision->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--text-secondary)]">
-                                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
-                            </div>
+                            <select
+                                id="landingSubdivision"
+                                wire:model.live="subdivisionId"
+                                class="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs shadow-xs focus:border-zinc-900 focus:outline-hidden"
+                            >
+                                <option value="">No {{ strtolower($organization->subdivision_label) }} / general admission</option>
+                                @foreach ($subdivisions as $subdivision)
+                                    <option value="{{ $subdivision->id }}">{{ $subdivision->name }}</option>
+                                @endforeach
+                            </select>
                             @error('subdivisionId')
-                                <p class="mt-2 text-sm font-medium text-rose-600">{{ $message }}</p>
+                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                             @enderror
                         </div>
+                    @endif
 
+                    <!-- Quantity Controls -->
+                    <div class="pt-4 border-t border-zinc-100 flex items-center justify-between">
                         <div>
-                            <span class="block text-sm font-medium text-[var(--text-secondary)]">Quantity</span>
-                            <div class="mt-2 flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    wire:click="decrementQuantity"
-                                    class="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-lg font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40 transition-colors press-scale cursor-pointer"
-                                    @disabled($quantity <= 1)
-                                >
-                                    &minus;
-                                </button>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="20"
-                                    wire:model.live.debounce.250ms="quantity"
-                                    class="w-20 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-2 text-center text-sm font-bold font-mono text-[var(--text-primary)] shadow-xs focus:border-[var(--text-primary)] focus:outline-hidden focus:ring-1 focus:ring-[var(--text-primary)]"
-                                >
-                                <button
-                                    type="button"
-                                    wire:click="incrementQuantity"
-                                    class="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-lg font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition-colors press-scale cursor-pointer"
-                                >
-                                    +
-                                </button>
-                            </div>
-                            @error('quantity')
-                                <p class="mt-2 text-sm font-medium text-rose-600">{{ $message }}</p>
-                            @enderror
+                            <span class="text-xs font-semibold text-zinc-900">Ticket Quantity</span>
+                            <p class="text-[11px] text-zinc-500">Maximum 20 passes per checkout</p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button
+                                type="button"
+                                wire:click="decrementQuantity"
+                                class="size-8 rounded-lg border border-zinc-200 bg-white text-sm font-bold text-zinc-700 hover:bg-zinc-50 flex items-center justify-center cursor-pointer transition press-scale"
+                            >
+                                -
+                            </button>
+                            <span class="font-bold text-sm min-w-6 text-center text-zinc-900">{{ $quantity }}</span>
+                            <button
+                                type="button"
+                                wire:click="incrementQuantity"
+                                class="size-8 rounded-lg border border-zinc-200 bg-white text-sm font-bold text-zinc-700 hover:bg-zinc-50 flex items-center justify-center cursor-pointer transition press-scale"
+                            >
+                                +
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Speakers & Guests Grid -->
-                @if (($customization['show_speakers'] ?? true) && $speakers->isNotEmpty())
+                @if ($speakers->isNotEmpty())
                     <div class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 space-y-6">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Distinguished guests</p>
-                                <h2 class="mt-1 text-xl font-semibold tracking-tight text-zinc-900">Featured Speakers</h2>
+                                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Distinguished guests</p>
+                                <h2 class="mt-1 text-xl font-bold tracking-tight text-zinc-900">Featured Speakers</h2>
                             </div>
                             <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
                                 {{ $speakers->count() }} Profiles
@@ -245,15 +238,12 @@
                                         </div>
                                         <div class="min-w-0 flex-1">
                                             <h3 class="text-xs font-bold text-zinc-900 truncate">{{ $speaker->name }}</h3>
-                                            <p class="text-[11px] text-zinc-600 truncate">{{ $speaker->title }}</p>
-                                            @if ($speaker->organization)
-                                                <p class="text-[10px] text-zinc-500 truncate">{{ $speaker->organization }}</p>
-                                            @endif
+                                            <p class="text-[11px] text-zinc-600 truncate">{{ $speaker->title ?? $speaker->title_role }}</p>
                                         </div>
                                     </div>
 
                                     @if ($speaker->topic)
-                                        <div class="rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-300">
+                                        <div class="rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-[11px] font-medium text-amber-800">
                                             Topic: {{ $speaker->topic }}
                                         </div>
                                     @endif
@@ -274,45 +264,77 @@
                 @endif
 
                 <!-- Program Schedule Timeline -->
-                @if (($customization['show_schedule'] ?? true) && $schedules->isNotEmpty())
+                @if ($schedules->isNotEmpty())
                     <div class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 space-y-5">
                         <div>
-                            <p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Program outline</p>
-                            <h2 class="mt-1 text-xl font-semibold tracking-tight text-zinc-900">Event Schedule</h2>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Program outline</p>
+                            <h2 class="mt-1 text-xl font-bold tracking-tight text-zinc-900">Program Schedule</h2>
                         </div>
 
-                        <div class="space-y-3">
-                            @foreach ($schedules as $session)
-                                <div class="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                    <div class="flex items-start gap-3">
-                                        <div class="min-w-20 font-mono text-xs font-bold text-zinc-500 pt-0.5">
-                                            {{ $session->starts_at?->format('H:i') ?? 'TBA' }}
-                                        </div>
-                                        <div>
-                                            <h4 class="text-xs sm:text-sm font-bold text-zinc-900">{{ $session->title }}</h4>
-                                            @if ($session->speaker_name)
-                                                <p class="text-[11px] text-amber-700 mt-0.5">Speaker: {{ $session->speaker_name }}</p>
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    @if ($session->location)
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-100 text-[10px] font-semibold text-zinc-700 self-start sm:self-auto">
-                                            📍 {{ $session->location }}
-                                        </span>
-                                    @endif
+                        <div x-data="{ tab: '{{ $scheduleDays->keys()->first() }}' }" class="space-y-4">
+                            @if ($scheduleDays->count() > 1)
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($scheduleDays as $dayLabel => $daySessions)
+                                        <button
+                                            type="button"
+                                            @click="tab = '{{ $dayLabel }}'"
+                                            :class="tab === '{{ $dayLabel }}' ? 'bg-zinc-900 text-white' : 'border border-zinc-200 bg-white text-zinc-600'"
+                                            class="rounded-full px-3 py-1 text-xs font-semibold transition cursor-pointer"
+                                        >
+                                            {{ $dayLabel }}
+                                        </button>
+                                    @endforeach
                                 </div>
-                            @endforeach
+                            @endif
+
+                            <div class="space-y-2.5">
+                                @foreach ($scheduleDays as $dayLabel => $daySessions)
+                                    <div x-show="tab === '{{ $dayLabel }}'" class="space-y-2.5">
+                                        @foreach ($daySessions as $session)
+                                            <div class="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                                <div class="flex items-start gap-3">
+                                                    <div class="min-w-20 font-mono text-xs font-bold text-zinc-500 pt-0.5">
+                                                        {{ $session->start_time ?? ($session->starts_at?->format('H:i') ?? 'TBA') }}
+                                                    </div>
+                                                    <div>
+                                                        <h4 class="text-xs sm:text-sm font-bold text-zinc-900">
+                                                            {{ $session->session_title ?? $session->title }}
+                                                        </h4>
+                                                        <p class="text-[11px] text-zinc-600 mt-0.5">
+                                                            @if ($session->speaker_name)
+                                                                <span class="text-amber-800 font-medium">Speaker: {{ $session->speaker_name }}</span>
+                                                            @endif
+                                                            @if ($session->venue_hall ?? $session->location)
+                                                                <span>• {{ $session->venue_hall ?? $session->location }}</span>
+                                                            @endif
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                 @endif
 
-                <!-- Frequently Asked Questions Accordion -->
-                @if (($customization['show_faqs'] ?? true) && $faqs->isNotEmpty())
+                <!-- Frequently Asked Questions (FAQs) Accordion -->
+                @if ($faqs->isNotEmpty())
                     <div class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 space-y-5">
-                        <div>
-                            <p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Clarifications & Help</p>
-                            <h2 class="mt-1 text-xl font-semibold tracking-tight text-zinc-900">Frequently Asked Questions</h2>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Clarifications & Help</p>
+                                <h2 class="mt-1 text-xl font-bold tracking-tight text-zinc-900">FAQs</h2>
+                            </div>
+                            <div class="w-full sm:w-64">
+                                <input
+                                    type="text"
+                                    wire:model.live.debounce.300ms="faqSearch"
+                                    placeholder="Search FAQs..."
+                                    class="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-900 focus:border-zinc-900 focus:outline-hidden"
+                                />
+                            </div>
                         </div>
 
                         <div class="space-y-3">
@@ -330,111 +352,178 @@
                         </div>
                     </div>
                 @endif
+
+                <!-- Additional Event Information Overview -->
+                @if ($formFields->isNotEmpty())
+                    <div class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 space-y-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Attendee requirements</p>
+                            <h2 class="mt-1 text-xl font-bold tracking-tight text-zinc-900">Event Information</h2>
+                        </div>
+                        <div class="grid gap-2.5 sm:grid-cols-2">
+                            @foreach ($formFields as $field)
+                                <div class="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-3.5">
+                                    <p class="text-xs font-bold text-zinc-900">
+                                        {{ $field->label }}
+                                        @if ($field->is_required)
+                                            <span class="text-rose-500">*</span>
+                                        @endif
+                                    </p>
+                                    @if ($field->placeholder)
+                                        <p class="text-[11px] text-zinc-500 mt-0.5">{{ $field->placeholder }}</p>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </section>
 
+            <!-- Order Summary Sticky Card (Right Rail) -->
             <aside class="lg:sticky lg:top-6 lg:self-start">
-                <div class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                    <p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Order summary</p>
+                <div class="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm space-y-5">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Order Summary</p>
 
                     @if ($selectedTicketType)
-                        <div class="mt-4 flex items-start justify-between gap-4">
+                        <div class="flex items-start justify-between gap-4 border-b border-zinc-100 pb-4">
                             <div>
-                                <p class="font-semibold text-zinc-900">{{ $selectedTicketType->name }}</p>
-                                <p class="mt-1 text-sm text-zinc-500">GHS {{ number_format((float) $selectedTicketType->price, 2) }} x {{ $quantity }}</p>
+                                <p class="font-bold text-zinc-900">{{ $selectedTicketType->name }}</p>
+                                <p class="text-xs text-zinc-500 mt-0.5">GHS {{ number_format((float) $selectedTicketType->price, 2) }} x {{ $quantity }}</p>
                             </div>
-                            <p class="font-semibold text-zinc-900">GHS {{ number_format($subtotal, 2) }}</p>
+                            <p class="font-bold text-zinc-900">GHS {{ number_format($subtotal, 2) }}</p>
                         </div>
 
-                        <dl class="mt-6 space-y-3 border-t border-dashed border-zinc-200 pt-4 text-sm">
-                            <div class="flex items-center justify-between text-zinc-600">
-                                <dt>Ticket net</dt>
-                                <dd>GHS {{ number_format($breakdown['net'], 2) }}</dd>
+                        <dl class="space-y-2 text-xs">
+                            <div class="flex justify-between text-zinc-600">
+                                <dt>Ticket Subtotal</dt>
+                                <dd class="font-medium">GHS {{ number_format($breakdown['net'], 2) }}</dd>
                             </div>
                             @if ($breakdown['platform_fee'] > 0)
-                                <div class="flex items-center justify-between text-zinc-600">
-                                    <dt>Platform fee</dt>
-                                    <dd>GHS {{ number_format($breakdown['platform_fee'], 2) }}</dd>
+                                <div class="flex justify-between text-zinc-600">
+                                    <dt>Platform Fee</dt>
+                                    <dd class="font-medium">GHS {{ number_format($breakdown['platform_fee'], 2) }}</dd>
                                 </div>
                             @endif
-                            <div class="flex items-center justify-between text-zinc-600">
-                                <dt>Processing fee (1.95%)</dt>
-                                <dd>GHS {{ number_format($breakdown['processing_fee'], 2) }}</dd>
+                            <div class="flex justify-between text-zinc-600">
+                                <dt>Processing Fee</dt>
+                                <dd class="font-medium">GHS {{ number_format($breakdown['processing_fee'], 2) }}</dd>
                             </div>
-                            <div class="flex items-center justify-between border-t border-zinc-200 pt-3 text-base font-semibold text-zinc-900">
-                                <dt>Total payable</dt>
-                                <dd>GHS {{ number_format($breakdown['gross'], 2) }}</dd>
+                            <div class="flex justify-between border-t border-zinc-200 pt-3 text-sm font-bold text-zinc-900">
+                                <dt>Total Payable</dt>
+                                <dd class="text-base text-zinc-900">GHS {{ number_format($breakdown['gross'], 2) }}</dd>
                             </div>
                         </dl>
 
                         <button
                             type="button"
                             wire:click="openCheckout"
-                            class="mt-6 w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700"
+                            class="w-full cursor-pointer rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-xs hover:bg-zinc-800 transition press-scale text-center"
                         >
-                            Continue to secure checkout
+                            Proceed to Checkout →
                         </button>
                     @else
-                        <p class="mt-4 rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500">
-                            Select a ticket tier to see your total.
-                        </p>
+                        <div class="py-8 text-center text-zinc-400 text-xs">
+                            Select a ticket tier to review checkout pricing.
+                        </div>
                     @endif
-
-                    <p class="mt-4 text-center text-xs leading-5 text-zinc-500">
-                        Pay with MTN MoMo, Telecel Cash, AirtelTigo Money or a bank card. Paystack's processing fee is shown before you pay.
-                    </p>
                 </div>
             </aside>
         </div>
-    </main>
+    </div>
 
+    <!-- Slide-over / Modal Checkout Drawer -->
     @if ($checkoutOpen)
-        <div class="fixed inset-0 z-40 flex items-end justify-center bg-zinc-950/50 p-0 sm:items-center sm:p-6" wire:key="checkout-drawer">
-            <div class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl sm:p-8">
-                <div class="flex items-start justify-between gap-4">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/60 p-4 backdrop-blur-xs overflow-y-auto">
+            <div class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8 space-y-5 my-8 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-start justify-between">
                     <div>
-                        <p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Secure checkout</p>
-                        <h2 class="mt-1 text-xl font-semibold tracking-tight text-zinc-900">Attendee details</h2>
+                        <h3 class="text-lg font-bold text-zinc-900">Attendee Checkout</h3>
+                        <p class="text-xs text-zinc-500 mt-0.5">{{ $selectedTicketType?->name }} • {{ $quantity }} ticket(s)</p>
                     </div>
-                    <button type="button" wire:click="closeCheckout" class="rounded-full border border-zinc-200 px-3 py-1 text-sm text-zinc-600 hover:bg-zinc-50">
-                        Close
+                    <button
+                        type="button"
+                        wire:click="closeCheckout"
+                        class="size-8 rounded-full border border-zinc-200 text-zinc-500 hover:text-zinc-900 flex items-center justify-center transition cursor-pointer press-scale"
+                    >
+                        ✕
                     </button>
                 </div>
 
                 @if ($flashMessage)
-                    <div class="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800">
+                    <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
                         {{ $flashMessage }}
                     </div>
                 @endif
 
                 @error('payment')
-                    <div class="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{{ $message }}</div>
+                    <div class="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
+                        {{ $message }}
+                    </div>
                 @enderror
 
-                <form wire:submit="startCheckout" class="mt-6 space-y-4">
+                <form wire:submit="startCheckout" class="space-y-4">
                     <div>
-                        <label for="customerName" class="block text-sm font-medium text-zinc-700">Full name</label>
-                        <input id="customerName" type="text" wire:model.blur="customerName" autocomplete="name" class="mt-1.5 w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10">
-                        @error('customerName') <p class="mt-1.5 text-sm text-rose-600">{{ $message }}</p> @enderror
+                        <label for="customerName" class="block text-xs font-semibold text-zinc-700 mb-1">Full Name</label>
+                        <input
+                            id="customerName"
+                            type="text"
+                            wire:model="customerName"
+                            class="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs shadow-xs focus:border-zinc-900 focus:outline-hidden"
+                            placeholder="Kwame Mensah"
+                        />
+                        @error('customerName') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </div>
 
-                    <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label for="customerEmail" class="block text-sm font-medium text-zinc-700">Email</label>
-                            <input id="customerEmail" type="email" wire:model.blur="customerEmail" autocomplete="email" class="mt-1.5 w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10">
-                            @error('customerEmail') <p class="mt-1.5 text-sm text-rose-600">{{ $message }}</p> @enderror
+                            <label for="customerEmail" class="block text-xs font-semibold text-zinc-700 mb-1">Email Address</label>
+                            <input
+                                id="customerEmail"
+                                type="email"
+                                wire:model="customerEmail"
+                                class="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs shadow-xs focus:border-zinc-900 focus:outline-hidden"
+                                placeholder="kwame@example.com"
+                            />
+                            @error('customerEmail') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                         </div>
+
                         <div>
-                            <label for="customerPhone" class="block text-sm font-medium text-zinc-700">Phone</label>
-                            <input id="customerPhone" type="tel" wire:model.blur="customerPhone" autocomplete="tel" class="mt-1.5 w-full rounded-xl border border-zinc-300 px-3 py-2.5 text-sm shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/10">
-                            @error('customerPhone') <p class="mt-1.5 text-sm text-rose-600">{{ $message }}</p> @enderror
+                            <label for="customerPhone" class="block text-xs font-semibold text-zinc-700 mb-1">Mobile Phone (MoMo)</label>
+                            <input
+                                id="customerPhone"
+                                type="tel"
+                                wire:model="customerPhone"
+                                class="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs shadow-xs focus:border-zinc-900 focus:outline-hidden"
+                                placeholder="0244123456"
+                            />
+                            @error('customerPhone') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
+
+                    @if ($subdivisions->isNotEmpty())
+                        <div>
+                            <label for="subdivisionId" class="block text-xs font-semibold text-zinc-700 mb-1">
+                                {{ $organization->subdivision_label ?: 'Campus / Branch' }}
+                            </label>
+                            <select
+                                id="subdivisionId"
+                                wire:model="subdivisionId"
+                                class="w-full rounded-xl border border-zinc-300 px-3 py-2 text-xs shadow-xs focus:border-zinc-900 focus:outline-hidden"
+                            >
+                                <option value="">-- Select an option --</option>
+                                @foreach ($subdivisions as $sub)
+                                    <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('subdivisionId') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </div>
+                    @endif
 
                     <!-- Dynamic Attendee Questionnaire Injection -->
                     @if ($formFields->isNotEmpty())
                         <div class="border-t border-zinc-200 pt-4 space-y-4">
                             <div>
-                                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-600">Additional Information</h3>
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-600">Additional Information</h4>
                                 <p class="text-[11px] text-zinc-500 mt-0.5">Please provide the details requested by the organizer.</p>
                             </div>
 
@@ -504,43 +593,30 @@
                                         @error('customFieldResponses.' . $field->field_key)
                                             <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                                         @enderror
+                                        @error('formResponses.' . $field->field_key)
+                                            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                                        @enderror
                                     </div>
                                 @endforeach
                             </div>
                         </div>
                     @endif
 
-                    <div class="rounded-2xl bg-zinc-50 p-4">
-                        <dl class="space-y-2 text-sm">
-                            <div class="flex justify-between text-zinc-600">
-                                <dt>{{ $selectedTicketType?->name ?? 'Ticket' }} x {{ $quantity }}</dt>
-                                <dd>GHS {{ number_format($breakdown['net'], 2) }}</dd>
-                            </div>
-                            @if ($breakdown['platform_fee'] > 0)
-                                <div class="flex justify-between text-zinc-600">
-                                    <dt>Platform fee</dt>
-                                    <dd>GHS {{ number_format($breakdown['platform_fee'], 2) }}</dd>
-                                </div>
-                            @endif
-                            <div class="flex justify-between text-zinc-600">
-                                <dt>Processing fee</dt>
-                                <dd>GHS {{ number_format($breakdown['processing_fee'], 2) }}</dd>
-                            </div>
-                            <div class="flex justify-between border-t border-zinc-200 pt-2 text-base font-semibold text-zinc-900">
-                                <dt>Total payable</dt>
-                                <dd>GHS {{ number_format($breakdown['gross'], 2) }}</dd>
-                            </div>
-                        </dl>
+                    <div class="rounded-2xl bg-zinc-50 p-4 border border-zinc-200">
+                        <div class="flex justify-between items-center text-sm font-bold text-zinc-900">
+                            <span>Total Payable:</span>
+                            <span>GHS {{ number_format($breakdown['gross'], 2) }}</span>
+                        </div>
                     </div>
 
-                    <button type="submit" class="w-full rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800" wire:loading.attr="disabled">
-                        <span wire:loading.remove>Reserve seats &amp; pay with Paystack</span>
-                        <span wire:loading>Reserving your seats...</span>
+                    <button
+                        type="submit"
+                        class="w-full cursor-pointer rounded-xl bg-zinc-900 py-3 px-4 text-xs font-semibold text-white shadow-xs hover:bg-zinc-800 transition press-scale"
+                        wire:loading.attr="disabled"
+                    >
+                        <span wire:loading.remove>Reserve Seats & Pay with Paystack →</span>
+                        <span wire:loading>Holding seats & preparing Paystack...</span>
                     </button>
-
-                    <p class="text-center text-xs leading-5 text-zinc-500">
-                        By continuing you agree to the event terms. Your reservation expires after 15 minutes if payment is not completed.
-                    </p>
                 </form>
             </div>
         </div>
@@ -561,17 +637,14 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-bold text-zinc-900">{{ $viewingSpeaker->name }}</h3>
-                            <p class="text-xs text-zinc-600">{{ $viewingSpeaker->title }}</p>
-                            @if ($viewingSpeaker->organization)
-                                <p class="text-[11px] text-zinc-500">{{ $viewingSpeaker->organization }}</p>
-                            @endif
+                            <p class="text-xs text-zinc-600">{{ $viewingSpeaker->title ?? $viewingSpeaker->title_role }}</p>
                         </div>
                     </div>
 
                     <button
                         type="button"
                         wire:click="closeSpeakerModal"
-                        class="size-8 rounded-full border border-zinc-200 text-zinc-500 hover:text-zinc-900 flex items-center justify-center transition press-scale"
+                        class="size-8 rounded-full border border-zinc-200 text-zinc-500 hover:text-zinc-900 flex items-center justify-center transition press-scale cursor-pointer"
                     >
                         ✕
                     </button>
@@ -596,7 +669,7 @@
                     <button
                         type="button"
                         wire:click="closeSpeakerModal"
-                        class="px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 transition press-scale"
+                        class="px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 transition press-scale cursor-pointer"
                     >
                         Close Profile
                     </button>

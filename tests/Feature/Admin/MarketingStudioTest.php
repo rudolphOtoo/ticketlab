@@ -24,6 +24,26 @@ test('authenticated admin without subdivision access is forbidden', function ():
     $this->actingAs($user)->get(route('admin.studio.marketing'))->assertForbidden();
 });
 
+test('authenticated user can access marketing studio and view flyer and qr controls', function (): void {
+    $organization = Organization::factory()->create(['slug' => 'sheaf-studio']);
+    $subdivision = Subdivision::factory()->create(['organization_id' => $organization->id]);
+    $user = User::factory()->create([
+        'organization_id' => $organization->id,
+        'subdivision_id' => $subdivision->id,
+        'role' => 'admin',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('admin.studio.marketing'));
+
+    $response->assertOk();
+    $response->assertSee('Marketing Studio');
+    $response->assertSee('1:1');
+    $response->assertSee('9:16');
+    $response->assertSee('16:9');
+    $response->assertSee('Export PNG');
+    $response->assertSee('QR');
+});
+
 test('organization admin can view marketing studio with event data', function (): void {
     $org = Organization::factory()->create(['slug' => 'summit-org']);
     $subdivision = Subdivision::factory()->create(['organization_id' => $org->id]);

@@ -29,6 +29,8 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
+            // Self-registered accounts are buyers; never inherit the legacy 'gate_usher' column default.
+            'role' => 'attendee',
         ]);
     }
 }

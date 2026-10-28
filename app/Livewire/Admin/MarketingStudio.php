@@ -6,6 +6,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -47,6 +48,8 @@ class MarketingStudio extends Component
 
     public function mount(): void
     {
+        $this->authorizedUser();
+
         $event = $this->event();
         if ($event !== null) {
             $this->selectedEventId = $event->id;
@@ -58,7 +61,16 @@ class MarketingStudio extends Component
 
             $firstSpeaker = $event->speakers()->orderBy('sort_order')->first();
             $this->featuredSpeakerId = $firstSpeaker?->id;
+        } else {
+            $this->flyerHeadline = 'Sample Event Title';
+            $this->flyerTagline = 'Join us for a transformative experience.';
+            $this->flyerVenue = 'Main Convention Center';
+            $this->flyerDate = 'Upcoming Event';
         }
+
+        $this->accentColor = $this->normalizeHexColor($this->accentColor, '#6366f1');
+        $this->qrFgColor = $this->normalizeHexColor($this->qrFgColor, '#121316');
+        $this->qrBgColor = $this->normalizeHexColor($this->qrBgColor, '#ffffff');
     }
 
     public function setAspectRatio(string $ratio): void
@@ -83,8 +95,14 @@ class MarketingStudio extends Component
 
     public function event(): ?Event
     {
-        $orgId = Auth::user()?->organization_id;
+        $user = $this->authorizedUser();
+        $orgId = $user->organization_id;
+
         if ($orgId === null) {
+            if ($user->isSuperAdmin()) {
+                return Event::query()->latest('id')->first();
+            }
+
             return null;
         }
 
@@ -100,12 +118,41 @@ class MarketingStudio extends Component
         return Event::query()->where('organization_id', $orgId)->latest('id')->first();
     }
 
+    private function authorizedUser(): User
+    {
+        $user = Auth::user();
+
+        if (!$user instanceof User) {
+            abort(401);
+        }
+
+        if ($user->isUsher() || !$user->hasOrganizationAccess()) {
+            abort(403);
+        }
+
+        return $user;
+    }
+
+    private function normalizeHexColor(string $color, string $fallback): string
+    {
+        $color = trim($color);
+        if (preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $color)) {
+            return strtolower($color);
+        }
+
+        return $fallback;
+    }
+
     public function render(): View
     {
+        $user = $this->authorizedUser();
         $event = $this->event();
-        $org =
-            $event->organization
-            ?? (Auth::user()?->organization_id ? Organization::find(Auth::user()->organization_id) : null);
+        $org = $event?->organization ?? ($user->organization_id ? Organization::find($user->organization_id) : null);
+
+        $events = Event::query()
+            ->when($org?->id, fn($query, $orgId) => $query->where('organization_id', $orgId))
+            ->orderByDesc('start_at')
+            ->get();
 
         $speakers = $event ? $event->speakers()->orderBy('sort_order')->get() : collect();
         $ticketTypes = $event ? $event->ticketTypes()->where('is_active', true)->get() : collect();
@@ -121,6 +168,7 @@ class MarketingStudio extends Component
 
         return view('livewire.admin.marketing-studio', [
             'event' => $event,
+            'events' => $events,
             'organization' => $org,
             'speakers' => $speakers,
             'ticketTypes' => $ticketTypes,

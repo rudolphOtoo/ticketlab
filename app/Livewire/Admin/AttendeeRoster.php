@@ -59,18 +59,8 @@ class AttendeeRoster extends Component
     public function toggleCheckIn(int $attendeeId): void
     {
         $user = auth()->user();
-        $query = Attendee::query();
 
-        if ($user && $user->organization_id) {
-            $query->where('organization_id', $user->organization_id);
-        }
-
-        // Enforce zone scoping if user is scoped to a specific subdivision
-        if ($user && $user->subdivision_id !== null) {
-            $query->where('subdivision_id', $user->subdivision_id);
-        }
-
-        $attendee = $query->find($attendeeId);
+        $attendee = $this->scopedAttendees($user)->find($attendeeId);
         if (!$attendee) {
             return;
         }
@@ -135,21 +125,26 @@ class AttendeeRoster extends Component
     }
 
     /**
+     * Organisation tenant scope plus subdivision scope for zone-bound stewards.
+     *
+     * @return Builder<Attendee>
+     */
+    private function scopedAttendees(?User $user): Builder
+    {
+        return Attendee::query()
+            ->when($user?->organization_id, static fn($q, $orgId) => $q->where('organization_id', $orgId))
+            ->when($user?->subdivision_id, static fn($q, $subId) => $q->where('subdivision_id', $subId));
+    }
+
+    /**
      * @return Builder<Attendee>
      */
     private function buildQuery(?User $user): Builder
     {
-        $query = Attendee::with(['subdivision', 'ticketType', 'checkedInByUser']);
+        $query = $this->scopedAttendees($user)->with(['subdivision', 'ticketType', 'checkedInByUser']);
 
-        // 1. Enforce organization tenant scoping
-        if ($user && $user->organization_id) {
-            $query->where('organization_id', $user->organization_id);
-        }
-
-        // 2. Enforce subdivision scoping for scoped stewards
-        if ($user && $user->subdivision_id !== null) {
-            $query->where('subdivision_id', $user->subdivision_id);
-        } elseif ($this->zoneFilter !== '') {
+        // 1. Zone filter (only meaningful for users not already bound to a zone)
+        if ($user?->subdivision_id === null && $this->zoneFilter !== '') {
             $query->where('subdivision_id', (int) $this->zoneFilter);
         }
 
@@ -188,13 +183,7 @@ class AttendeeRoster extends Component
         $attendees = $this->buildQuery($user)->paginate($this->perPage);
 
         // Calculate summary counters for filtered view
-        $baseQuery = Attendee::query();
-        if ($user && $user->organization_id) {
-            $baseQuery->where('organization_id', $user->organization_id);
-        }
-        if ($user && $user->subdivision_id !== null) {
-            $baseQuery->where('subdivision_id', $user->subdivision_id);
-        }
+        $baseQuery = $this->scopedAttendees($user);
 
         $totalCount = (clone $baseQuery)->count();
         $checkedInCount = (clone $baseQuery)->whereNotNull('checked_in_at')->count();
@@ -210,7 +199,10 @@ class AttendeeRoster extends Component
         ) => $q->whereHas('event', static fn($eq) => $eq->where('organization_id', $orgId)))->get();
 
         $selectedAttendee = $this->selectedAttendeeId
-            ? Attendee::with(['subdivision', 'ticketType', 'order'])->find($this->selectedAttendeeId)
+            ? $this
+                ->scopedAttendees($user)
+                ->with(['subdivision', 'ticketType', 'order'])
+                ->find($this->selectedAttendeeId)
             : null;
 
         return view('livewire.admin.attendee-roster', [
@@ -222,7 +214,7 @@ class AttendeeRoster extends Component
             'ticketTypes' => $ticketTypes,
             'selectedAttendee' => $selectedAttendee,
             'isUserScoped' => $user && $user->subdivision_id !== null,
-            'scopedZoneName' => $user && $user->subdivision ? $user->subdivision->name : null,
+            'scopedZoneName' => $user?->subdivision?->name,
         ]);
     }
 }

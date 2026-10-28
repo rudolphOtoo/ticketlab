@@ -32,36 +32,22 @@
             </p>
         </div>
 
-        @if ($event)
-            <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3">
+            @if ($event)
                 <a href="{{ $publicUrl }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition">
                     <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                     View Public Page
                 </a>
-                <button type="button" @click="downloadFlyer()" class="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-xs font-semibold text-[var(--accent-brand-fg)] shadow-xs hover:opacity-90 active:scale-95 transition">
-                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    Download Flyer (PNG)
-                </button>
-            </div>
-        @endif
+            @endif
+            <button type="button" @click="downloadFlyer()" id="export-png" class="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-xs font-semibold text-[var(--accent-brand-fg)] shadow-xs hover:opacity-90 active:scale-95 transition">
+                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                Export PNG Flyer
+            </button>
+        </div>
     </div>
 
-    @if (!$event)
-        <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-12 text-center space-y-4">
-            <div class="size-12 mx-auto rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-tertiary)]">
-                <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-            </div>
-            <div>
-                <h3 class="text-sm font-semibold text-[var(--text-primary)]">No Event Found</h3>
-                <p class="text-xs text-[var(--text-secondary)] mt-1">Please create and publish an event first to generate promotional flyers and vector QR passes.</p>
-            </div>
-            <a href="{{ route('admin.studio') }}" class="inline-flex items-center gap-2 rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-xs font-semibold text-[var(--accent-brand-fg)]" wire:navigate>
-                Go to Customizer Studio
-            </a>
-        </div>
-    @else
-        <!-- Studio Workspace Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" x-data="{ activeTab: 'flyer' }">
+    <!-- Studio Workspace Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" x-data="{ activeTab: 'flyer' }">
             
             <!-- Controls Sidebar (Left 5 Cols) -->
             <div class="lg:col-span-5 space-y-5">
@@ -222,7 +208,7 @@
                             <canvas id="qrStandaloneCanvas" class="size-64"></canvas>
                         </div>
                         <div class="text-center">
-                            <h4 class="text-sm font-bold text-[var(--text-primary)]">{{ $event->title }}</h4>
+                            <h4 class="text-sm font-bold text-[var(--text-primary)]">{{ $event?->title ?? 'Sample Event' }}</h4>
                             <p class="text-xs text-[var(--text-secondary)] mt-0.5">High-Resolution Vector QR Pass</p>
                         </div>
                     </div>
@@ -232,7 +218,6 @@
             </div>
 
         </div>
-    @endif
 </div>
 
 <!-- Embedded Vanilla QR & Flyer Engine Script -->
@@ -510,4 +495,3 @@ function marketingStudio(config) {
     };
 }
 </script>
-

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Database\Factories\TicketTypeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TicketType extends Model
 {
+    /** @use HasFactory<TicketTypeFactory> */
     use HasFactory;
+
+    protected static function newFactory(): TicketTypeFactory
+    {
+        return TicketTypeFactory::new();
+    }
 
     protected $fillable = [
         'event_id',
