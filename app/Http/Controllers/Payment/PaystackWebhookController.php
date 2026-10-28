@@ -35,7 +35,7 @@ class PaystackWebhookController extends Controller
 
         $data = $request->input('data', []);
 
-        if (!is_array($data) || !isset($data['reference'])) {
+        if (!is_array($data) || ($data['reference'] ?? null) === null) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Missing transaction reference.',

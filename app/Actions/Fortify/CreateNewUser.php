@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
@@ -25,12 +27,17 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
-        return User::create([
+        $user = new User([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
             // Self-registered accounts are buyers; never inherit the legacy 'gate_usher' column default.
             'role' => 'attendee',
         ]);
+
+        // Self-registered accounts are buyers with no tenant scope, whatever else the request carried.
+        $user->forceFill(['role' => 'attendee', 'organization_id' => null, 'subdivision_id' => null])->save();
+
+        return $user;
     }
 }

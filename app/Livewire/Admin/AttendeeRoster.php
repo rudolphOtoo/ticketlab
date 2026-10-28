@@ -10,8 +10,9 @@ use App\Models\TicketType;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -32,6 +33,7 @@ class AttendeeRoster extends Component
 
     public string $tierFilter = '';
 
+    #[Locked]
     public int $perPage = 10;
 
     public ?int $selectedAttendeeId = null;
@@ -60,22 +62,21 @@ class AttendeeRoster extends Component
     {
         $user = auth()->user();
 
-        $attendee = $this->scopedAttendees($user)->find($attendeeId);
-        if (!$attendee) {
-            return;
-        }
+        // Serialise concurrent toggles on the same pass so each one acts on the committed state.
+        DB::transaction(function () use ($user, $attendeeId): void {
+            $attendee = $this->scopedAttendees($user)->whereKey($attendeeId)->lockForUpdate()->first();
 
-        if ($attendee->isCheckedIn()) {
+            if ($attendee === null) {
+                return;
+            }
+
+            $checkingIn = !$attendee->isCheckedIn();
+
             $attendee->update([
-                'checked_in_at' => null,
-                'checked_in_by' => null,
+                'checked_in_at' => $checkingIn ? now() : null,
+                'checked_in_by' => $checkingIn ? $user?->id : null,
             ]);
-        } else {
-            $attendee->update([
-                'checked_in_at' => now(),
-                'checked_in_by' => $user ? $user->id : null,
-            ]);
-        }
+        });
     }
 
     public function selectAttendee(int $attendeeId): void
@@ -101,15 +102,13 @@ class AttendeeRoster extends Component
                     foreach ($attendees as $att) {
                         $writer->addRow([
                             'ID' => $att->id,
-                            'Name' => $att->name,
-                            'Email' => $att->email,
-                            'Phone' => $att->phone ?? 'N/A',
+                            'Name' => self::csvSafe($att->name),
+                            'Email' => self::csvSafe($att->email),
+                            'Phone' => self::csvSafe($att->phone),
                             'Zone' => $att->subdivision ? $att->subdivision->name : 'General',
-                            'Ticket Tier' => $att->ticketType ? $att->ticketType->name : 'N/A',
+                            'Ticket Tier' => $att->ticketType->name,
                             'QR Code' => $att->qr_code_hash,
-                            'Checked In At' => $att->checked_in_at
-                                ? $att->checked_in_at->format('Y-m-d H:i:s')
-                                : 'Pending',
+                            'Checked In At' => $att->checked_in_at?->format('Y-m-d H:i:s') ?? 'Pending',
                             'Checked In By' => $att->checkedInByUser ? $att->checkedInByUser->name : 'N/A',
                         ]);
                     }
@@ -149,11 +148,11 @@ class AttendeeRoster extends Component
         }
 
         // 2. Status filter
-        if ($this->statusFilter === 'checked_in') {
-            $query->whereNotNull('checked_in_at');
-        } elseif ($this->statusFilter === 'pending') {
-            $query->whereNull('checked_in_at');
-        }
+        match ($this->statusFilter) {
+            'checked_in' => $query->whereNotNull('checked_in_at'),
+            'pending' => $query->whereNull('checked_in_at'),
+            default => null,
+        };
 
         // 3. Ticket tier filter
         if ($this->tierFilter !== '') {
@@ -179,7 +178,6 @@ class AttendeeRoster extends Component
     {
         $user = auth()->user();
 
-        /** @var LengthAwarePaginator<Attendee> $attendees */
         $attendees = $this->buildQuery($user)->paginate($this->perPage);
 
         // Calculate summary counters for filtered view
@@ -216,5 +214,17 @@ class AttendeeRoster extends Component
             'isUserScoped' => $user && $user->subdivision_id !== null,
             'scopedZoneName' => $user?->subdivision?->name,
         ]);
+    }
+
+    /**
+     * Neutralise spreadsheet formula injection in buyer-supplied CSV cells.
+     */
+    private static function csvSafe(?string $value): string
+    {
+        if ($value === null || $value === '') {
+            return 'N/A';
+        }
+
+        return preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'" . $value : $value;
     }
 }

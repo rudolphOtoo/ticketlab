@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +11,7 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
     {
         Schema::table('users', static function (Blueprint $table) {
             $table->string('password')->nullable()->change();
@@ -20,7 +22,7 @@ return new class extends Migration {
     /**
      * Reverse the migrations.
      */
-    public function down()
+    public function down(): void
     {
         // Update records with NULL values to avoid constraint violations
         DB::table('users')->whereNull('name')->update(['name' => '']);

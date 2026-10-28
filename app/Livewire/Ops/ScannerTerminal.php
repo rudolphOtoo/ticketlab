@@ -7,7 +7,10 @@ namespace App\Livewire\Ops;
 use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Subdivision;
+use App\Models\TicketType;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -23,6 +26,7 @@ class ScannerTerminal extends Component
 
     public string $manualSearch = '';
 
+    /** @var array<string, string>|null */
     public ?array $scanResult = null;
 
     public string $scanState = 'idle'; // 'idle', 'success', 'duplicate', 'invalid'
@@ -72,7 +76,7 @@ class ScannerTerminal extends Component
                     'payload' => [
                         'status' => 'DUPLICATE',
                         'name' => $attendee->name,
-                        'tier' => $attendee->ticketType->name ?? 'General Admission',
+                        'tier' => $attendee->ticketType->name,
                         'zone' => $attendee->subdivision->name ?? 'Main Arena',
                         'scanned_at' => $attendee->checked_in_at->format('h:i:s A'),
                         'message' => 'Pass was already scanned earlier today.',
@@ -91,7 +95,7 @@ class ScannerTerminal extends Component
                 'payload' => [
                     'status' => 'VERIFIED',
                     'name' => $attendee->name,
-                    'tier' => $attendee->ticketType->name ?? 'General Admission',
+                    'tier' => $attendee->ticketType->name,
                     'zone' => $attendee->subdivision->name ?? 'Main Arena',
                     'scanned_at' => now()->format('h:i:s A'),
                     'message' => 'Admitted to event. Gate clearance granted.',
@@ -102,13 +106,11 @@ class ScannerTerminal extends Component
         $this->scanState = $result['state'];
         $this->scanResult = $result['payload'];
 
-        if ($result['state'] === 'success') {
-            $this->dispatch('play-success-sound');
-        } elseif ($result['state'] === 'duplicate') {
-            $this->dispatch('play-warning-sound');
-        } else {
-            $this->dispatch('play-error-sound');
-        }
+        $this->dispatch(match ($result['state']) {
+            'success' => 'play-success-sound',
+            'duplicate' => 'play-warning-sound',
+            default => 'play-error-sound',
+        });
     }
 
     /**
@@ -125,19 +127,25 @@ class ScannerTerminal extends Component
     {
         $user = auth()->user();
         $orgId = $user?->organization_id;
-        $forOrg = static fn($q) => $q->where('organization_id', $orgId);
-
-        $events = Event::query()->when($orgId, $forOrg);
+        $events = $this->forOrganization(Event::query(), $orgId);
         $event = $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
 
         $activeSubdivision = $user?->subdivision_id
-            ? Subdivision::find($user->subdivision_id)
-            : Subdivision::query()->when($orgId, $forOrg)->first();
+            ? Subdivision::query()->find($user->subdivision_id)
+            : $this->forOrganization(Subdivision::query(), $orgId)->first();
 
-        // Calculate gate turnout counts
-        $attendees = Attendee::query()->when($orgId, $forOrg);
-        $totalCheckedIn = (clone $attendees)->whereNotNull('checked_in_at')->count();
-        $totalExpected = $attendees->count();
+        // Gate turnout covers only passes for the event on this terminal; with no event there is nothing to count.
+        $totalCheckedIn = 0;
+        $totalExpected = 0;
+
+        if ($event !== null) {
+            $attendees = $this->forOrganization(
+                Attendee::query(),
+                $orgId,
+            )->whereIn('ticket_type_id', TicketType::query()->select('id')->where('event_id', $event->id));
+            $totalCheckedIn = (clone $attendees)->whereNotNull('checked_in_at')->count();
+            $totalExpected = $attendees->count();
+        }
         $turnoutPercent = $totalExpected > 0 ? (int) round(($totalCheckedIn / $totalExpected) * 100) : 0;
 
         return view('livewire.ops.scanner-terminal', [
@@ -147,5 +155,18 @@ class ScannerTerminal extends Component
             'totalExpected' => $totalExpected > 0 ? $totalExpected : 1,
             'turnoutPercent' => $turnoutPercent,
         ]);
+    }
+
+    /**
+     * Constrain a query to the operator's organisation; superadmins without one see every tenant.
+     *
+     * @template TModel of Model
+     *
+     * @param Builder<TModel> $query
+     * @return Builder<TModel>
+     */
+    private function forOrganization(Builder $query, ?int $orgId): Builder
+    {
+        return $orgId === null ? $query : $query->where('organization_id', $orgId);
     }
 }

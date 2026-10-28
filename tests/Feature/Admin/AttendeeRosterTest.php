@@ -23,7 +23,7 @@ test('door terminal usher is blocked by middleware from accessing administrative
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $usher = User::create([
+    $usher = User::factory()->create([
         'name' => 'Gate Usher',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -40,7 +40,7 @@ test('authenticated admin can view attendee roster with list of attendees', func
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Admin User',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -124,7 +124,7 @@ test('zone admin is strictly scoped to their assigned subdivision', function () 
         'slug' => 'accra-' . uniqid(),
     ]);
 
-    $zoneAdminA = User::create([
+    $zoneAdminA = User::factory()->create([
         'name' => 'Kumasi Head',
         'email' => 'kumasi_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -212,7 +212,7 @@ test('attendee check-in status can be toggled', function () {
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Admin User',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -278,7 +278,7 @@ test('attendee roster exports streaming CSV with spatie simple excel', function 
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Super Admin',
         'email' => 'super_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -340,7 +340,7 @@ test('attendee roster strictly isolates records across different organizations',
         'slug' => 'org-beta-' . uniqid(),
     ]);
 
-    $adminA = User::create([
+    $adminA = User::factory()->create([
         'name' => 'Admin Alpha',
         'email' => 'alpha_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),

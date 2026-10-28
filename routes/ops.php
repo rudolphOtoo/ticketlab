@@ -23,7 +23,6 @@ use Illuminate\Support\Facades\Route;
  */
 
 Route::middleware(['auth', 'super_admin'])->get('platform', PlatformDashboard::class)->name('platform.dashboard');
-
 Route::middleware(['auth', 'subdivision.access:ops'])
     ->prefix('ops')
     ->name('ops.')
@@ -40,9 +39,7 @@ Route::middleware(['auth', 'subdivision.access'])
     ->name('admin.')
     ->group(function () {
         // Root admin route redirects to dashboard
-        Route::get('/', function () {
-            return redirect()->route('dashboard');
-        })->name('index');
+        Route::redirect('/', '/dashboard')->name('index');
 
         // Daily session ledger declaration & lockdown
         Route::get('sessions', DailySessionLedger::class)->name('sessions');

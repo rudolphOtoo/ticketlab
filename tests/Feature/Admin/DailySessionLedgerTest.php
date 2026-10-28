@@ -27,7 +27,7 @@ test('authenticated admin can view financial closeout ledger with aggregated fig
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Admin Jane',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -122,7 +122,7 @@ test('admin can lock financial session and generate tamper-proof PDF audit repor
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Finance Director',
         'email' => 'finance_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -201,7 +201,7 @@ test('locked session offers PDF download and prevents double locking', function 
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Finance Director',
         'email' => 'finance_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),

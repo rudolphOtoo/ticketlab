@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Middleware\EnsureSubdivisionAccess;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;

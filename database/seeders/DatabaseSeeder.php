@@ -48,34 +48,28 @@ class DatabaseSeeder extends Seeder
 
         // 3. Create Users
         // Platform Super Admin (Global Cross-Tenant Developer Console Access)
-        User::updateOrCreate(['email' => 'superadmin@ticketlab.test'], [
+        $superadmin = User::firstOrCreate(['email' => 'superadmin@ticketlab.test'], [
             'name' => 'Platform Super Admin',
             'password' => Hash::make('password'),
-            'role' => 'super_admin',
-            'organization_id' => null,
-            'subdivision_id' => null,
-            'email_verified_at' => now(),
         ]);
+        $superadmin->assignMembership('super_admin', null);
+        $superadmin->markEmailAsVerified();
 
-        // Organization Admin User (Cross-Zone Access & Super Admin clearance)
-        User::updateOrCreate(['email' => 'admin@ticketlab.test'], [
+        // Admin User (Cross-Zone Access)
+        $admin = User::firstOrCreate(['email' => 'admin@ticketlab.test'], [
             'name' => 'Admin User',
             'password' => Hash::make('password'),
-            'role' => 'super_admin',
-            'organization_id' => $org->id,
-            'subdivision_id' => null,
-            'email_verified_at' => now(),
         ]);
+        $admin->assignMembership('admin', $org->id); // No subdivision: access across all zones
+        $admin->markEmailAsVerified();
 
         // Door Usher User (Scoped to Kumasi)
-        User::updateOrCreate(['email' => 'usher@summit.org'], [
+        $usher = User::firstOrCreate(['email' => 'usher@summit.org'], [
             'name' => 'Kwame Mensah (Lead Usher)',
             'password' => Hash::make('password'),
-            'role' => 'staff',
-            'organization_id' => $org->id,
-            'subdivision_id' => $kumasi->id,
-            'email_verified_at' => now(),
         ]);
+        $usher->assignMembership('usher', $org->id, $kumasi->id);
+        $usher->markEmailAsVerified();
 
         // 4. Create Active Event
         $event = Event::firstOrCreate(['organization_id' => $org->id, 'slug' => 'summit-2026'], [

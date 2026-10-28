@@ -20,7 +20,7 @@ test('authenticated user can view cash desk register with tiers', function () {
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Usher John',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -60,7 +60,7 @@ test('cash desk terminal calculates total and issues pass with change', function
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Usher John',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -119,7 +119,7 @@ test('cash desk terminal rejects sale when requested quantity exceeds available 
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Usher John',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -164,7 +164,7 @@ test('cash desk terminal rejects non-positive or excessive ticket quantities', f
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::factory()->create([
         'name' => 'Usher John',
         'email' => 'usher_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),

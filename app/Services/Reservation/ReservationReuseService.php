@@ -40,13 +40,11 @@ class ReservationReuseService
         string $sessionId,
         ?int $subdivisionId,
     ): Reservation {
-        /** @var TicketType $ticket */
         $ticket = TicketType::query()->whereKey($ticketType->getKey())->lockForUpdate()->firstOrFail();
         $organizationId = $this->organizationId($ticket);
 
         $this->assertValidSubdivision($subdivisionId, $organizationId);
 
-        /** @var Collection<int, Reservation> $reservations */
         $reservations = Reservation::query()
             ->where('session_id', $sessionId)
             ->where('ticket_type_id', $ticket->getKey())
@@ -83,7 +81,7 @@ class ReservationReuseService
         $available = (int) $ticket->available_quantity;
 
         foreach ($reservations as $reservation) {
-            if ($reservation->expires_at !== null && $reservation->expires_at->isFuture()) {
+            if ($reservation->expires_at->isFuture()) {
                 $reusable ??= $reservation;
 
                 continue;

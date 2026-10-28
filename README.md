@@ -12,10 +12,10 @@ A multi-zone event ticketing system built with Laravel 13, Livewire 4, and Tailw
 
 - **Backend:** Laravel 13 (PHP 8.3+)
 - **Frontend:** Livewire 4, Flux UI, Tailwind CSS 4
-- **Authentication:** Laravel Fortify, DevDojo Auth
+- **Authentication:** Laravel Fortify (passkeys, 2FA, email verification)
 - **Payments:** Paystack (with automated surcharge calculation)
 - **Testing:** Pest PHP
-- **Code Quality:** Laravel Pint, Larastan (PHPStan)
+- **Code Quality:** Mago (format, lint, analyze), Larastan (PHPStan level 7)
 
 ## Features
 

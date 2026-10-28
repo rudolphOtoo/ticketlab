@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -10,7 +13,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -20,19 +22,20 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property int $id
  * @property string $name
  * @property string $email
- * @property Carbon|null $email_verified_at
+ * @property CarbonImmutable|null $email_verified_at
  * @property string $password
  * @property string|null $role
  * @property int|null $organization_id
  * @property int|null $subdivision_id
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
- * @property Carbon|null $two_factor_confirmed_at
+ * @property CarbonImmutable|null $two_factor_confirmed_at
  * @property string|null $remember_token
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'organization_id', 'subdivision_id', 'role'])]
+// Privilege fields (role, organization_id, subdivision_id) are deliberately not fillable; see assignMembership().
+#[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
@@ -43,9 +46,28 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     use PasskeyAuthenticatable;
     use TwoFactorAuthenticatable;
 
+    /**
+     * The only sanctioned way to grant a role and tenant scope: callers must pass trusted values explicitly.
+     */
+    public function assignMembership(string $role, ?int $organizationId, ?int $subdivisionId = null): static
+    {
+        $this->forceFill([
+            'role' => $role,
+            'organization_id' => $organizationId,
+            'subdivision_id' => $subdivisionId,
+        ])->save();
+
+        return $this;
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role === 'superadmin' || $this->role === 'super_admin';
+    }
+
+    public function isSuperadmin(): bool
+    {
+        return $this->isSuperAdmin();
     }
 
     public function isUsher(): bool
@@ -62,11 +84,17 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->isSuperadmin() || $this->organization_id !== null;
     }
 
+    /**
+     * @return BelongsTo<Organization, $this>
+     */
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
     }
 
+    /**
+     * @return BelongsTo<Subdivision, $this>
+     */
     public function subdivision(): BelongsTo
     {
         return $this->belongsTo(Subdivision::class);

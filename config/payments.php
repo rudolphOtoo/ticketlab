@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use KenDeNigerian\PayZephyr\Drivers\FlutterwaveDriver;
 use KenDeNigerian\PayZephyr\Drivers\MollieDriver;
 use KenDeNigerian\PayZephyr\Drivers\MonnifyDriver;
@@ -11,8 +13,8 @@ use KenDeNigerian\PayZephyr\Drivers\RazorpayDriver;
 use KenDeNigerian\PayZephyr\Drivers\SquareDriver;
 use KenDeNigerian\PayZephyr\Drivers\StripeDriver;
 
-$paymentsHealthCheckAllowedIps = env('PAYMENTS_HEALTH_CHECK_ALLOWED_IPS');
-$paymentsHealthCheckAllowedTokens = env('PAYMENTS_HEALTH_CHECK_ALLOWED_TOKENS');
+$paymentsHealthCheckAllowedIps = (string) env('PAYMENTS_HEALTH_CHECK_ALLOWED_IPS', '');
+$paymentsHealthCheckAllowedTokens = (string) env('PAYMENTS_HEALTH_CHECK_ALLOWED_TOKENS', '');
 
 return [
     /*
@@ -253,8 +255,10 @@ return [
             'PAYMENTS_HEALTH_CHECK_REQUIRE_AUTH',
             !in_array(env('APP_ENV', 'production'), ['local', 'testing'], true),
         ),
-        'allowed_ips' => $paymentsHealthCheckAllowedIps ? explode(',', $paymentsHealthCheckAllowedIps) : [],
-        'allowed_tokens' => $paymentsHealthCheckAllowedTokens ? explode(',', $paymentsHealthCheckAllowedTokens) : [],
+        'allowed_ips' => $paymentsHealthCheckAllowedIps !== '' ? explode(',', $paymentsHealthCheckAllowedIps) : [],
+        'allowed_tokens' => $paymentsHealthCheckAllowedTokens !== ''
+            ? explode(',', $paymentsHealthCheckAllowedTokens)
+            : [],
     ],
 
     /*
