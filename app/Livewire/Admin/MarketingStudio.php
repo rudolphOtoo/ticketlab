@@ -93,6 +93,21 @@ class MarketingStudio extends Component
         };
     }
 
+    public function updatedAccentColor(string $value): void
+    {
+        $this->accentColor = $this->normalizeHexColor($value, '#6366f1');
+    }
+
+    public function updatedQrFgColor(string $value): void
+    {
+        $this->qrFgColor = $this->normalizeHexColor($value, '#121316');
+    }
+
+    public function updatedQrBgColor(string $value): void
+    {
+        $this->qrBgColor = $this->normalizeHexColor($value, '#ffffff');
+    }
+
     public function event(): ?Event
     {
         $user = $this->authorizedUser();

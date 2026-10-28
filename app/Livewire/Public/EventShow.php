@@ -278,11 +278,12 @@ class EventShow extends Component
                 ?? null;
 
             if ($val !== null && $val !== '') {
+                $cleanVal = is_string($val) ? trim(strip_tags($val)) : $val;
                 $customFieldsData[$field->field_key] = [
                     'label' => $field->label,
-                    'value' => $val,
+                    'value' => $cleanVal,
                 ];
-                $rawAnswers[$field->field_key] = $val;
+                $rawAnswers[$field->field_key] = $cleanVal;
             }
         }
 

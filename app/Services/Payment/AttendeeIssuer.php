@@ -36,7 +36,6 @@ class AttendeeIssuer
                 'email' => $email,
                 'phone' => $order->customer_phone,
                 'qr_code_hash' => $this->generateQrHash($order, $index),
-                'custom_fields' => $metadata['custom_fields'] ?? null,
                 'checked_in_at' => null,
                 'checked_in_by' => null,
                 'custom_fields' => is_array($customFields) ? $customFields : null,
