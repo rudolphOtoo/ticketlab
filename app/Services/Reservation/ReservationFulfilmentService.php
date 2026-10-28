@@ -26,7 +26,6 @@ class ReservationFulfilmentService
 
         $ticketType = $this->lockTicketForReservation($reservationId);
 
-        /** @var Reservation|null $reservation */
         $reservation = Reservation::query()->whereKey($reservationId)->lockForUpdate()->first();
 
         $reservation = $this->matcher->assertActive($reservation, $order, $ticketType);
@@ -66,7 +65,6 @@ class ReservationFulfilmentService
     {
         $ticketTypeId = Reservation::query()->whereKey($reservationId)->value('ticket_type_id');
 
-        /** @var TicketType|null $ticketType */
         $ticketType = TicketType::query()->whereKey($ticketTypeId)->lockForUpdate()->first();
 
         if ($ticketType === null) {

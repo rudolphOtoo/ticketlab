@@ -22,7 +22,7 @@ test('authenticated admin can view ticket tier manager for their organization', 
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Jane',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -65,7 +65,7 @@ test('org admin can create a new ticket tier with perks', function () {
         'slug' => 'kumasi-expo-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Kwame',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -118,7 +118,7 @@ test('org admin cannot reduce total capacity below sold tickets count', function
         'slug' => 'summit-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Kofi',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -169,7 +169,7 @@ test('org admin can toggle active sales status', function () {
         'slug' => 'expo-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Akosua',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -210,7 +210,7 @@ test('org admin can delete a tier with zero sales, but cannot delete a tier with
         'slug' => 'music-' . uniqid(),
     ]);
 
-    $user = User::create([
+    $user = User::forceCreate([
         'name' => 'Admin Yaw',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),
@@ -290,7 +290,7 @@ test('multi-tenant isolation prevents admin from seeing or mutating another orga
     $orgA = Organization::create(['name' => 'Org A', 'slug' => 'org-a-' . uniqid()]);
     $orgB = Organization::create(['name' => 'Org B', 'slug' => 'org-b-' . uniqid()]);
 
-    $adminA = User::create([
+    $adminA = User::forceCreate([
         'name' => 'Admin A',
         'email' => 'admin_a_' . uniqid() . '@ticketlab.test',
         'password' => Hash::make('password'),

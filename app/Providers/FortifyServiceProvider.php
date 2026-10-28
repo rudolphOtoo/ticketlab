@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
@@ -56,20 +58,23 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('two-factor', static function (Request $request) {
-            return Limit::perMinute(5)->by($request->session()->get('login.id'));
-        });
+        RateLimiter::for('two-factor', static fn(Request $request): Limit => Limit::perMinute(
+            5,
+        )->by((string) $request->session()->get('login.id')));
 
         RateLimiter::for('login', static function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())) . '|' . $request->ip());
+            $throttleKey = Str::transliterate(
+                Str::lower((string) $request->input(Fortify::username())) . '|' . (string) $request->ip(),
+            );
 
             return Limit::perMinute(5)->by($throttleKey);
         });
 
         RateLimiter::for('passkeys', static function (Request $request) {
             $credentialId = $request->input('credential.id');
+            $bucket = is_string($credentialId) && $credentialId !== '' ? $credentialId : $request->session()->getId();
 
-            return Limit::perMinute(10)->by(($credentialId ?: $request->session()->getId()) . '|' . $request->ip());
+            return Limit::perMinute(10)->by($bucket . '|' . (string) $request->ip());
         });
     }
 }

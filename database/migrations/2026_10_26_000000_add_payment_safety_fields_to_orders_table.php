@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
+        Schema::table('orders', static function (Blueprint $table) {
             $table
                 ->foreignId('reservation_id')
                 ->nullable()
@@ -24,7 +24,7 @@ return new class extends Migration {
             ->select(['id', 'metadata'])
             ->whereNull('reservation_id')
             ->orderBy('id')
-            ->chunkById(100, function ($orders): void {
+            ->chunkById(100, static function ($orders): void {
                 foreach ($orders as $order) {
                     $metadata = is_string($order->metadata) ? json_decode($order->metadata, true) : null;
 
@@ -40,14 +40,14 @@ return new class extends Migration {
                 }
             });
 
-        Schema::table('orders', function (Blueprint $table) {
+        Schema::table('orders', static function (Blueprint $table) {
             $table->unique('reservation_id');
         });
     }
 
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
+        Schema::table('orders', static function (Blueprint $table) {
             $table->dropUnique(['reservation_id']);
             $table->dropConstrainedForeignId('reservation_id');
             $table->dropColumn('currency');

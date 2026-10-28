@@ -44,14 +44,10 @@ class OrderFulfillmentService
     {
         try {
             return DB::transaction(function () use ($order, $payment): Order {
-                /** @var Order $order */
                 $order = Order::query()->whereKey($order->getKey())->lockForUpdate()->firstOrFail();
 
                 if (in_array($order->payment_status, [OrderStatus::Paid, OrderStatus::RequiresReview], true)) {
-                    $fresh = $order->fresh(['attendees']);
-                    assert($fresh instanceof Order);
-
-                    return $fresh;
+                    return $order->load('attendees');
                 }
 
                 if ($order->payment_status !== OrderStatus::Pending) {
@@ -80,10 +76,7 @@ class OrderFulfillmentService
                     $this->attendeeIssuer->issue($order, $fulfilled['ticket_type'], $fulfilled['quantity'], $metadata);
                 }
 
-                $fresh = $order->fresh(['attendees']);
-                assert($fresh instanceof Order);
-
-                return $fresh;
+                return $order->refresh()->load('attendees');
             });
         } catch (Throwable $exception) {
             $this->paymentReview->mark($order, $exception->getMessage(), $payment);

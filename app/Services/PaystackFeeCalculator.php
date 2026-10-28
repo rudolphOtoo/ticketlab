@@ -17,7 +17,7 @@ class PaystackFeeCalculator
 
     private const DENOMINATOR_BASIS = 9805;
 
-    private const SCALE = 10000;
+    private const SCALE = 10_000;
 
     public static function grossPesewas(float|int|string $netAmount, float|int|string $platformFee = 0): int
     {

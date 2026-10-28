@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Subdivision;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ class EnsureSubdivisionAccess
         // Tier 2: Subdivision Admin zone boundary check
         $requestedSubdivisionId = $request->route('subdivision') ?? $request->query('subdivision_id');
         if ($requestedSubdivisionId !== null && $user->subdivision_id !== null && !$user->isSuperadmin()) {
-            $requestedId = is_object($requestedSubdivisionId)
+            $requestedId = $requestedSubdivisionId instanceof Subdivision
                 ? $requestedSubdivisionId->id
                 : (int) $requestedSubdivisionId;
             if ($user->subdivision_id !== $requestedId) {

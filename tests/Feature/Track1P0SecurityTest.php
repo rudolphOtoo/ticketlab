@@ -120,7 +120,7 @@ test('a late payment cannot fulfil a reservation that has already expired', func
 
     expect($this->ticket->fresh()->available_quantity)->toBe(10);
 
-    ($this->postSignedWebhook)($order, 20398)->assertStatus(409)->assertJson(['status' => 'requires_review']);
+    ($this->postSignedWebhook)($order, 20_398)->assertStatus(409)->assertJson(['status' => 'requires_review']);
 
     $order->refresh();
 
@@ -167,7 +167,7 @@ test('a payment that does not match the order total or currency is rejected', fu
         ->toBe(8);
 })->with([
     'underpayment' => [1, 'GHS'],
-    'wrong currency' => [20398, 'NGN'],
+    'wrong currency' => [20_398, 'NGN'],
 ]);
 
 test('webhook verification fails closed when the paystack secret is blank', function () {
@@ -178,7 +178,7 @@ test('webhook verification fails closed when the paystack secret is blank', func
 
     [$reservation, $order] = ($this->createPendingOrder)(2);
 
-    ($this->postSignedWebhook)($order, 20398, 'GHS', 'sk_test_legacy_secret')->assertUnauthorized();
+    ($this->postSignedWebhook)($order, 20_398, 'GHS', 'sk_test_legacy_secret')->assertUnauthorized();
 
     expect($order->fresh()->payment_status)
         ->toBe(OrderStatus::Pending)

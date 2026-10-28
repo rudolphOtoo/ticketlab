@@ -79,7 +79,7 @@ class DailySessionLedger extends Component
                 ->map(static fn(Subdivision $sub) => [
                     'name' => $sub->name,
                     'code' => $sub->slug,
-                    'admitted' => (int) $sub->admitted,
+                    'admitted' => (int) $sub->getAttribute('admitted'),
                 ])
                 ->all();
 

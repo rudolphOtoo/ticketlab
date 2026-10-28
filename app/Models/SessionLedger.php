@@ -5,14 +5,32 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $organization_id
+ * @property int|null $subdivision_id
+ * @property string $session_name
+ * @property CarbonImmutable $opened_at
+ * @property CarbonImmutable|null $locked_at
+ * @property int|null $locked_by
+ * @property string $total_online_momo
+ * @property string $total_cash
+ * @property int $total_attendees
+ * @property string|null $snapshot_pdf_path
+ * @property string|null $notes
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read Organization $organization
+ * @property-read Subdivision|null $subdivision
+ * @property-read User|null $lockedByUser
+ */
 class SessionLedger extends Model
 {
     use BelongsToOrganization;
-    use HasFactory;
 
     protected $fillable = [
         'organization_id',
@@ -39,11 +57,17 @@ class SessionLedger extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Subdivision, $this>
+     */
     public function subdivision(): BelongsTo
     {
         return $this->belongsTo(Subdivision::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function lockedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'locked_by');

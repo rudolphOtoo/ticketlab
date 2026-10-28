@@ -31,6 +31,7 @@ test('ushers keep ops access but remain blocked from admin surfaces', function (
     $usher = User::factory()->create(['organization_id' => $this->orgA->id, 'role' => 'usher']);
 
     $this->actingAs($usher)->get(route('ops.scanner'))->assertOk();
+    $this->actingAs($usher)->get(route('admin.attendees'))->assertForbidden();
     $this->actingAs($usher)->get(route('admin.studio.marketing'))->assertForbidden();
 });
 

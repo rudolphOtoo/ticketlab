@@ -23,7 +23,6 @@ class PaymentReviewService
     {
         try {
             DB::transaction(function () use ($order, $reason, $payment): void {
-                /** @var Order|null $lockedOrder */
                 $lockedOrder = Order::query()->whereKey($order->getKey())->lockForUpdate()->first();
 
                 if (

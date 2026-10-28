@@ -11,18 +11,13 @@
     "require": {
         "php": "^8.3",
         "barryvdh/laravel-dompdf": "*",
-        "devdojo/auth": "*",
         "kendenigerian/payzephyr": "^5.1",
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
-        "laravel/pulse": "*",
         "laravel/tinker": "^3.0",
-        "livewire/blaze": "^1.0",
         "livewire/livewire": "^4.1",
-        "mallardduck/blade-lucide-icons": "*",
         "spatie/simple-excel": "*",
-        "stancl/tenancy": "*",
         "wireui/heroicons": "^2.10"
     },
     "require-dev": {
@@ -34,7 +29,6 @@
         "laravel/boost": "^2.2",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
-        "laravel/pint": "^1.27",
         "laravel/sail": "^1.53",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.9.3",
@@ -111,7 +105,10 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": [],
+            "dont-discover": [
+                "devdojo/auth",
+                "devdojo/config-writer"
+            ],
             "installer": {
                 "post-create-project": []
             }

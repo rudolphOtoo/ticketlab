@@ -54,7 +54,7 @@ class CashDeskTerminal extends Component
             $defaultTier = $event->ticketTypes()->first();
             if ($defaultTier) {
                 $this->selectedTierId = $defaultTier->id;
-                $this->cashTendered = (string) $defaultTier->price;
+                $this->cashTendered = $defaultTier->price;
             }
         }
 
@@ -170,7 +170,7 @@ class CashDeskTerminal extends Component
             return;
         }
 
-        $result = DB::transaction(function () use ($event, $total, $tendered) {
+        $result = DB::transaction(function () use ($event, $total, $tendered): array {
             // Pin the tier to the active event so a tampered tier id cannot sell another tenant's stock.
             $tier = TicketType::query()
                 ->whereKey($this->selectedTierId)
@@ -187,64 +187,22 @@ class CashDeskTerminal extends Component
 
             $tier->decrement('available_quantity', $this->quantity);
 
-            $orgId = auth()->user()->organization_id ?? $event->organization_id;
-            $subdivisionId = auth()->user()?->subdivision_id;
-
-            $customerName = trim($this->attendeeName) !== '' ? trim($this->attendeeName) : 'Walk-In Guest';
-            $customerPhone = trim($this->attendeePhone) !== '' ? trim($this->attendeePhone) : 'N/A';
-            $customerEmail = 'walkin_' . strtolower(bin2hex(random_bytes(4))) . '@cashdesk.local';
-            $reference = 'TL-ORD-CASH-' . strtoupper(bin2hex(random_bytes(8)));
-
-            $order = Order::create([
-                'organization_id' => $orgId,
-                'subdivision_id' => $subdivisionId,
-                'reference' => $reference,
-                'customer_name' => $customerName,
-                'customer_email' => $customerEmail,
-                'customer_phone' => $customerPhone,
-                'gross_amount' => $total,
-                'net_amount' => $total,
-                'fee_amount' => 0.00,
-                'payment_method' => PaymentMethod::PhysicalCash->value,
-                'payment_status' => OrderStatus::Paid->value,
-                'paid_at' => now(),
-            ]);
-
-            $attendees = [];
-            for ($i = 0; $i < $this->quantity; $i++) {
-                $qrHash = hash(
-                    'sha256',
-                    'TL-PASS-' . $order->reference . '-' . ($i + 1) . '-' . bin2hex(random_bytes(4)),
-                );
-                $attendees[] = Attendee::create([
-                    'organization_id' => $orgId,
-                    'order_id' => $order->id,
-                    'subdivision_id' => $subdivisionId,
-                    'ticket_type_id' => $tier->id,
-                    'name' => $this->quantity > 1 ? $customerName . ' (Pass ' . ($i + 1) . ')' : $customerName,
-                    'email' => $customerEmail,
-                    'phone' => $customerPhone,
-                    'qr_code_hash' => $qrHash,
-                    'checked_in_at' => null,
-                ]);
-            }
-
-            $passCode = 'TKT-CW-' . strtoupper(substr(md5($order->reference), 0, 6));
+            $order = $this->createCashOrder($event, $total);
+            $firstPass = $this->issueAttendeePasses($order, $tier);
 
             return [
                 'success' => true,
-                'order' => $order,
                 'pass' => [
-                    'pass_code' => $passCode,
-                    'attendee_name' => $customerName,
-                    'attendee_phone' => $customerPhone,
+                    'pass_code' => 'TKT-CW-' . strtoupper(substr(md5($order->reference), 0, 6)),
+                    'attendee_name' => $order->customer_name,
+                    'attendee_phone' => $order->customer_phone,
                     'tier_name' => $tier->name,
                     'quantity' => $this->quantity,
                     'total_amount' => $total,
                     'cash_tendered' => $tendered,
                     'change_due' => $this->calculateChange(),
                     'issued_at' => now()->format('M d, Y · H:i:s'),
-                    'qr_code_hash' => $attendees[0]->qr_code_hash,
+                    'qr_code_hash' => $firstPass->qr_code_hash,
                 ],
             ];
         });
@@ -268,6 +226,50 @@ class CashDeskTerminal extends Component
         $this->quantity = 1;
         $this->updateTenderToExact();
         $this->resetErrorBag();
+    }
+
+    private function createCashOrder(Event $event, float $total): Order
+    {
+        $customerName = trim($this->attendeeName);
+        $customerPhone = trim($this->attendeePhone);
+
+        return Order::query()->create([
+            'organization_id' => $event->organization_id,
+            'subdivision_id' => auth()->user()?->subdivision_id,
+            'reference' => 'TL-ORD-CASH-' . strtoupper(bin2hex(random_bytes(8))),
+            'customer_name' => $customerName !== '' ? $customerName : 'Walk-In Guest',
+            'customer_email' => 'walkin_' . bin2hex(random_bytes(4)) . '@cashdesk.local',
+            'customer_phone' => $customerPhone !== '' ? $customerPhone : 'N/A',
+            'gross_amount' => $total,
+            'net_amount' => $total,
+            'fee_amount' => 0.00,
+            'payment_method' => PaymentMethod::PhysicalCash,
+            'payment_status' => OrderStatus::Paid,
+            'paid_at' => now(),
+        ]);
+    }
+
+    /**
+     * Issue one QR pass per ticket and return the first, which is shown on the receipt.
+     */
+    private function issueAttendeePasses(Order $order, TicketType $tier): Attendee
+    {
+        $passes = collect(range(1, $this->quantity))->map(fn(int $number): Attendee => Attendee::query()->create([
+            'organization_id' => $order->organization_id,
+            'order_id' => $order->id,
+            'subdivision_id' => $order->subdivision_id,
+            'ticket_type_id' => $tier->id,
+            'name' => $this->quantity > 1 ? $order->customer_name . ' (Pass ' . $number . ')' : $order->customer_name,
+            'email' => $order->customer_email,
+            'phone' => $order->customer_phone,
+            'qr_code_hash' => hash(
+                'sha256',
+                'TL-PASS-' . $order->reference . '-' . $number . '-' . bin2hex(random_bytes(4)),
+            ),
+            'checked_in_at' => null,
+        ]));
+
+        return $passes->firstOrFail();
     }
 
     private function getActiveEvent(): ?Event

@@ -26,9 +26,11 @@ class ReleaseExpiredReservations extends Command
             ->select('id')
             ->chunkById(100, function ($reservations) use (&$released): void {
                 foreach ($reservations as $reservation) {
-                    if ($this->release((int) $reservation->getKey())) {
-                        $released++;
+                    if (!$this->release((int) $reservation->getKey())) {
+                        continue;
                     }
+
+                    $released++;
                 }
             });
 
@@ -39,23 +41,20 @@ class ReleaseExpiredReservations extends Command
 
     private function release(int $reservationId): bool
     {
-        return DB::transaction(function () use ($reservationId): bool {
+        return DB::transaction(static function () use ($reservationId): bool {
             $reservationSnapshot = Reservation::query()->select(['id', 'ticket_type_id'])->find($reservationId);
 
             if ($reservationSnapshot === null) {
                 return false;
             }
 
-            /** @var TicketType|null $ticketType */
             $ticketType = TicketType::query()->whereKey($reservationSnapshot->ticket_type_id)->lockForUpdate()->first();
 
-            /** @var Reservation|null $reservation */
             $reservation = Reservation::query()->whereKey($reservationId)->lockForUpdate()->first();
 
             if (
                 $reservation === null
                 || $reservation->status !== ReservationStatus::Active
-                || $reservation->expires_at === null
                 || $reservation->expires_at->isFuture()
             ) {
                 return false;

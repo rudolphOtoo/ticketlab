@@ -31,7 +31,7 @@ class PaymentMatcher
         }
 
         $currency = strtoupper(trim((string) ($payment['currency'] ?? '')));
-        $expectedCurrency = strtoupper((string) ($order->currency ?? 'GHS'));
+        $expectedCurrency = strtoupper($order->currency);
 
         if ($currency === '' || $currency !== $expectedCurrency) {
             throw new OrderFulfillmentException('The payment currency does not match the order currency.');

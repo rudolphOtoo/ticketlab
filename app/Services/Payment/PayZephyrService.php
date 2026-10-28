@@ -38,9 +38,13 @@ class PayZephyrService
 
         $response->throw();
 
-        /** @var array<string, mixed> $data */
-        $data = $response->json('data', []);
+        $data = $response->json('data');
 
+        if (!is_array($data)) {
+            return [];
+        }
+
+        /** @var array<string, mixed> $data */
         return $data;
     }
 
