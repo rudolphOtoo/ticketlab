@@ -1,8 +1,8 @@
 # Conscience OS Session State Anchor
-# Session Save: Hardening & Multi-Track Unification Sealed on Dev
+# Session Save: Production Architecture & Successor Parity Specification Sealed
 
-> **Saved At**: 2026-10-28 17:25Z  
-> **Active Branch**: `dev` (clean, pushed to `origin/dev`, commit `653cf09`)  
+> **Saved At**: 2026-10-29 17:05Z  
+> **Active Branch**: `dev`  
 > **Target Database**: MySQL (`ticketlabdb` @ 127.0.0.1:3306) / SQLite Testing  
 > **Quality Gate**: Pest 166/166 passing (166 passed, 0 failed, 664 assertions, 100% green).  
 > **Linter & Formatter Directive**: 🚨 **ALWAYS USE MAGO**. Do not default to Pint.
@@ -20,8 +20,7 @@
 3. **Milestone 3: Marketing Studio — Social Media Flyers & Vector QR Codes (`[MKT-01..03]`)**:
    - `GET /admin/studio/marketing`: Livewire component `App\Livewire\Admin\MarketingStudio`.
    - HTML5 Canvas flyer generator with real-time aspect ratio switching (`1:1` Square, `9:16` Story, `16:9` Banner).
-   - Dynamic attendee callouts, guest speaker badge, price tag, and 1-click PNG instant download.
-   - Vector QR pass studio with customizable foreground/background color pickers, SVG export, and PNG export.
+   - Vector QR pass studio.
 4. **Milestone 4: Non-Coder CMS Event Customizer Studio (`[CMS-04..06]`)**:
    - `GET /admin/studio`: Modular tabs for Identity/Palette, Hero & Countdown, Speakers, Schedule, Dynamic Questionnaire, and FAQs.
 5. **Milestone 6: Dedicated Super Admin Console (`[PLT-01..03]`)**:
@@ -35,23 +34,32 @@
    - Dynamic registration questionnaire injection (`select`, `radio`, `text`, `textarea`, `checkbox`) into checkout with validation.
    - Dynamic custom fields persisted to `attendees.custom_fields` on fulfillment.
 9. **Milestone 8: Branded Error Pages (`[ERR-01..02]`)**:
-   - Custom styled Serene Studio error views (`401`, `403`, `404`, `419`, `429`, `500`, `503`) with active support routing.
+   - Custom styled Serene Studio error views (`401`, `403`, `404`, `419`, `429`, `500`, `503`).
 10. **Industrial Hardening & Schema Purge Reconciled (`[SEC-01..04]`)**:
     - Purged legacy DevDojo authentication stack and dropped obsolete schema tables (`zones`, `social_provider_user`, `email_verification_codes`).
-    - Added database row locks (`lockForUpdate()`) to prevent race conditions during attendee check-ins and cash sales.
+    - Added database row locks (`lockForUpdate()`) for check-ins and cash sales.
     - Scoped ticket scanner turnout metrics strictly to the active event.
-    - Protected user role and organization fields from mass-assignment tampering (`#[Fillable(['name', 'email', 'password'])]`) with explicit `assignMembership()`.
+    - Protected user role and organization fields from mass-assignment tampering with explicit `assignMembership()`.
     - CSV formula injection protection with null-safe phone handling (`csvSafe(?string $value)`).
-    - Fixed Fortify email verification redirect configuration to `/dashboard`.
+11. **Production Hardening & Predecessor Parity Specification Sealed (`[PROD-SPEC-01]`)**:
+    - Completed systematic research and comparative analysis of [`jackysmith040/conference-platform`](https://github.com/jackysmith040/conference-platform.git).
+    - Identified all architectural and UX gaps causing the platform to feel like a prototype.
+    - Designed 7-milestone production refactor roadmap:
+      - Milestone 1: Public Navbar Purge & Surface Demarcation (`[SURFACE-01]`)
+      - Milestone 2: Staff & User Management CRUD (`[STAFF-01]`)
+      - Milestone 3: Event Lifecycle Management CRUD (`[EVENT-01]`)
+      - Milestone 4: Dedicated Mode Full Parity (`[DEDICATED-01]`)
+      - Milestone 5: Queued Ticket Emailing, Broadcast Hub & Queue Monitor (`[QUEUE-01]`)
+      - Milestone 6: Real QR Engine & Marketing Studio Polish (`[STUDIO-01]`)
+      - Milestone 7: Visual Customizer Studio Live Preview & Uploads (`[STUDIO-02]`)
+    - Published Markdown specification (`TICKETLAB_PRODUCTION_REFACTOR_PLAN.md`) and generated styled executive PDF document (`TICKETLAB_PRODUCTION_REFACTOR_PLAN.pdf`).
 
 ---
 
 ## 📋 The Wake-Up Queue: Next Phase
 
-All features and hardening from Track 1, 2, 3, 4, and teammate refactors are merged and pushed to `dev`.
-- Total Tests: 166 passed, 0 failed, 664 assertions (100% green).
-- Active Branch: `dev` (clean, up to date with `origin/dev`).
-- System is production-ready for deployment or staging rehearsals.
+- **Team Execution**: Hand off `TICKETLAB_PRODUCTION_REFACTOR_PLAN.pdf` and `TICKETLAB_PRODUCTION_REFACTOR_PLAN.md` to teammate and their AI agent.
+- **Starting Ticket**: Milestone 1 (`[SURFACE-01]`: Public navbar cleanup and distinct `layouts/admin.blade.php` vs `layouts/ops.blade.php` creation).
 
 ---
 
