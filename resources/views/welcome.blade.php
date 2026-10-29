@@ -98,10 +98,10 @@
                         <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-7 shadow-sm relative overflow-hidden group">
                             
                             <!-- Cover Accent -->
-                            @if ($spotlightEvent->banner_path)
+                            @if ($spotlightEvent->bannerUrl())
                                 <div class="h-40 -mx-6 sm:-mx-7 -mt-6 sm:-mt-7 mb-5 overflow-hidden relative bg-[var(--bg-subtle)]">
                                     <img
-                                        src="{{ $spotlightEvent->banner_path }}"
+                                        src="{{ $spotlightEvent->bannerUrl() }}"
                                         alt="{{ $spotlightEvent->title }}"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
@@ -247,9 +247,9 @@
                         @endphp
                         <article class="flex flex-col justify-between rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-2xs subtle-hover-glow transition group">
                             <div class="relative h-36 bg-[var(--bg-subtle)] overflow-hidden">
-                                @if ($item->banner_path)
+                                @if ($item->bannerUrl())
                                     <img
-                                        src="{{ $item->banner_path }}"
+                                        src="{{ $item->bannerUrl() }}"
                                         alt="{{ $item->title }}"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
@@ -407,7 +407,7 @@
 
                 <div class="flex items-center gap-5 text-xs text-[var(--text-secondary)]">
                     <a href="{{ route('public.events.index') }}" class="hover:text-[var(--text-primary)] transition">Explore Events</a>
-                    <a href="{{ route('dashboard') }}" class="hover:text-[var(--text-primary)] transition">Operations Hub</a>
+                    <a href="{{ route('dashboard') }}" class="hover:text-[var(--text-primary)] transition">Organizer Sign In</a>
                     <a href="{{ url('/settings/profile') }}" class="hover:text-[var(--text-primary)] transition">Account</a>
                 </div>
             </div>

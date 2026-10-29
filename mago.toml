@@ -7,7 +7,8 @@ php-version = "8.5"
 paths = ["app", "bootstrap", "config", "database", "routes", "tests"]
 includes = [
     "vendor/laravel/framework/src/Illuminate/**/*.php",
-    "vendor/bacon/bacon-qr-code/src/**/*.php"
+    "vendor/chillerlan/php-qrcode/src/**/*.php",
+    "vendor/chillerlan/php-settings-container/src/**/*.php"
 ]
 excludes = ["bootstrap/cache/**"]
 

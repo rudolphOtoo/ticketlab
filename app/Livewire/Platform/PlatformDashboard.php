@@ -17,7 +17,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Layout('layouts.ops')]
+#[Layout('layouts.platform')]
 #[Title('Developer Super Admin Console')]
 class PlatformDashboard extends Component
 {
@@ -119,25 +119,24 @@ class PlatformDashboard extends Component
 
         // Total paid tickets count across all organizations
         $this->paidTicketsCount = Attendee::query()
-            ->whereHas('order', function ($query): void {
+            ->whereHas('order', static function ($query): void {
                 $query->where('payment_status', OrderStatus::Paid->value);
             })
             ->count();
 
         // Platform fee accumulator: GHS 3.00 per paid ticket sold
-        $this->platformFeeAccumulator = (float) ($this->paidTicketsCount * 3.00);
+        $this->platformFeeAccumulator = $this->paidTicketsCount * 3.00;
 
         // Fetch tenants with aggregated event counts
         $tenantQuery = Organization::query()->withCount('events');
 
         if (trim($this->tenantSearch) !== '') {
             $term = '%' . trim($this->tenantSearch) . '%';
-            $tenantQuery->where(function ($q) use ($term): void {
+            $tenantQuery->where(static function ($q) use ($term): void {
                 $q->where('name', 'like', $term)->orWhere('slug', 'like', $term);
             });
         }
 
-        /** @var Collection<int, Organization> $tenants */
         $tenants = $tenantQuery->latest('id')->take(25)->get();
 
         $selectedTenant = null;

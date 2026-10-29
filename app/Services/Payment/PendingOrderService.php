@@ -42,7 +42,6 @@ class PendingOrderService
      */
     private function storeOrder(Reservation $reservation, array $attributes): Order
     {
-        /** @var Order|null $order */
         $order = Order::query()->where('reservation_id', $reservation->getKey())->lockForUpdate()->first();
 
         if ($order !== null) {

@@ -142,9 +142,9 @@
                         
                         <!-- Top Banner / Imagery -->
                         <div class="relative h-44 w-full bg-[var(--bg-subtle)] overflow-hidden">
-                            @if ($event->banner_path)
+                            @if ($event->bannerUrl())
                                 <img
-                                    src="{{ $event->banner_path }}"
+                                    src="{{ $event->bannerUrl() }}"
                                     alt="{{ $event->title }}"
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out"
                                 />

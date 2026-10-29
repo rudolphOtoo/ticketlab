@@ -47,13 +47,15 @@ trait ManagesEventFaqs
             return;
         }
 
-        $this->editingFaqId = $faq->id;
-        $this->faq_question = $faq->question;
-        $this->faq_answer = $faq->answer;
-        $this->faq_category = $faq->category ?? 'General';
-        $this->faq_is_published = (bool) $faq->is_published;
-        $this->faq_sort_order = (int) $faq->sort_order;
-        $this->isFaqModalOpen = true;
+        $this->fill([
+            'editingFaqId' => $faq->id,
+            'faq_question' => $faq->question,
+            'faq_answer' => $faq->answer,
+            'faq_category' => $faq->category,
+            'faq_is_published' => $faq->is_published,
+            'faq_sort_order' => $faq->sort_order,
+            'isFaqModalOpen' => true,
+        ]);
     }
 
     public function saveFaq(): void
@@ -72,36 +74,40 @@ trait ManagesEventFaqs
             return;
         }
 
-        if ($this->editingFaqId !== null) {
-            $faq = $this->findScopedFaq($this->editingFaqId);
-
-            if ($faq !== null) {
-                $faq->update([
-                    'question' => $this->faq_question,
-                    'answer' => $this->faq_answer,
-                    'category' => $this->faq_category,
-                    'is_published' => $this->faq_is_published,
-                    'sort_order' => $this->faq_sort_order,
-                ]);
-
-                $this->flashMessage = 'FAQ item updated.';
-            }
-        } else {
-            EventFaq::create([
-                'organization_id' => $this->organizationId,
-                'event_id' => $event->id,
-                'question' => $this->faq_question,
-                'answer' => $this->faq_answer,
-                'category' => $this->faq_category,
-                'is_published' => $this->faq_is_published,
-                'sort_order' => $this->faq_sort_order,
-            ]);
-
-            $this->flashMessage = 'New FAQ item created.';
-        }
+        $this->flashMessage = $this->persistFaq($event->id) ?? $this->flashMessage;
 
         $this->isFaqModalOpen = false;
         $this->editingFaqId = null;
+    }
+
+    /**
+     * Create or update the FAQ behind the modal and return the confirmation to flash.
+     */
+    private function persistFaq(int $eventId): ?string
+    {
+        $attributes = [
+            'question' => $this->faq_question,
+            'answer' => $this->faq_answer,
+            'category' => $this->faq_category,
+            'is_published' => $this->faq_is_published,
+            'sort_order' => $this->faq_sort_order,
+        ];
+
+        if ($this->editingFaqId === null) {
+            EventFaq::create(['organization_id' => $this->organizationId, 'event_id' => $eventId, ...$attributes]);
+
+            return 'New FAQ item created.';
+        }
+
+        $faq = $this->findScopedFaq($this->editingFaqId);
+
+        if ($faq === null) {
+            return null;
+        }
+
+        $faq->update($attributes);
+
+        return 'FAQ item updated.';
     }
 
     public function deleteFaq(int $id): void

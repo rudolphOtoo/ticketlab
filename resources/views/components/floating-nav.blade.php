@@ -3,6 +3,21 @@
     'current' => null,
 ])
 
+@php
+    $navUser = auth()->user();
+    $staffHome = $navUser?->staffHomeUrl();
+    $navLinks = \App\Models\PlatformSetting::isDedicatedMode()
+        ? [
+            ['label' => 'Schedule', 'href' => url('/') . '#schedule', 'active' => false],
+            ['label' => 'Speakers', 'href' => route('dedicated.speakers'), 'active' => request()->routeIs('dedicated.speakers')],
+            ['label' => 'Packages', 'href' => route('dedicated.packages'), 'active' => request()->routeIs('dedicated.packages')],
+            ['label' => 'FAQs', 'href' => route('dedicated.faq'), 'active' => request()->routeIs('dedicated.faq')],
+        ]
+        : [
+            ['label' => 'Events', 'href' => route('public.events.index'), 'active' => request()->routeIs('public.events.*')],
+        ];
+@endphp
+
 <nav
     aria-label="Global floating navigation"
     class="fixed top-4 inset-x-0 mx-auto max-w-fit z-50 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-surface)]/85 backdrop-blur-xl shadow-[0_8px_30px_rgb(0_0_0/0.06)] dark:shadow-[0_8px_30px_rgb(0_0_0/0.4)] p-1.5 flex items-center gap-1 sm:gap-1.5 transition-[border-color,box-shadow] duration-200 pointer-events-auto"
@@ -69,42 +84,18 @@
             Home
         </a>
 
-        @if(!\App\Models\PlatformSetting::isDedicatedMode())
+        @foreach ($navLinks as $navLink)
             <a
-                href="{{ route('public.events.index') }}"
+                href="{{ $navLink['href'] }}"
                 @class([
                     'hidden sm:inline-flex px-3 py-1.5 rounded-full transition-colors duration-150 press-scale cursor-pointer',
-                    'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => request()->routeIs('public.events.*') || request()->is('events*'),
-                    'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]' => !(request()->routeIs('public.events.*') || request()->is('events*')),
+                    'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => $navLink['active'],
+                    'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]' => !$navLink['active'],
                 ])
             >
-                Events
+                {{ $navLink['label'] }}
             </a>
-        @endif
-
-        @auth
-            <a
-                href="{{ route('dashboard') }}"
-                @class([
-                    'px-3 py-1.5 rounded-full transition-colors duration-150 press-scale cursor-pointer',
-                    'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => request()->routeIs('dashboard'),
-                    'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]' => !request()->routeIs('dashboard'),
-                ])
-            >
-                Ops Hub
-            </a>
-
-            <a
-                href="{{ url('/ops/scanner') }}"
-                @class([
-                    'hidden md:inline-flex px-3 py-1.5 rounded-full transition-colors duration-150 press-scale cursor-pointer',
-                    'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => request()->is('ops/scanner*'),
-                    'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]' => !request()->is('ops/scanner*'),
-                ])
-            >
-                Scanner
-            </a>
-        @endauth
+        @endforeach
     </div>
 
     {{-- Fluid Theme Toggle (Liquid Ripple Trigger with Button Origin) --}}
@@ -123,14 +114,21 @@
         </svg>
     </button>
 
-    {{-- Auth Quick CTA Pill --}}
-    @auth
+    {{-- Auth Quick CTA Pill: staff get one discrete door into their own surface; internal tools are never listed here. --}}
+    @if ($staffHome !== null)
+        <a
+            href="{{ $staffHome }}"
+            class="inline-flex items-center gap-1 pl-3 pr-3.5 py-1.5 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-90 transition-opacity shadow-xs press-scale cursor-pointer"
+        >
+            <span>Manage Event</span>
+            <span class="text-[10px]">→</span>
+        </a>
+    @elseif ($navUser !== null)
         <a
             href="{{ route('dashboard') }}"
-            class="hidden sm:inline-flex items-center gap-1 pl-3 pr-3.5 py-1.5 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-90 transition-opacity shadow-xs press-scale cursor-pointer"
+            class="inline-flex items-center px-3.5 py-1.5 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-90 transition-opacity shadow-xs press-scale cursor-pointer"
         >
-            <span>Dashboard</span>
-            <span class="text-[10px]">→</span>
+            My Passes
         </a>
     @else
         <a
@@ -139,7 +137,7 @@
         >
             Sign In
         </a>
-    @endauth
+    @endif
 </nav>
 
 <script>

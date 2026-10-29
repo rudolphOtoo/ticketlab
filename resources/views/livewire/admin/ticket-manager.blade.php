@@ -81,8 +81,9 @@
             </div>
             <h3 class="mt-4 text-sm font-semibold text-[var(--text-primary)]">No active event found</h3>
             <p class="mt-1 text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
-                Please create or publish an event in the Customizer Studio before configuring ticket categories.
+                Create an event before configuring ticket categories.
             </p>
+            <a href="{{ route('admin.events') }}" wire:navigate class="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs press-scale">+ Create Event</a>
         </div>
     @elseif ($ticketTypes->isEmpty())
         <div class="rounded-3xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-12 text-center">

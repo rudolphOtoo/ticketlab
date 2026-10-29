@@ -5,17 +5,18 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Models\Event;
-use App\Models\Organization;
 use App\Models\TicketType;
+use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Layout('layouts.ops')]
+#[Layout('layouts.admin')]
 #[Title('Ticket Tiers & Price Manager')]
 class TicketManager extends Component
 {
@@ -64,11 +65,18 @@ class TicketManager extends Component
             $event = Event::query()->where('organization_id', $this->organizationId)->whereKey($eventId)->first();
         }
 
-        if ($event === null && $this->organizationId !== null) {
-            $event = Event::query()->where('organization_id', $this->organizationId)->latest('id')->first();
-        }
+        $event ??= ActiveEvent::resolve($this->organizationId);
 
         $this->selectedEventId = $event?->id;
+    }
+
+    public function updatedSelectedEventId(): void
+    {
+        $event = $this->getCurrentEvent();
+
+        if ($event !== null) {
+            ActiveEvent::set($event);
+        }
     }
 
     public function openCreateModal(): void
@@ -99,12 +107,12 @@ class TicketManager extends Component
         $this->editingTicketTypeId = $ticketType->id;
         $this->name = $ticketType->name;
         $this->description = $ticketType->description ?? '';
-        $this->price = (string) $ticketType->price;
+        $this->price = $ticketType->price;
         $this->total_capacity = $ticketType->total_capacity;
         $this->sales_start_at = $ticketType->sales_start_at?->format('Y-m-d\TH:i');
         $this->sales_end_at = $ticketType->sales_end_at?->format('Y-m-d\TH:i');
-        $this->is_active = (bool) $ticketType->is_active;
-        $this->perks = is_array($ticketType->perks) ? array_values($ticketType->perks) : [];
+        $this->is_active = $ticketType->is_active;
+        $this->perks = $ticketType->perks ?? [];
         $this->newPerkInput = '';
         $this->isModalOpen = true;
     }
@@ -127,9 +135,12 @@ class TicketManager extends Component
 
     public function removePerk(int $index): void
     {
-        if (isset($this->perks[$index])) {
-            unset($this->perks[$index]);
-            $this->perks = array_values($this->perks);
+        if (array_key_exists($index, $this->perks)) {
+            $this->perks = array_values(array_filter(
+                $this->perks,
+                static fn(int $key): bool => $key !== $index,
+                ARRAY_FILTER_USE_KEY,
+            ));
         }
     }
 
@@ -170,67 +181,76 @@ class TicketManager extends Component
             ]);
         }
 
-        $salesStart = filled($this->sales_start_at) ? $this->sales_start_at : null;
-        $salesEnd = filled($this->sales_end_at) ? $this->sales_end_at : null;
-
-        \Illuminate\Support\Facades\DB::transaction(function () use ($event, $salesStart, $salesEnd): void {
-            if ($this->editingTicketTypeId !== null) {
-                /** @var TicketType|null $ticketType */
-                $ticketType = TicketType::query()
-                    ->whereHas('event', function ($query): void {
-                        $query->where('organization_id', $this->organizationId);
-                    })
-                    ->whereKey($this->editingTicketTypeId)
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($ticketType === null) {
-                    return;
-                }
-
-                $soldTickets = max(0, $ticketType->total_capacity - $ticketType->available_quantity);
-
-                if ($this->total_capacity < $soldTickets) {
-                    throw ValidationException::withMessages([
-                        'total_capacity' => "Cannot reduce capacity below currently sold tickets ({$soldTickets}).",
-                    ]);
-                }
-
-                $capacityDiff = $this->total_capacity - $ticketType->total_capacity;
-                $newAvailableQuantity = max(0, $ticketType->available_quantity + $capacityDiff);
-
-                $ticketType->update([
-                    'name' => $this->name,
-                    'description' => $this->description,
-                    'price' => (float) $this->price,
-                    'total_capacity' => $this->total_capacity,
-                    'available_quantity' => $newAvailableQuantity,
-                    'sales_start_at' => $salesStart,
-                    'sales_end_at' => $salesEnd,
-                    'is_active' => $this->is_active,
-                    'perks' => $this->perks,
-                ]);
-
-                $this->flashMessage = "Ticket tier '{$ticketType->name}' updated successfully.";
-            } else {
-                $ticketType = TicketType::create([
-                    'event_id' => $event->id,
-                    'name' => $this->name,
-                    'description' => $this->description,
-                    'price' => (float) $this->price,
-                    'total_capacity' => $this->total_capacity,
-                    'available_quantity' => $this->total_capacity,
-                    'sales_start_at' => $salesStart,
-                    'sales_end_at' => $salesEnd,
-                    'is_active' => $this->is_active,
-                    'perks' => $this->perks,
-                ]);
-
-                $this->flashMessage = "New ticket tier '{$ticketType->name}' created successfully.";
-            }
-        });
+        DB::transaction(fn() => $this->editingTicketTypeId === null
+            ? $this->createTicketType($event)
+            : $this->updateTicketType($this->editingTicketTypeId));
 
         $this->closeModal();
+    }
+
+    /**
+     * Form values shared by create and update; capacity bookkeeping is handled by the callers.
+     *
+     * @return array<string, mixed>
+     */
+    private function tierAttributes(): array
+    {
+        return [
+            'name' => $this->name,
+            'description' => $this->description,
+            'price' => (float) $this->price,
+            'total_capacity' => $this->total_capacity,
+            'sales_start_at' => filled($this->sales_start_at) ? $this->sales_start_at : null,
+            'sales_end_at' => filled($this->sales_end_at) ? $this->sales_end_at : null,
+            'is_active' => $this->is_active,
+            'perks' => $this->perks,
+        ];
+    }
+
+    private function createTicketType(Event $event): void
+    {
+        $ticketType = TicketType::create([
+            ...$this->tierAttributes(),
+            'event_id' => $event->id,
+            'available_quantity' => $this->total_capacity,
+        ]);
+
+        $this->flashMessage = "New ticket tier '{$ticketType->name}' created successfully.";
+    }
+
+    /**
+     * Must run inside a transaction: the tier row is locked so concurrent sales cannot race the capacity maths.
+     */
+    private function updateTicketType(int $ticketTypeId): void
+    {
+        $ticketType = TicketType::query()
+            ->whereHas('event', function ($query): void {
+                $query->where('organization_id', $this->organizationId);
+            })
+            ->whereKey($ticketTypeId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($ticketType === null) {
+            return;
+        }
+
+        $soldTickets = max(0, $ticketType->total_capacity - $ticketType->available_quantity);
+
+        if ($this->total_capacity < $soldTickets) {
+            throw ValidationException::withMessages([
+                'total_capacity' => "Cannot reduce capacity below currently sold tickets ({$soldTickets}).",
+            ]);
+        }
+
+        $capacityDiff = $this->total_capacity - $ticketType->total_capacity;
+
+        $ticketType->update([
+            ...$this->tierAttributes(),
+            'available_quantity' => max(0, $ticketType->available_quantity + $capacityDiff),
+        ]);
+
+        $this->flashMessage = "Ticket tier '{$ticketType->name}' updated successfully.";
     }
 
     public function deleteTicketType(int $id): void

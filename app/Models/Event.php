@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable $start_at
  * @property CarbonImmutable $end_at
  * @property string $status
+ * @property bool $is_public
  * @property array<string, mixed>|null $customization
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
@@ -101,5 +103,10 @@ class Event extends Model
     public function formFields(): HasMany
     {
         return $this->hasMany(EventFormField::class)->orderBy('sort_order');
+    }
+
+    public function bannerUrl(): ?string
+    {
+        return MediaUrl::resolve($this->banner_path);
     }
 }

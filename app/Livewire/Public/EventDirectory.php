@@ -38,30 +38,29 @@ class EventDirectory extends Component
 
         if (trim($this->search) !== '') {
             $term = '%' . trim($this->search) . '%';
-            $query->where(function (Builder $builder) use ($term): void {
+            $query->where(static function (Builder $builder) use ($term): void {
                 $builder
                     ->where('title', 'like', $term)
                     ->orWhere('description', 'like', $term)
                     ->orWhere('venue', 'like', $term)
-                    ->orWhereHas('organization', function (Builder $orgQuery) use ($term): void {
+                    ->orWhereHas('organization', static function (Builder $orgQuery) use ($term): void {
                         $orgQuery->where('name', 'like', $term);
                     });
             });
         }
 
-        if ($this->filter === 'upcoming') {
-            $query->where(function (Builder $builder): void {
+        match ($this->filter) {
+            'upcoming' => $query->where(static function (Builder $builder): void {
                 $builder->whereNull('start_at')->orWhere('start_at', '>=', now()->startOfDay());
-            });
-        } elseif ($this->filter === 'free') {
-            $query->whereHas('ticketTypes', function (Builder $builder): void {
+            }),
+            'free' => $query->whereHas('ticketTypes', static function (Builder $builder): void {
                 $builder->where('price', '<=', 0);
-            });
-        } elseif ($this->filter === 'paid') {
-            $query->whereHas('ticketTypes', function (Builder $builder): void {
+            }),
+            'paid' => $query->whereHas('ticketTypes', static function (Builder $builder): void {
                 $builder->where('price', '>', 0);
-            });
-        }
+            }),
+            default => null,
+        };
 
         /** @var Collection<int, Event> $events */
         $events = $query->orderByRaw('CASE WHEN start_at IS NULL THEN 1 ELSE 0 END, start_at ASC')->latest('id')->get();

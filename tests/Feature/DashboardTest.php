@@ -25,8 +25,10 @@ class DashboardTest extends TestCase
 
         $response = $this->get(route('dashboard'));
         $response->assertOk();
-        $response->assertSee('Operations Hub');
+        $response->assertSee('My Passes');
         $response->assertSee('Welcome back');
+        $response->assertDontSee('Ops Hub');
+        $response->assertDontSee('Manage Event');
         $response->assertDontSee('flux:');
         $response->assertDontSee('@fluxScripts');
     }

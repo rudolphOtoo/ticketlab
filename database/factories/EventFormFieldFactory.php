@@ -9,6 +9,9 @@ use App\Models\EventFormField;
 use App\Models\Organization;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<EventFormField>
+ */
 class EventFormFieldFactory extends Factory
 {
     protected $model = EventFormField::class;

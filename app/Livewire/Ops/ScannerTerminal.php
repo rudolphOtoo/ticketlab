@@ -8,6 +8,7 @@ use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Subdivision;
 use App\Models\TicketType;
+use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -128,7 +129,11 @@ class ScannerTerminal extends Component
         $user = auth()->user();
         $orgId = $user?->organization_id;
         $events = $this->forOrganization(Event::query(), $orgId);
-        $event = $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
+        $event = match (true) {
+            $this->eventId !== null => $events->find($this->eventId),
+            $orgId !== null => ActiveEvent::resolve($orgId),
+            default => $events->latest()->first(),
+        };
 
         $activeSubdivision = $user?->subdivision_id
             ? Subdivision::query()->find($user->subdivision_id)

@@ -24,9 +24,9 @@
             <section class="space-y-8 lg:col-span-2">
                 <!-- Main Event Hero Card -->
                 <div class="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
-                    @if ($event->banner_url)
+                    @if ($event->bannerUrl())
                         <img
-                            src="{{ $event->banner_url }}"
+                            src="{{ $event->bannerUrl() }}"
                             alt="{{ $event->title }}"
                             class="h-64 w-full object-cover sm:h-80"
                         />
@@ -230,8 +230,8 @@
                                 <div class="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4 flex flex-col justify-between space-y-3">
                                     <div class="flex items-start gap-3">
                                         <div class="size-12 rounded-full bg-zinc-200 flex items-center justify-center font-bold text-sm text-zinc-700 shrink-0 overflow-hidden">
-                                            @if ($speaker->photo_path)
-                                                <img src="{{ $speaker->photo_path }}" alt="{{ $speaker->name }}" class="size-full object-cover">
+                                            @if ($speaker->photoUrl())
+                                                <img src="{{ $speaker->photoUrl() }}" alt="{{ $speaker->name }}" class="size-full object-cover">
                                             @else
                                                 {{ substr($speaker->name, 0, 1) }}
                                             @endif
@@ -629,8 +629,8 @@
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex items-center gap-3">
                         <div class="size-14 rounded-full bg-zinc-100 flex items-center justify-center font-bold text-lg text-zinc-700 overflow-hidden shrink-0">
-                            @if ($viewingSpeaker->photo_path)
-                                <img src="{{ $viewingSpeaker->photo_path }}" alt="{{ $viewingSpeaker->name }}" class="size-full object-cover">
+                            @if ($viewingSpeaker->photoUrl())
+                                <img src="{{ $viewingSpeaker->photoUrl() }}" alt="{{ $viewingSpeaker->name }}" class="size-full object-cover">
                             @else
                                 {{ substr($viewingSpeaker->name, 0, 1) }}
                             @endif

@@ -111,9 +111,11 @@ class EventFormField extends Model
         }
 
         foreach ((array) $this->validation_rules as $rule) {
-            if (is_string($rule) && !in_array($rule, $rules, true)) {
-                $rules[] = $rule;
+            if (in_array($rule, $rules, true)) {
+                continue;
             }
+
+            $rules[] = $rule;
         }
 
         return $rules;

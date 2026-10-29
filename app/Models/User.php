@@ -43,6 +43,12 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     use HasFactory;
 
     use Notifiable;
+
+    /** Roles a tenant admin may grant from the team screen (never super_admin). */
+    public const array ASSIGNABLE_ROLES = ['admin', 'staff', 'usher'];
+
+    public const array ADMIN_ROLES = ['admin', 'org_admin'];
+
     use PasskeyAuthenticatable;
     use TwoFactorAuthenticatable;
 
@@ -77,6 +83,31 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function hasOrganizationAccess(): bool
     {
         return $this->isSuperadmin() || $this->organization_id !== null;
+    }
+
+    /**
+     * Organisation owners may manage their team; staff can run events but not grant access.
+     */
+    public function canManageTeam(): bool
+    {
+        return (
+            $this->isSuperAdmin()
+            || $this->organization_id !== null
+            && in_array($this->role, self::ADMIN_ROLES, true)
+        );
+    }
+
+    /**
+     * The internal surface this account works from, or null for attendees (public surface only).
+     */
+    public function staffHomeUrl(): ?string
+    {
+        return match (true) {
+            $this->isSuperAdmin() => route('platform.dashboard'),
+            $this->organization_id === null => null,
+            $this->isUsher() => route('ops.scanner'),
+            default => route('admin.index'),
+        };
     }
 
     /**
@@ -117,5 +148,4 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 
         return Str::length($initials) > 1 ? Str::substr($initials, 0, 1) . Str::substr($initials, -1) : $initials;
     }
-
 }

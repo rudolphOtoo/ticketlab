@@ -10,6 +10,8 @@ use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\TicketType;
+use App\Models\User;
+use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -274,7 +276,12 @@ class CashDeskTerminal extends Component
 
     private function getActiveEvent(): ?Event
     {
-        $orgId = auth()->user()?->organization_id;
+        $user = auth()->user();
+        $orgId = $user instanceof User ? $user->organization_id : null;
+
+        if ($this->eventId === null && $orgId !== null) {
+            return ActiveEvent::resolve($orgId);
+        }
 
         $events = Event::query()->when($orgId, static fn($q) => $q->where('organization_id', $orgId));
 

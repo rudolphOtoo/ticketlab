@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace App\Livewire\Admin\Concerns;
 
 use App\Models\EventSpeaker;
+use App\Support\MediaUrl;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 trait ManagesEventSpeakers
 {
+    use WithFileUploads;
+
     public ?int $organizationId = null;
 
     public ?string $flashMessage = null;
@@ -26,6 +31,8 @@ trait ManagesEventSpeakers
 
     public string $speaker_photo_path = '';
 
+    public ?TemporaryUploadedFile $speaker_photo = null;
+
     public bool $speaker_is_featured = false;
 
     public int $speaker_sort_order = 0;
@@ -39,6 +46,7 @@ trait ManagesEventSpeakers
         $this->speaker_topic = '';
         $this->speaker_bio = '';
         $this->speaker_photo_path = '';
+        $this->speaker_photo = null;
         $this->speaker_is_featured = false;
         $this->speaker_sort_order = 0;
         $this->isSpeakerModalOpen = true;
@@ -53,15 +61,18 @@ trait ManagesEventSpeakers
             return;
         }
 
-        $this->editingSpeakerId = $speaker->id;
-        $this->speaker_name = $speaker->name;
-        $this->speaker_title_role = $speaker->title_role ?? '';
-        $this->speaker_topic = $speaker->topic ?? '';
-        $this->speaker_bio = $speaker->bio ?? '';
-        $this->speaker_photo_path = $speaker->photo_path ?? '';
-        $this->speaker_is_featured = (bool) $speaker->is_featured;
-        $this->speaker_sort_order = (int) $speaker->sort_order;
-        $this->isSpeakerModalOpen = true;
+        $this->fill([
+            'editingSpeakerId' => $speaker->id,
+            'speaker_name' => $speaker->name,
+            'speaker_title_role' => $speaker->title_role ?? '',
+            'speaker_topic' => $speaker->topic ?? '',
+            'speaker_bio' => $speaker->bio ?? '',
+            'speaker_photo_path' => $speaker->photo_path ?? '',
+            'speaker_photo' => null,
+            'speaker_is_featured' => $speaker->is_featured,
+            'speaker_sort_order' => $speaker->sort_order,
+            'isSpeakerModalOpen' => true,
+        ]);
     }
 
     public function saveSpeaker(): void
@@ -72,6 +83,7 @@ trait ManagesEventSpeakers
             'speaker_topic' => ['nullable', 'string', 'max:150'],
             'speaker_bio' => ['nullable', 'string', 'max:1000'],
             'speaker_photo_path' => ['nullable', 'string', 'max:2048'],
+            'speaker_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'speaker_is_featured' => ['boolean'],
             'speaker_sort_order' => ['required', 'integer', 'min:0'],
         ]);
@@ -82,40 +94,56 @@ trait ManagesEventSpeakers
             return;
         }
 
-        if ($this->editingSpeakerId !== null) {
-            $speaker = $this->findScopedSpeaker($this->editingSpeakerId);
+        $previousPhoto = null;
 
-            if ($speaker !== null) {
-                $speaker->update([
-                    'name' => $this->speaker_name,
-                    'title_role' => $this->speaker_title_role,
-                    'topic' => $this->speaker_topic,
-                    'bio' => $this->speaker_bio,
-                    'photo_path' => $this->speaker_photo_path,
-                    'is_featured' => $this->speaker_is_featured,
-                    'sort_order' => $this->speaker_sort_order,
-                ]);
-
-                $this->flashMessage = "Speaker '{$speaker->name}' updated.";
-            }
-        } else {
-            EventSpeaker::create([
-                'organization_id' => $this->organizationId,
-                'event_id' => $event->id,
-                'name' => $this->speaker_name,
-                'title_role' => $this->speaker_title_role,
-                'topic' => $this->speaker_topic,
-                'bio' => $this->speaker_bio,
-                'photo_path' => $this->speaker_photo_path,
-                'is_featured' => $this->speaker_is_featured,
-                'sort_order' => $this->speaker_sort_order,
-            ]);
-
-            $this->flashMessage = "Speaker '{$this->speaker_name}' added.";
+        // A fresh upload wins over a pasted URL; uploads live on the public disk under speakers/.
+        if ($this->speaker_photo !== null) {
+            $previousPhoto = $this->speaker_photo_path;
+            $this->speaker_photo_path = MediaUrl::store($this->speaker_photo, "speakers/{$this->organizationId}");
         }
+
+        $this->flashMessage = $this->persistSpeaker($event->id, $previousPhoto) ?? $this->flashMessage;
 
         $this->isSpeakerModalOpen = false;
         $this->editingSpeakerId = null;
+        $this->speaker_photo = null;
+    }
+
+    /**
+     * Create or update the speaker behind the modal and return the confirmation to flash.
+     */
+    private function persistSpeaker(int $eventId, ?string $previousPhoto): ?string
+    {
+        $attributes = [
+            'name' => $this->speaker_name,
+            'title_role' => $this->speaker_title_role,
+            'topic' => $this->speaker_topic,
+            'bio' => $this->speaker_bio,
+            'photo_path' => $this->speaker_photo_path,
+            'is_featured' => $this->speaker_is_featured,
+            'sort_order' => $this->speaker_sort_order,
+        ];
+
+        if ($this->editingSpeakerId === null) {
+            EventSpeaker::create(['organization_id' => $this->organizationId, 'event_id' => $eventId, ...$attributes]);
+
+            return "Speaker '{$this->speaker_name}' added.";
+        }
+
+        $speaker = $this->findScopedSpeaker($this->editingSpeakerId);
+
+        if ($speaker === null) {
+            return null;
+        }
+
+        $speaker->update($attributes);
+
+        // Only clean up the old upload once the replacement is actually saved on the speaker.
+        if ($previousPhoto !== $this->speaker_photo_path) {
+            MediaUrl::deleteStored($previousPhoto);
+        }
+
+        return "Speaker '{$speaker->name}' updated.";
     }
 
     public function deleteSpeaker(int $id): void
@@ -124,6 +152,7 @@ trait ManagesEventSpeakers
 
         if ($speaker !== null) {
             $name = $speaker->name;
+            MediaUrl::deleteStored($speaker->photo_path);
             $speaker->delete();
             $this->flashMessage = "Speaker '{$name}' was removed.";
         }

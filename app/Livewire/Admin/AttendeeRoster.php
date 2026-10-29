@@ -8,6 +8,7 @@ use App\Models\Attendee;
 use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ use Livewire\WithPagination;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-#[Layout('layouts.ops')]
+#[Layout('layouts.admin')]
 #[Title('Attendee Roster & Gate Check-Ins')]
 class AttendeeRoster extends Component
 {
@@ -124,15 +125,20 @@ class AttendeeRoster extends Component
     }
 
     /**
-     * Organisation tenant scope plus subdivision scope for zone-bound stewards.
+     * Organisation tenant scope plus subdivision scope for zone-bound stewards, limited to the active event.
      *
      * @return Builder<Attendee>
      */
     private function scopedAttendees(?User $user): Builder
     {
+        $eventId = ActiveEvent::id($user?->organization_id);
+
         return Attendee::query()
             ->when($user?->organization_id, static fn($q, $orgId) => $q->where('organization_id', $orgId))
-            ->when($user?->subdivision_id, static fn($q, $subId) => $q->where('subdivision_id', $subId));
+            ->when($user?->subdivision_id, static fn($q, $subId) => $q->where('subdivision_id', $subId))
+            ->when($eventId, static fn($q, int $id) => $q->whereIn('ticket_type_id', TicketType::query()
+                ->select('id')
+                ->where('event_id', $id)));
     }
 
     /**
@@ -191,10 +197,14 @@ class AttendeeRoster extends Component
             'organization_id',
             $orgId,
         ))->get();
-        $ticketTypes = TicketType::query()->when($user?->organization_id, static fn(
-            $q,
-            $orgId,
-        ) => $q->whereHas('event', static fn($eq) => $eq->where('organization_id', $orgId)))->get();
+        $activeEventId = ActiveEvent::id($user?->organization_id);
+        $ticketTypes = TicketType::query()
+            ->when($user?->organization_id, static fn($q, $orgId) => $q->whereHas('event', static fn($eq) => $eq->where(
+                'organization_id',
+                $orgId,
+            )))
+            ->when($activeEventId, static fn($q, int $id) => $q->where('event_id', $id))
+            ->get();
 
         $selectedAttendee = $this->selectedAttendeeId
             ? $this

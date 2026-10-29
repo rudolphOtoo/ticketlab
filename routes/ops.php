@@ -2,12 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Admin\AdminOverview;
 use App\Livewire\Admin\AttendeeRoster;
+use App\Livewire\Admin\BroadcastHub;
 use App\Livewire\Admin\DailySessionLedger;
 use App\Livewire\Admin\DataExportCentral;
 use App\Livewire\Admin\EventCustomizer;
+use App\Livewire\Admin\EventManager;
 use App\Livewire\Admin\MarketingStudio;
+use App\Livewire\Admin\QueueMonitor;
 use App\Livewire\Admin\TicketManager;
+use App\Livewire\Admin\UserManagement;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
 use App\Livewire\Platform\PlatformDashboard;
@@ -38,8 +43,18 @@ Route::middleware(['auth', 'subdivision.access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        // Root admin route redirects to dashboard
-        Route::redirect('/', '/dashboard')->name('index');
+        // Tenant admin command overview for the active event
+        Route::get('/', AdminOverview::class)->name('index');
+
+        // Event lifecycle CRUD & active event selection
+        Route::get('events', EventManager::class)->name('events');
+
+        // Staff & usher management (RBAC)
+        Route::get('users', UserManagement::class)->name('users');
+
+        // Batched reminder emails & queue health
+        Route::get('broadcasts', BroadcastHub::class)->name('broadcasts');
+        Route::get('queue-monitor', QueueMonitor::class)->name('queue-monitor');
 
         // Daily session ledger declaration & lockdown
         Route::get('sessions', DailySessionLedger::class)->name('sessions');

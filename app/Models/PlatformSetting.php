@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
 class PlatformSetting extends Model
 {
-    use HasFactory;
-
     protected $table = 'platform_settings';
 
     protected $primaryKey = 'key';
@@ -30,7 +27,7 @@ class PlatformSetting extends Model
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        return Cache::rememberForever("platform_setting:{$key}", function () use ($key, $default) {
+        return Cache::rememberForever("platform_setting:{$key}", static function () use ($key, $default) {
             $setting = static::query()->find($key);
 
             if ($setting !== null && $setting->value !== null) {
@@ -46,7 +43,11 @@ class PlatformSetting extends Model
      */
     public static function set(string $key, mixed $value): void
     {
-        $stringValue = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+        $stringValue = match (true) {
+            $value === true => '1',
+            $value === false => '0',
+            default => (string) $value,
+        };
 
         static::query()->updateOrCreate(['key' => $key], ['value' => $stringValue]);
 

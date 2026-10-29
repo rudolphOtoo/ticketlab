@@ -92,4 +92,16 @@ class Organization extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    /**
+     * Inbox for dedicated-site enquiries: the organisation's configured address, else the platform sender.
+     */
+    public function contactEmail(): string
+    {
+        $configured = $this->settings['contact_email'] ?? null;
+
+        return is_string($configured) && filter_var($configured, FILTER_VALIDATE_EMAIL)
+            ? $configured
+            : (string) config('mail.from.address');
+    }
 }

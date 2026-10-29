@@ -9,6 +9,9 @@ use App\Models\EventSpeaker;
 use App\Models\Organization;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<EventSpeaker>
+ */
 class EventSpeakerFactory extends Factory
 {
     protected $model = EventSpeaker::class;

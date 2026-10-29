@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventSpeakerFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -80,5 +81,10 @@ class EventSpeaker extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function photoUrl(): ?string
+    {
+        return MediaUrl::resolve($this->photo_path);
     }
 }

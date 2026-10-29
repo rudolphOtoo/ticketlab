@@ -15,7 +15,7 @@ test('welcome homepage renders cleanly with serene studio branding', function ()
     $response->assertDontSee("Let's get started");
 });
 
-test('admin root redirects authenticated user to operations dashboard', function (): void {
+test('admin root renders the tenant admin overview', function (): void {
     $org = Organization::create([
         'name' => 'Accra Central Hub',
         'slug' => 'accra-central-hub',
@@ -28,7 +28,9 @@ test('admin root redirects authenticated user to operations dashboard', function
 
     $response = $this->actingAs($user)->get('/admin');
 
-    $response->assertRedirect('/dashboard');
+    $response->assertOk();
+    $response->assertSee('Welcome back');
+    $response->assertSee('Admin Command');
 });
 
 test('unauthenticated visitor to admin is redirected to login', function (): void {
