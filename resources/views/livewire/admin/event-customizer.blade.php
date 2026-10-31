@@ -72,60 +72,65 @@
                 type="button"
                 wire:click="$set('activeTab', 'brand')"
                 @class([
-                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer press-scale shrink-0',
+                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer press-scale shrink-0 flex items-center gap-1.5',
                     'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => $activeTab === 'brand',
                     'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' => $activeTab !== 'brand',
                 ])
             >
-                🎨 Brand & Palette
+                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4 4 4 0 014-4h4a4 4 0 014 4 4 4 0 01-4 4H7zm0 0l9.5-9.5a2.121 2.121 0 013 3L10 24" /></svg>
+                <span>Brand & Palette</span>
             </button>
 
             <button
                 type="button"
                 wire:click="$set('activeTab', 'speakers')"
                 @class([
-                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer press-scale shrink-0',
+                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer press-scale shrink-0 flex items-center gap-1.5',
                     'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => $activeTab === 'speakers',
                     'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' => $activeTab !== 'speakers',
                 ])
             >
-                🎤 Speakers & Guests ({{ $speakers->count() }})
+                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                <span>Speakers ({{ $speakers->count() }})</span>
             </button>
 
             <button
                 type="button"
                 wire:click="$set('activeTab', 'schedule')"
                 @class([
-                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer press-scale shrink-0',
+                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer press-scale shrink-0 flex items-center gap-1.5',
                     'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => $activeTab === 'schedule',
                     'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' => $activeTab !== 'schedule',
                 ])
             >
-                📅 Program Schedule ({{ $schedules->count() }})
+                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span>Schedule ({{ $schedules->count() }})</span>
             </button>
 
             <button
                 type="button"
                 wire:click="$set('activeTab', 'form_fields')"
                 @class([
-                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer press-scale shrink-0',
+                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer press-scale shrink-0 flex items-center gap-1.5',
                     'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => $activeTab === 'form_fields',
                     'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' => $activeTab !== 'form_fields',
                 ])
             >
-                📋 Questionnaire Builder ({{ $formFields->count() }})
+                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                <span>Questionnaire ({{ $formFields->count() }})</span>
             </button>
 
             <button
                 type="button"
                 wire:click="$set('activeTab', 'faqs')"
                 @class([
-                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer press-scale shrink-0',
+                    'px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer press-scale shrink-0 flex items-center gap-1.5',
                     'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' => $activeTab === 'faqs',
                     'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' => $activeTab !== 'faqs',
                 ])
             >
-                ❓ FAQs ({{ $faqs->count() }})
+                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>FAQs ({{ $faqs->count() }})</span>
             </button>
         </div>
 
@@ -371,7 +376,7 @@
                                 @if ($previewBanner)
                                     <img src="{{ $previewBanner }}" alt="" class="absolute inset-0 size-full object-cover opacity-20" />
                                 @endif
-                                <div class="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full opacity-25 blur-2xl" style="background-color: var(--preview-accent)"></div>
+                                <div class="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full opacity-25 blur-xl" style="background-color: var(--preview-accent)"></div>
                                 <div class="relative space-y-3 p-5">
                                     <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-0.5 text-[9px] font-semibold text-[var(--text-secondary)]">
                                         <span class="size-1 rounded-full" style="background-color: var(--preview-accent)"></span>
@@ -438,7 +443,7 @@
                 @else
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         @foreach ($speakers as $spk)
-                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-2xs flex items-start justify-between gap-2.5 subtle-hover-glow transition">
+                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-xs flex items-start justify-between gap-2.5 subtle-hover-glow transition">
                                 <div class="flex items-start gap-2.5">
                                     @if ($spk->photoUrl())
                                         <img src="{{ $spk->photoUrl() }}" alt="{{ $spk->name }}" class="size-9 rounded-lg object-cover border border-[var(--border-hairline)]" />
@@ -502,7 +507,7 @@
                     <button
                         type="button"
                         wire:click="openCreateScheduleModal"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale cursor-pointer"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-xs press-scale cursor-pointer"
                     >
                         + Add Session
                     </button>
@@ -515,7 +520,7 @@
                 @else
                     <div class="space-y-2">
                         @foreach ($schedules as $item)
-                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 subtle-hover-glow transition">
+                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 subtle-hover-glow transition">
                                 <div class="flex items-start sm:items-center gap-2.5">
                                     <span class="px-2 py-0.5 rounded-md bg-[var(--bg-subtle)] text-[10px] font-mono font-bold text-[var(--text-secondary)] shrink-0">
                                         {{ $item->day_label }}
@@ -574,7 +579,7 @@
                     <button
                         type="button"
                         wire:click="openCreateFieldModal"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale cursor-pointer"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-xs press-scale cursor-pointer"
                     >
                         + Add Custom Field
                     </button>
@@ -585,7 +590,7 @@
                         <p class="text-xs text-[var(--text-secondary)]">No custom fields yet. Patron checkout currently requires only Name, Email, and Phone.</p>
                     </div>
                 @else
-                    <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-2xs">
+                    <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-xs">
                         <table class="w-full text-left text-xs">
                             <thead class="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] font-semibold text-[11px]">
                                 <tr>
@@ -649,7 +654,7 @@
                     <button
                         type="button"
                         wire:click="openCreateFaqModal"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale cursor-pointer"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-xs press-scale cursor-pointer"
                     >
                         + Add FAQ
                     </button>
@@ -662,7 +667,7 @@
                 @else
                     <div class="space-y-2">
                         @foreach ($faqs as $faq)
-                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-2xs space-y-1.5 subtle-hover-glow transition">
+                            <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-xs space-y-1.5 subtle-hover-glow transition">
                                 <div class="flex items-start justify-between gap-2.5">
                                     <div class="flex items-center gap-2">
                                         <span class="px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] text-[9px] font-semibold text-[var(--text-secondary)]">
@@ -822,9 +827,42 @@
                     </div>
 
                     @if (in_array($field_input_type, ['select', 'radio', 'checkbox'], true))
-                        <div>
-                            <label class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Options (comma-separated) *</label>
-                            <input type="text" wire:model="field_options_raw" placeholder="Option A, Option B, Option C" class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)]" />
+                        <div class="space-y-2">
+                            <label class="block text-xs font-semibold text-[var(--text-secondary)]">Choice Options *</label>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    wire:model="newOptionInput"
+                                    wire:keydown.enter.prevent="addOption"
+                                    placeholder="Add choice option and press Enter..."
+                                    class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-hidden"
+                                />
+                                <button
+                                    type="button"
+                                    wire:click="addOption"
+                                    class="shrink-0 px-3 py-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--border-hairline)] transition active:scale-[0.97] cursor-pointer"
+                                >
+                                    + Add
+                                </button>
+                            </div>
+
+                            @if (!empty($field_options))
+                                <div class="flex flex-wrap gap-1.5 pt-1">
+                                    @foreach ($field_options as $index => $opt)
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-hairline)] text-xs font-medium text-[var(--text-primary)] transition">
+                                            <span>{{ $opt }}</span>
+                                            <button
+                                                type="button"
+                                                wire:click="removeOption({{ $index }})"
+                                                class="text-[var(--text-tertiary)] hover:text-rose-500 transition cursor-pointer text-sm leading-none"
+                                                title="Remove option"
+                                            >
+                                                &times;
+                                            </button>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
                     @endif
 

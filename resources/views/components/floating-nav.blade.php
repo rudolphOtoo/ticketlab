@@ -20,7 +20,7 @@
 
 <nav
     aria-label="Global floating navigation"
-    class="fixed top-4 inset-x-0 mx-auto max-w-fit z-50 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-surface)]/85 backdrop-blur-xl shadow-[0_8px_30px_rgb(0_0_0/0.06)] dark:shadow-[0_8px_30px_rgb(0_0_0/0.4)] p-1.5 flex items-center gap-1 sm:gap-1.5 transition-[border-color,box-shadow] duration-200 pointer-events-auto"
+    class="fixed top-4 inset-x-0 mx-auto max-w-fit z-50 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-surface)]/85 backdrop-blur-xl shadow-lg p-1.5 flex items-center gap-1 sm:gap-1.5 transition-[border-color,box-shadow] duration-200 pointer-events-auto"
 >
     {{-- Fluid History Controls (Back & Forward) --}}
     @if($showBack)
@@ -66,7 +66,7 @@
     {{-- Context Pill if on Sub-page --}}
     @if($current)
         <span class="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg-subtle)] text-[11px] font-semibold text-[var(--text-secondary)] border border-[var(--border-hairline)]">
-            <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="size-1.5 rounded-full bg-emerald-500"></span>
             <span>{{ $current }}</span>
         </span>
     @endif

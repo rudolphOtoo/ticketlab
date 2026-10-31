@@ -97,9 +97,10 @@ class OrderFulfillmentService
             throw $exception;
         }
 
-        // Emailing happens after commit and outside the review guard: a mail outage must never flag a paid order.
+        // Notifications happen after commit and outside the review guard: an outage must never flag a paid order.
         if ($passesIssued) {
-            SendTicketEmail::dispatch($fulfilled->id);
+            SendTicketEmail::dispatch($fulfilled->id)->onQueue('transactional');
+            \App\Jobs\SendTicketSms::dispatchIf((bool) config('sms.enabled', false), $fulfilled->id);
         }
 
         return $fulfilled;

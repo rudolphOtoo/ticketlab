@@ -25,6 +25,7 @@ class DedicatedPageController extends Controller
             'speakers' => 'tenants.pages.speakers',
             'packages' => 'tenants.pages.packages',
             'highlights' => 'tenants.pages.highlights',
+            'gallery' => 'tenants.pages.gallery',
             'partnership' => 'tenants.pages.partnership',
             'faq' => 'tenants.pages.faq',
             'contact' => 'tenants.pages.contact',

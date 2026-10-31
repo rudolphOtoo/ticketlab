@@ -32,45 +32,75 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($events as $event)
                 @php $isActive = $event->id === $activeEventId; @endphp
-                <article wire:key="event-{{ $event->id }}" @class([
-                    'flex flex-col overflow-hidden rounded-2xl border bg-[var(--bg-surface)] shadow-xs transition',
+                <article wire:key="event-{{ $event->id }}" x-data="{ showBanner: false }" @class([
+                    'flex flex-col overflow-hidden rounded-xl border bg-[var(--bg-surface)] p-4 shadow-xs transition hover:border-[var(--border-focused)]',
                     'border-[var(--text-primary)] ring-1 ring-[var(--text-primary)]' => $isActive,
                     'border-[var(--border-hairline)]' => !$isActive,
                 ])>
-                    <div class="relative aspect-[16/7] bg-[var(--bg-subtle)]">
-                        @if ($event->bannerUrl())
-                            <img src="{{ $event->bannerUrl() }}" alt="" class="size-full object-cover" loading="lazy" />
-                        @endif
-                        <div class="absolute left-3 top-3 flex gap-1.5">
-                            <x-ui.badge :color="$event->status === 'published' ? 'emerald' : 'amber'" pill size="sm">{{ ucfirst($event->status) }}</x-ui.badge>
+                    <!-- Header Badges & Banner Toggle -->
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <x-ui.badge :color="$event->status === 'published' ? 'emerald' : 'amber'" pill size="sm">
+                                {{ ucfirst($event->status) }}
+                            </x-ui.badge>
                             @unless ($event->is_public)
                                 <x-ui.badge color="zinc" pill size="sm">Unlisted</x-ui.badge>
                             @endunless
                         </div>
+
+                        @if ($event->bannerUrl())
+                            <button
+                                type="button"
+                                @click="showBanner = !showBanner"
+                                class="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                                :title="showBanner ? 'Hide banner flyer' : 'Preview banner flyer'"
+                            >
+                                <span x-text="showBanner ? 'Hide banner' : 'View banner'"></span>
+                                <svg class="size-3.5 transition-transform duration-200" :class="{ 'rotate-180': showBanner }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                        @endif
                     </div>
 
-                    <div class="flex flex-1 flex-col gap-3 p-4">
+                    <!-- Expandable Banner Preview -->
+                    @if ($event->bannerUrl())
+                        <div x-show="showBanner" x-collapse x-cloak class="mt-3 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)]">
+                            <img src="{{ $event->bannerUrl() }}" alt="{{ $event->title }}" class="aspect-[16/7] w-full object-cover" loading="lazy" />
+                        </div>
+                    @endif
+
+                    <!-- Core Event Info -->
+                    <div class="mt-3 flex flex-1 flex-col justify-between gap-2.5">
                         <div>
-                            <h3 class="text-sm font-bold leading-tight">{{ $event->title }}</h3>
-                            <p class="mt-0.5 text-[11px] text-[var(--text-secondary)]">{{ $event->start_at->format('D, M j Y · g:i A') }}{{ $event->venue ? ' · ' . $event->venue : '' }}</p>
+                            <h3 class="text-sm font-bold tracking-tight text-[var(--text-primary)] leading-snug">{{ $event->title }}</h3>
+                            <p class="mt-1 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                                <svg class="size-3.5 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>{{ $event->start_at->format('D, M j Y · g:i A') }}{{ $event->venue ? ' · ' . $event->venue : '' }}</span>
+                            </p>
                             <p class="mt-1 font-mono text-[10px] text-[var(--text-tertiary)]">/{{ $event->slug }}</p>
                         </div>
 
-                        <p class="text-[11px] text-[var(--text-secondary)]">
-                            {{ $event->ticket_types_count }} {{ \Illuminate\Support\Str::plural('tier', $event->ticket_types_count) }} · {{ number_format((int) $event->capacity_total) }} capacity
-                        </p>
+                        <div class="flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                            <span class="tabular-nums">
+                                {{ $event->ticket_types_count }} {{ \Illuminate\Support\Str::plural('tier', $event->ticket_types_count) }} · {{ number_format((int) $event->capacity_total) }} capacity
+                            </span>
+                        </div>
 
-                        <div class="mt-auto flex flex-wrap items-center gap-1.5 border-t border-[var(--border-hairline)] pt-3 text-[11px] font-semibold">
+                        <!-- Action Bar -->
+                        <div class="flex flex-wrap items-center gap-1.5 border-t border-[var(--border-hairline)] pt-3 text-[11px] font-semibold">
                             @if ($isActive)
                                 <span class="rounded-lg bg-[var(--text-primary)] px-2.5 py-1 text-[var(--bg-canvas)]">Active</span>
                             @else
-                                <button type="button" wire:click="activate({{ $event->id }})" class="cursor-pointer rounded-lg border border-[var(--border-hairline)] px-2.5 py-1 hover:bg-[var(--bg-subtle)]">Set Active</button>
+                                <button type="button" wire:click="activate({{ $event->id }})" class="cursor-pointer rounded-lg border border-[var(--border-hairline)] px-2.5 py-1 hover:bg-[var(--bg-subtle)] text-[var(--text-primary)] transition">Set Active</button>
                             @endif
-                            <button type="button" wire:click="editEvent({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">Edit</button>
-                            <button type="button" wire:click="togglePublished({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">
+                            <button type="button" wire:click="editEvent({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Edit</button>
+                            <button type="button" wire:click="togglePublished({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">
                                 {{ $event->status === 'published' ? 'Unpublish' : 'Publish' }}
                             </button>
-                            <button type="button" wire:click="deleteEvent({{ $event->id }})" wire:confirm="Delete '{{ $event->title }}'? This cannot be undone." class="ml-auto cursor-pointer rounded-lg px-2.5 py-1 text-rose-600 hover:bg-rose-500/10">Delete</button>
+                            <button type="button" wire:click="deleteEvent({{ $event->id }})" wire:confirm="Delete '{{ $event->title }}'? This cannot be undone." class="ml-auto cursor-pointer rounded-lg px-2.5 py-1 text-rose-600 hover:bg-rose-500/10 transition">Delete</button>
                         </div>
                     </div>
                 </article>
@@ -86,7 +116,9 @@
                         <h2 class="text-base font-bold sm:text-lg">{{ $editingEventId ? 'Edit Event' : 'Create Event' }}</h2>
                         <p class="mt-0.5 text-xs text-[var(--text-secondary)]">Published + listed events appear in the public directory.</p>
                     </div>
-                    <button type="button" wire:click="closeModal" class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">&times;</button>
+                    <button type="button" wire:click="closeModal" class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]" aria-label="Close modal">
+                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
                 </div>
 
                 <form wire:submit="save" class="space-y-4">

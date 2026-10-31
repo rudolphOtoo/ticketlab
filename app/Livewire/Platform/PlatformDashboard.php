@@ -82,6 +82,24 @@ class PlatformDashboard extends Component
         $this->selectedTenantId = null;
     }
 
+    public function jumpToTenantAdmin(int $tenantId): void
+    {
+        $tenant = Organization::query()->find($tenantId);
+
+        if ($tenant === null) {
+            return;
+        }
+
+        $event = $tenant->events()->latest('id')->first();
+
+        if ($event !== null) {
+            \App\Support\ActiveEvent::set($event);
+        }
+
+        // Redirect to admin overview for that organization
+        $this->redirectRoute('admin.index', navigate: true);
+    }
+
     /**
      * @return array{database: string, cache: string, queue: string, failed_jobs: int}
      */
@@ -141,11 +159,18 @@ class PlatformDashboard extends Component
 
         $selectedTenant = null;
         $tenantEvents = Collection::empty();
+        $selectedTenantStats = null;
 
         if ($this->selectedTenantId !== null) {
             $selectedTenant = Organization::query()->find($this->selectedTenantId);
             if ($selectedTenant !== null) {
                 $tenantEvents = $selectedTenant->events()->with('ticketTypes')->latest('id')->get();
+                $selectedTenantStats = [
+                    'usersCount' => $selectedTenant->users()->count(),
+                    'ordersCount' => Order::query()->where('organization_id', $selectedTenant->id)->where('payment_status', OrderStatus::Paid->value)->count(),
+                    'revenue' => (float) Order::query()->where('organization_id', $selectedTenant->id)->where('payment_status', OrderStatus::Paid->value)->sum('gross_amount'),
+                    'attendeesCount' => Attendee::query()->where('organization_id', $selectedTenant->id)->count(),
+                ];
             }
         }
 
@@ -158,6 +183,7 @@ class PlatformDashboard extends Component
             'health' => $this->getSystemHealth(),
             'tenants' => $tenants,
             'selectedTenant' => $selectedTenant,
+            'selectedTenantStats' => $selectedTenantStats,
             'tenantEvents' => $tenantEvents,
             'allOrganizations' => Organization::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);

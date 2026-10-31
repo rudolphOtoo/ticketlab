@@ -263,12 +263,17 @@ class TicketManager extends Component
 
         if ($ticketType->attendees()->exists() || $ticketType->reservations()->exists()) {
             $this->flashMessage = "Cannot delete '{$ticketType->name}' because tickets or reservations are linked to it. You can pause sales instead.";
+            $this->isModalOpen = false;
+            $this->editingTicketTypeId = null;
+
             return;
         }
 
         $name = $ticketType->name;
         $ticketType->delete();
 
+        $this->isModalOpen = false;
+        $this->editingTicketTypeId = null;
         $this->flashMessage = "Ticket tier '{$name}' was deleted.";
     }
 

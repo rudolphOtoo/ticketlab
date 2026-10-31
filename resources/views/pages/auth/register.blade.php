@@ -1,6 +1,6 @@
-<x-layouts::auth :title="__('Register')">
+<x-layouts::auth :title="__('Register Organization')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Create an account')" :description="__('Register for staff & gate terminal access')" />
+        <x-auth-header :title="__('Register Organization')" :description="__('Launch your organization portal, host events & onboard your team')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -8,16 +8,33 @@
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-4">
             @csrf
 
+            <!-- Organization Name -->
+            <div class="flex flex-col gap-1.5">
+                <label for="organization_name" class="text-xs font-medium text-[var(--text-secondary)]">{{ __('Organization Name') }}</label>
+                <input
+                    id="organization_name"
+                    name="organization_name"
+                    type="text"
+                    value="{{ old('organization_name') }}"
+                    required
+                    autofocus
+                    placeholder="e.g. Accra Arts Collective or Kingdom Summit"
+                    class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-hidden transition focus:border-[var(--border-focused)] focus:bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-focused)]"
+                />
+                @error('organization_name')
+                    <p class="text-xs text-[var(--status-danger)]">{{ $message }}</p>
+                @enderror
+            </div>
+
             <!-- Name -->
             <div class="flex flex-col gap-1.5">
-                <label for="name" class="text-xs font-medium text-[var(--text-secondary)]">{{ __('Full Name') }}</label>
+                <label for="name" class="text-xs font-medium text-[var(--text-secondary)]">{{ __('Admin Full Name') }}</label>
                 <input
                     id="name"
                     name="name"
                     type="text"
                     value="{{ old('name') }}"
                     required
-                    autofocus
                     autocomplete="name"
                     placeholder="Kwame Mensah"
                     class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-hidden transition focus:border-[var(--border-focused)] focus:bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-focused)]"
@@ -29,7 +46,7 @@
 
             <!-- Email Address -->
             <div class="flex flex-col gap-1.5">
-                <label for="email" class="text-xs font-medium text-[var(--text-secondary)]">{{ __('Email address') }}</label>
+                <label for="email" class="text-xs font-medium text-[var(--text-secondary)]">{{ __('Admin Work Email') }}</label>
                 <input
                     id="email"
                     name="email"
@@ -37,7 +54,7 @@
                     value="{{ old('email') }}"
                     required
                     autocomplete="email"
-                    placeholder="usher@summit.org"
+                    placeholder="admin@yourorg.com"
                     class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-hidden transition focus:border-[var(--border-focused)] focus:bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-focused)]"
                 />
                 @error('email')
@@ -85,10 +102,14 @@
                     class="w-full cursor-pointer rounded-lg bg-[var(--accent-brand)] py-2.5 px-4 text-sm font-medium text-[var(--accent-brand-fg)] shadow-xs transition hover:opacity-90 active:scale-[0.98]"
                     data-test="register-user-button"
                 >
-                    {{ __('Create Staff Account') }}
+                    {{ __('Register Organization & Admin') }}
                 </button>
             </div>
         </form>
+
+        <div class="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3 text-center text-xs text-[var(--text-secondary)]">
+            <span>{{ __('Staff members cannot register publicly. Your organization administrator must add you from their team settings.') }}</span>
+        </div>
 
         <div class="text-xs text-center text-[var(--text-secondary)]">
             <span>{{ __('Already have an account?') }}</span>

@@ -1,7 +1,13 @@
+@php
+    $bespoke = $organization->bespokeSettings();
+    $aboutHeading = $bespoke['about']['heading'] ?? 'A Purposefully Curated Experience';
+    $aboutLead = $bespoke['about']['lead'] ?? 'About This Gathering';
+    $aboutStory = filled($bespoke['about']['story'] ?? '') ? $bespoke['about']['story'] : ($event?->description ?? 'An exclusive gathering hosted by ' . $organization->name . '.');
+@endphp
 <section id="about" class="mx-auto w-full max-w-4xl space-y-5 px-4 py-20 text-center sm:px-6">
-    @include('tenants.partials.section-heading', ['eyebrow' => 'About This Gathering', 'heading' => 'A Purposefully Curated Experience'])
+    @include('tenants.partials.section-heading', ['eyebrow' => $aboutLead, 'heading' => $aboutHeading])
     <p class="whitespace-pre-line text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">
-        {{ $event?->description ?? 'An exclusive gathering hosted by ' . $organization->name . '.' }}
+        {{ $aboutStory }}
     </p>
     @if ($event !== null)
         <dl class="mx-auto grid max-w-2xl grid-cols-1 gap-3 pt-4 text-left sm:grid-cols-3">

@@ -42,12 +42,14 @@
                 <span class="font-medium text-[var(--text-primary)]">Terminal 01</span>
                 <span class="text-[var(--text-tertiary)]">· Main Arena</span>
             </div>
-            <a href="{{ url('/admin/sessions') }}" class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition" wire:navigate>
-                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                </svg>
-                Ledger View
-            </a>
+            @if (auth()->user()?->isAdmin())
+                <a href="{{ url('/admin/sessions') }}" class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition" wire:navigate>
+                    <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                    </svg>
+                    Ledger View
+                </a>
+            @endif
         </div>
     </div>
 

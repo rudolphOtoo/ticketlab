@@ -153,3 +153,22 @@ test('staff and ushers cannot open team management', function (string $role): vo
 
     $this->actingAs($user)->get(route('admin.users'))->assertForbidden();
 })->with(['staff', 'usher']);
+
+test('admin can onboard staff via activation link without manual password', function (): void {
+    $component = Livewire::actingAs($this->admin)
+        ->test(UserManagement::class)
+        ->call('openCreateModal')
+        ->set('name', 'Invited Staff')
+        ->set('email', 'invited@example.com')
+        ->set('role', 'staff')
+        ->set('provisionMode', 'invite')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $member = User::query()->where('email', 'invited@example.com')->firstOrFail();
+    expect($member->role)->toBe('staff')
+        ->and($member->organization_id)->toBe($this->org->id)
+        ->and($member->email_verified_at)->toBeNull();
+
+    expect($component->get('generatedInviteLink'))->not->toBeNull()->toContain('reset-password');
+});

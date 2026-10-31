@@ -1,14 +1,22 @@
 @php
-    $highlightStats = [
-        ['value' => ($event?->speakers ?? collect())->count(), 'label' => 'Speakers'],
-        ['value' => ($event?->schedules ?? collect())->count(), 'label' => 'Sessions'],
-        ['value' => ($event?->schedules ?? collect())->pluck('day_label')->unique()->count(), 'label' => 'Days'],
-        ['value' => ($event?->ticketTypes ?? collect())->count(), 'label' => 'Pass Types'],
-    ];
+    $bespoke = $organization->bespokeSettings();
+    $highlightsConfig = (array) ($bespoke['highlights'] ?? []);
+    $highlightHeading = (string) ($highlightsConfig['heading'] ?? 'Highlights');
+    $highlightLead = (string) ($highlightsConfig['lead'] ?? 'The program at a glance: the people, the sessions and the moments that make this gathering.');
+
+    $configuredStats = array_values(array_filter((array) ($highlightsConfig['stats'] ?? [])));
+    $highlightStats = !empty($configuredStats)
+        ? $configuredStats
+        : [
+            ['value' => ($event?->speakers ?? collect())->count(), 'label' => 'Speakers'],
+            ['value' => ($event?->schedules ?? collect())->count(), 'label' => 'Sessions'],
+            ['value' => ($event?->schedules ?? collect())->pluck('day_label')->unique()->count(), 'label' => 'Days'],
+            ['value' => ($event?->ticketTypes ?? collect())->count(), 'label' => 'Pass Types'],
+        ];
 @endphp
 
-<x-layouts::dedicated :organization="$organization" :event="$event" title="Highlights">
-    @include('tenants.pages.page-header', ['heading' => 'Highlights', 'lead' => 'The program at a glance: the people, the sessions and the moments that make this gathering.'])
+<x-layouts::dedicated :organization="$organization" :event="$event" title="{{ $highlightHeading }}">
+    @include('tenants.pages.page-header', ['heading' => $highlightHeading, 'lead' => $highlightLead])
 
     <section class="mx-auto grid w-full max-w-4xl grid-cols-2 gap-4 px-4 py-10 sm:grid-cols-4 sm:px-6">
         @foreach ($highlightStats as $stat)

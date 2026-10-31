@@ -19,7 +19,7 @@
             <div class="flex flex-col gap-0.5">
                 <h1 class="text-base font-bold tracking-tight sm:text-lg md:text-xl">Welcome back, {{ $user?->name }}</h1>
                 <p class="text-xs text-[var(--text-secondary)]">
-                    {{ $event?->title ?? 'No event yet' }} · {{ $user?->subdivision ? 'Scoped to ' . $user->subdivision->name : 'All zones' }}
+                    {{ $event?->title ?? 'No event yet' }} · {{ $user?->subdivision ? 'Scoped to ' . $user->subdivision->name : 'All subdivisions' }}
                 </p>
             </div>
         </div>

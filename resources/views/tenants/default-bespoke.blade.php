@@ -21,5 +21,7 @@
         @include('tenants.partials.faqs')
     @endif
 
+    @include('tenants.partials.gallery')
+
     @include('tenants.partials.contact-cta')
 </x-layouts::dedicated>

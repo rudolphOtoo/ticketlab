@@ -24,6 +24,16 @@
     --color-accent: var(--color-primary);
     --color-accent-content: var(--color-primary-content);
     --color-accent-foreground: var(--color-primary-fg);
+
+    /* Wire semantic shadow tokens to Tailwind's shadow utilities.
+       Using shadow-xs/sm/md/lg/xl/2xl in templates now maps to the
+       correct elevation level from theme.css, in both light and dark. */
+    --shadow-xs:  var(--shadow-xs);
+    --shadow-sm:  var(--shadow-sm);
+    --shadow-md:  var(--shadow-md);
+    --shadow-lg:  var(--shadow-lg);
+    --shadow-xl:  var(--shadow-xl);
+    --shadow-2xl: var(--shadow-2xl);
 }
 
 @layer base {
@@ -39,6 +49,87 @@
         background-color: var(--bg-canvas);
         color: var(--text-primary);
         font-family: var(--font-sans);
+    }
+
+    /* ==========================================================================
+       Global Form Control Baseline
+       Forces correct color-scheme on every input/select/textarea so the browser
+       renders native controls (select dropdowns, date pickers, scrollbars, caret)
+       using the correct OS-level palette — fixes invisible text in dark mode.
+       ========================================================================== */
+
+    input,
+    select,
+    textarea {
+        color-scheme: light;
+        background-color: var(--bg-input, var(--bg-surface));
+        color: var(--text-primary);
+        caret-color: var(--text-primary);
+    }
+
+    :is(.dark) input,
+    :is(.dark) select,
+    :is(.dark) textarea {
+        color-scheme: dark;
+    }
+
+    /* Input placeholder hierarchy: tertiary tone, never pure grey */
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--text-tertiary);
+        opacity: 1;
+    }
+
+    /* Themed text selection: translucent brand highlight preserving text readability */
+    ::selection {
+        background-color: color-mix(in srgb, var(--accent-brand, var(--color-primary)) 25%, transparent);
+        color: inherit;
+    }
+
+    /* Themed caret */
+    input,
+    textarea {
+        caret-color: var(--border-focused);
+    }
+
+    /* Custom scrollbar (Webkit) */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background-color: var(--border-hairline);
+        border-radius: 9999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--text-tertiary);
+    }
+
+    /* Firefox scrollbar */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-hairline) transparent;
+    }
+
+    /* ==========================================================================
+       View Transition: force color-scheme during the clip-circle animation so
+       native browser controls don't flash their OS-default colors mid-transition.
+       ========================================================================== */
+
+    html.dark::view-transition-old(root),
+    html.dark::view-transition-new(root) {
+        color-scheme: dark;
+    }
+
+    html:not(.dark)::view-transition-old(root),
+    html:not(.dark)::view-transition-new(root) {
+        color-scheme: light;
     }
 }
 
@@ -78,7 +169,7 @@
 
 .focus-ring {
     outline: none;
-    transition: box-shadow 150ms ease-in-out;
+    transition: box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .focus-ring:focus-visible {
     box-shadow: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--color-primary);
@@ -88,13 +179,10 @@
     transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 .subtle-hover-glow:hover {
-    border-color: rgba(0, 0, 0, 0.18);
-    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+    border-color: var(--border-hairline);
+    box-shadow: var(--shadow-md);
 }
-:is(.dark) .subtle-hover-glow:hover {
-    border-color: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.3);
-}
+/* No separate dark override needed — shadow tokens already flip in html.dark */
 
 @media (prefers-reduced-motion: reduce) {
     .animate-physical-modal,

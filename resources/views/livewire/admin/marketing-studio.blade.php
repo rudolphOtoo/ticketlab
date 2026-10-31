@@ -21,12 +21,7 @@
     <!-- Studio Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--border-hairline)] pb-5">
         <div>
-            <div class="flex items-center gap-2.5">
-                <h1 class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Marketing Studio</h1>
-                <span class="rounded-full bg-[var(--accent-brand)]/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase text-[var(--accent-brand)]">
-                    Social Flyers & Vector QR
-                </span>
-            </div>
+            <h1 class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Marketing Studio</h1>
             <p class="text-xs text-[var(--text-secondary)] mt-1">
                 Generate high-resolution social media flyers with instant aspect-ratio switching and print-ready vector QR passes.
             </p>
@@ -39,7 +34,7 @@
                     View Public Page
                 </a>
             @endif
-            <button type="button" @click="downloadFlyer()" id="export-png" class="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-xs font-semibold text-[var(--accent-brand-fg)] shadow-xs hover:opacity-90 active:scale-95 transition">
+            <button type="button" @click="downloadFlyer()" id="export-png" class="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs hover:opacity-90 transition press-scale">
                 <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 Export PNG Flyer
             </button>
@@ -54,11 +49,13 @@
                 
                 <!-- Tab Switcher -->
                 <div class="flex rounded-xl bg-[var(--bg-subtle)] p-1 border border-[var(--border-hairline)] text-xs font-medium">
-                    <button type="button" @click="activeTab = 'flyer'" :class="activeTab === 'flyer' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'" class="flex-1 py-2 rounded-lg transition text-center cursor-pointer">
-                        🎨 Social Media Flyer
+                    <button type="button" @click="activeTab = 'flyer'" :class="activeTab === 'flyer' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'" class="flex-1 py-2 rounded-lg transition text-center cursor-pointer flex items-center justify-center gap-1.5 press-scale">
+                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <span>Social Media Flyer</span>
                     </button>
-                    <button type="button" @click="activeTab = 'qr'" :class="activeTab === 'qr' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'" class="flex-1 py-2 rounded-lg transition text-center cursor-pointer">
-                        ⚡ Vector Link QR Code
+                    <button type="button" @click="activeTab = 'qr'" :class="activeTab === 'qr' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'" class="flex-1 py-2 rounded-lg transition text-center cursor-pointer flex items-center justify-center gap-1.5 press-scale">
+                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                        <span>Vector Link QR Code</span>
                     </button>
                 </div>
 
@@ -67,7 +64,7 @@
                     
                     <!-- Aspect Ratio Switcher -->
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Aspect Ratio Presets</label>
+                        <label class="text-xs font-semibold text-[var(--text-secondary)]">Aspect Ratio Presets</label>
                         <div class="grid grid-cols-3 gap-2">
                             <button type="button" wire:click="setAspectRatio('1:1')" class="cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border text-center transition {{ $selectedAspectRatio === '1:1' ? 'border-[var(--accent-brand)] bg-[var(--accent-brand)]/10 text-[var(--text-primary)] font-semibold' : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]' }}">
                                 <div class="size-6 border-2 border-current rounded-xs mb-1.5"></div>
@@ -91,7 +88,7 @@
 
                     <!-- Theme & Brand Palette -->
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Theme Palette & Accents</label>
+                        <label class="text-xs font-semibold text-[var(--text-secondary)]">Theme Palette & Accents</label>
                         <div class="flex items-center gap-2">
                             @foreach (['amethyst' => '#7c3aed', 'emerald' => '#059669', 'amber' => '#d97706', 'rose' => '#e11d48', 'slate' => '#0f172a'] as $preset => $hex)
                                 <button type="button" wire:click="setPreset('{{ $preset }}')" class="size-7 rounded-full transition-transform {{ $themePreset === $preset ? 'ring-2 ring-offset-2 ring-[var(--text-primary)] scale-110' : 'hover:scale-105' }}" style="background-color: {{ $hex }};" title="{{ ucfirst($preset) }}"></button>
@@ -102,7 +99,7 @@
 
                     <!-- Custom Background Image -->
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
-                        <label for="flyer-background" class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Background Image</label>
+                        <label for="flyer-background" class="text-xs font-semibold text-[var(--text-secondary)]">Background Image</label>
                         <input id="flyer-background" type="file" accept="image/jpeg,image/png,image/webp" wire:model="backgroundImage" class="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--text-primary)]">
                         <div wire:loading wire:target="backgroundImage" class="text-[11px] text-[var(--text-tertiary)]">Uploading…</div>
                         @error('backgroundImage') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
@@ -113,7 +110,7 @@
 
                     <!-- Flyer Copy & Details -->
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Flyer Information</label>
+                        <label class="text-xs font-semibold text-[var(--text-secondary)]">Flyer Information</label>
                         
                         <div class="space-y-1">
                             <label class="text-xs font-medium text-[var(--text-secondary)]">Main Headline</label>
@@ -159,7 +156,7 @@
                 <div x-show="activeTab === 'qr'" class="space-y-5" style="display: none;">
                     
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Public Event URL Pass</label>
+                        <label class="text-xs font-semibold text-[var(--text-secondary)]">Public Event URL Pass</label>
                         
                         <div class="flex items-center gap-2">
                             <input type="text" readonly value="{{ $publicUrl }}" class="flex-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs font-mono text-[var(--text-primary)] truncate">
@@ -201,7 +198,7 @@
             <!-- Preview Canvas Pane (Right 7 Cols) -->
             <div class="lg:col-span-7 space-y-4">
                 
-                <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm flex flex-col items-center justify-center min-h-[520px]">
+                <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md flex flex-col items-center justify-center min-h-[520px]">
                     
                     <!-- Flyer Mode Canvas -->
                     <div x-show="activeTab === 'flyer'" class="flex flex-col items-center w-full">

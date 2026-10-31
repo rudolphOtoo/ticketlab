@@ -26,11 +26,11 @@ class DatabaseSeeder extends Seeder
         // 1. Create Organization
         $org = Organization::firstOrCreate(['slug' => 'summit-org'], [
             'name' => 'Perez Dome & Summit Global',
-            'subdivision_label' => 'Zone',
+            'subdivision_label' => 'Subdivision',
             'settings' => ['currency' => 'GHS', 'timezone' => 'Africa/Accra'],
         ]);
 
-        // 2. Create Subdivisions (Zones)
+        // 2. Create Subdivisions
         $accra = Subdivision::firstOrCreate(['organization_id' => $org->id, 'slug' => 'accra-central'], [
             'name' => 'Accra Central',
             'paystack_subaccount_code' => 'ACCT_accra_001',
@@ -55,21 +55,21 @@ class DatabaseSeeder extends Seeder
         $superadmin->assignMembership('super_admin', null);
         $superadmin->markEmailAsVerified();
 
-        // Admin User (Cross-Zone Access)
+        // Admin User (Full Organization Admin Command Access)
         $admin = User::firstOrCreate(['email' => 'admin@ticketlab.test'], [
             'name' => 'Admin User',
             'password' => Hash::make('password'),
         ]);
-        $admin->assignMembership('admin', $org->id); // No subdivision: access across all zones
+        $admin->assignMembership('admin', $org->id);
         $admin->markEmailAsVerified();
 
-        // Door Usher User (Scoped to Kumasi)
-        $usher = User::firstOrCreate(['email' => 'usher@summit.org'], [
-            'name' => 'Kwame Mensah (Lead Usher)',
+        // Operational Staff User (Scoped to Kumasi Subdivision: Scanner & Cash Desk access)
+        $staff = User::firstOrCreate(['email' => 'staff@ticketlab.test'], [
+            'name' => 'Kwame Mensah (Lead Operations Staff)',
             'password' => Hash::make('password'),
         ]);
-        $usher->assignMembership('usher', $org->id, $kumasi->id);
-        $usher->markEmailAsVerified();
+        $staff->assignMembership('staff', $org->id, $kumasi->id);
+        $staff->markEmailAsVerified();
 
         // 4. Create Active Event
         $event = Event::firstOrCreate(['organization_id' => $org->id, 'slug' => 'summit-2026'], [

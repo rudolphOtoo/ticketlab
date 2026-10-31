@@ -10,13 +10,15 @@
     $accentHex = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($custom['accent_hex'] ?? '')) === 1 ? $custom['accent_hex'] : '#d97706';
     $navUser = auth()->user();
     $staffHome = $navUser?->staffHomeUrl();
+    $isMultiTenant = !App\Models\PlatformSetting::isDedicatedMode();
+    $homeUrl = $isMultiTenant ? url('/' . $organization->slug) : url('/');
     $siteLinks = [
-        ['route' => 'dedicated.about', 'label' => 'About'],
-        ['route' => 'dedicated.speakers', 'label' => 'Speakers'],
-        ['route' => 'dedicated.packages', 'label' => 'Packages'],
-        ['route' => 'dedicated.highlights', 'label' => 'Highlights'],
-        ['route' => 'dedicated.faq', 'label' => 'FAQs'],
-        ['route' => 'dedicated.contact', 'label' => 'Contact'],
+        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'about']) : route('dedicated.about'), 'label' => 'About', 'active' => request()->is('*/page/about') || request()->routeIs('dedicated.about')],
+        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'speakers']) : route('dedicated.speakers'), 'label' => 'Speakers', 'active' => request()->is('*/page/speakers') || request()->routeIs('dedicated.speakers')],
+        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'packages']) : route('dedicated.packages'), 'label' => 'Packages', 'active' => request()->is('*/page/packages') || request()->routeIs('dedicated.packages')],
+        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'highlights']) : route('dedicated.highlights'), 'label' => 'Highlights', 'active' => request()->is('*/page/highlights') || request()->routeIs('dedicated.highlights')],
+        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'faq']) : route('dedicated.faq'), 'label' => 'FAQs', 'active' => request()->is('*/page/faq') || request()->routeIs('dedicated.faq')],
+        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'contact']) : route('dedicated.contact'), 'label' => 'Contact', 'active' => request()->is('*/page/contact') || request()->routeIs('dedicated.contact')],
     ];
     $checkoutUrl = $event !== null
         ? route('public.event.show', ['org_slug' => $organization->slug, 'event_slug' => $event->slug])
@@ -55,73 +57,7 @@
         </script>
     </head>
     <body class="relative flex min-h-screen flex-col overflow-x-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)] antialiased selection:bg-[var(--dedicated-accent)] selection:text-white">
-        <nav
-            aria-label="{{ $organization->name }} navigation"
-            x-data="{ open: false }"
-            class="pointer-events-auto fixed inset-x-0 top-4 z-50 mx-auto flex max-w-fit items-center gap-1.5 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-surface)]/90 p-1.5 shadow-lg backdrop-blur-xl"
-        >
-            <a href="{{ url('/') }}" class="flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-3 py-1.5 text-xs font-bold transition hover:opacity-90 press-scale">
-                <span class="size-2 rounded-full bg-[var(--dedicated-accent)]"></span>
-                <span class="max-w-[9rem] truncate">{{ $organization->name }}</span>
-            </a>
-
-            <div class="hidden items-center gap-0.5 text-xs font-semibold text-[var(--text-secondary)] lg:flex">
-                <a href="{{ url('/') }}#schedule" class="rounded-full px-3 py-1 transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">Schedule</a>
-                @foreach ($siteLinks as $link)
-                    <a
-                        href="{{ route($link['route']) }}"
-                        @class([
-                            'rounded-full px-3 py-1 transition',
-                            'bg-[var(--bg-subtle)] text-[var(--text-primary)]' => request()->routeIs($link['route']),
-                            'hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]' => !request()->routeIs($link['route']),
-                        ])
-                    >{{ $link['label'] }}</a>
-                @endforeach
-            </div>
-
-            @if ($checkoutUrl)
-                <a href="{{ $checkoutUrl }}" class="rounded-full bg-[var(--dedicated-accent)] px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:opacity-90 press-scale">Get Passes</a>
-            @endif
-
-            @if ($staffHome !== null)
-                <a href="{{ $staffHome }}" class="hidden rounded-full border border-[var(--border-hairline)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] sm:inline-flex">Manage Event →</a>
-            @elseif ($navUser === null)
-                <a href="{{ route('login') }}" class="hidden rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] sm:inline-flex">Sign In</a>
-            @endif
-
-            <button type="button" class="flex size-8 cursor-pointer items-center justify-center rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] lg:hidden" x-on:click="open = !open" aria-label="Toggle menu" :aria-expanded="open">
-                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
-            </button>
-
-            <button
-                type="button"
-                onclick="window.toggleStudioTheme ? window.toggleStudioTheme(event, null, this) : document.documentElement.classList.toggle('dark')"
-                class="flex size-8 cursor-pointer items-center justify-center rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] transition-colors hover:border-[var(--text-primary)] hover:text-[var(--text-primary)] press-scale"
-                aria-label="Toggle dark/light theme"
-            >
-                <svg class="size-4 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-                <svg class="hidden size-4 dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-            </button>
-
-            {{-- Mobile menu panel --}}
-            <div
-                x-show="open"
-                x-transition.origin.top
-                x-on:click.outside="open = false"
-                class="absolute inset-x-0 top-full mt-2 grid grid-cols-2 gap-1 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-2 text-xs font-semibold shadow-xl lg:hidden"
-                style="display: none;"
-            >
-                <a href="{{ url('/') }}#schedule" class="rounded-xl px-3 py-2 hover:bg-[var(--bg-subtle)]">Schedule</a>
-                @foreach ($siteLinks as $link)
-                    <a href="{{ route($link['route']) }}" class="rounded-xl px-3 py-2 hover:bg-[var(--bg-subtle)]">{{ $link['label'] }}</a>
-                @endforeach
-                @if ($staffHome !== null)
-                    <a href="{{ $staffHome }}" class="col-span-2 rounded-xl px-3 py-2 hover:bg-[var(--bg-subtle)]">Manage Event →</a>
-                @elseif ($navUser === null)
-                    <a href="{{ route('login') }}" class="col-span-2 rounded-xl px-3 py-2 hover:bg-[var(--bg-subtle)]">Sign In</a>
-                @endif
-            </div>
-        </nav>
+        <x-bespoke-navbar :organization="$organization" :event="$event" />
 
         <main class="flex-1">
             {{ $slot }}
@@ -131,8 +67,8 @@
             <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
                 <div>© {{ date('Y') }} {{ $organization->name }}. All rights reserved.</div>
                 <div class="flex flex-wrap items-center justify-center gap-4">
-                    <a href="{{ route('dedicated.partnership') }}" class="transition hover:text-[var(--text-primary)]">Partnership</a>
-                    <a href="{{ route('dedicated.contact') }}" class="transition hover:text-[var(--text-primary)]">Contact</a>
+                    <a href="{{ $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'partnership']) : route('dedicated.partnership') }}" class="transition hover:text-[var(--text-primary)]">Partnership</a>
+                    <a href="{{ $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'contact']) : route('dedicated.contact') }}" class="transition hover:text-[var(--text-primary)]">Contact</a>
                     <span>{{ $organization->contactEmail() }}</span>
                 </div>
             </div>

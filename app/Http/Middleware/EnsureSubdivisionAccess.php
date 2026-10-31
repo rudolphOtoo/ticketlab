@@ -31,24 +31,24 @@ class EnsureSubdivisionAccess
             abort(403, 'Your account is not assigned to an organization.');
         }
 
-        // Tier 3: Door Ushers & Gate Scanners are restricted from administrative roster & financial ledgers
-        if ($tier !== 'ops' && $user->isUsher()) {
-            abort(403, 'Door terminal operators are restricted from administrative roster and financial ledgers.');
+        // Tier 3: Staff field operators are restricted from administrative surfaces & financial ledgers
+        if ($tier !== 'ops' && !$user->isAdmin()) {
+            abort(403, 'Staff field operators are restricted from administrative roster and financial ledgers.');
         }
 
         // Tier 1: Superadmin clearance check
         if ($tier === 'superadmin' && $user->subdivision_id !== null && !$user->isSuperadmin()) {
-            abort(403, 'Cross-zone superadmin clearance required.');
+            abort(403, 'Cross-subdivision superadmin clearance required.');
         }
 
-        // Tier 2: Subdivision Admin zone boundary check
+        // Tier 2: Subdivision Admin boundary check
         $requestedSubdivisionId = $request->route('subdivision') ?? $request->query('subdivision_id');
         if ($requestedSubdivisionId !== null && $user->subdivision_id !== null && !$user->isSuperadmin()) {
             $requestedId = $requestedSubdivisionId instanceof Subdivision
                 ? $requestedSubdivisionId->id
                 : (int) $requestedSubdivisionId;
             if ($user->subdivision_id !== $requestedId) {
-                abort(403, 'You are only authorized to access records within your assigned zone.');
+                abort(403, 'You are only authorized to access records within your assigned subdivision.');
             }
         }
 

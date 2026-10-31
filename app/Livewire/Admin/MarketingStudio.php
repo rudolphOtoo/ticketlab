@@ -184,7 +184,7 @@ class MarketingStudio extends Component
             abort(401);
         }
 
-        if ($user->isUsher() || !$user->hasOrganizationAccess()) {
+        if (!$user->isAdmin() || !$user->hasOrganizationAccess()) {
             abort(403);
         }
 

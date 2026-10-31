@@ -25,6 +25,7 @@ Route::get('conference-packages', DedicatedPageController::class)->defaults('pag
     'dedicated.packages',
 );
 Route::get('highlights', DedicatedPageController::class)->defaults('page', 'highlights')->name('dedicated.highlights');
+Route::get('gallery', DedicatedPageController::class)->defaults('page', 'gallery')->name('dedicated.gallery');
 Route::get('partnership', DedicatedPageController::class)->defaults('page', 'partnership')->name(
     'dedicated.partnership',
 );

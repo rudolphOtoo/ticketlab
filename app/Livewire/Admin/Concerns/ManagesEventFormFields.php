@@ -27,6 +27,11 @@ trait ManagesEventFormFields
 
     public string $field_options_raw = '';
 
+    /** @var list<string> */
+    public array $field_options = [];
+
+    public string $newOptionInput = '';
+
     public bool $field_is_required = false;
 
     public int $field_sort_order = 0;
@@ -40,9 +45,32 @@ trait ManagesEventFormFields
         $this->field_input_type = 'text';
         $this->field_placeholder = '';
         $this->field_options_raw = '';
+        $this->field_options = [];
+        $this->newOptionInput = '';
         $this->field_is_required = false;
         $this->field_sort_order = 0;
         $this->isFieldModalOpen = true;
+    }
+
+    public function addOption(): void
+    {
+        $trimmed = trim($this->newOptionInput);
+
+        if ($trimmed !== '' && !in_array($trimmed, $this->field_options, true)) {
+            $this->field_options[] = $trimmed;
+            $this->newOptionInput = '';
+        }
+    }
+
+    public function removeOption(int $index): void
+    {
+        if (array_key_exists($index, $this->field_options)) {
+            $this->field_options = array_values(array_filter(
+                $this->field_options,
+                static fn(int $k): bool => $k !== $index,
+                ARRAY_FILTER_USE_KEY,
+            ));
+        }
     }
 
     public function editField(int $id): void
@@ -61,6 +89,8 @@ trait ManagesEventFormFields
             'field_input_type' => $field->input_type,
             'field_placeholder' => $field->placeholder ?? '',
             'field_options_raw' => is_array($field->options) ? implode(', ', $field->options) : '',
+            'field_options' => is_array($field->options) ? array_values($field->options) : [],
+            'newOptionInput' => '',
             'field_is_required' => $field->is_required,
             'field_sort_order' => $field->sort_order,
             'isFieldModalOpen' => true,
@@ -98,7 +128,9 @@ trait ManagesEventFormFields
         $options = null;
 
         if (in_array($this->field_input_type, ['select', 'radio', 'checkbox'], true)) {
-            $options = array_values(array_filter(array_map('trim', explode(',', $this->field_options_raw))));
+            $options = !empty($this->field_options)
+                ? $this->field_options
+                : array_values(array_filter(array_map('trim', explode(',', $this->field_options_raw))));
         }
 
         $this->flashMessage = $this->persistField($event->id, $options) ?? $this->flashMessage;

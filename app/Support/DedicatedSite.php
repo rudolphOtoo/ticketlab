@@ -31,6 +31,11 @@ final readonly class DedicatedSite
             return null;
         }
 
+        return self::forOrganization($organization);
+    }
+
+    public static function forOrganization(Organization $organization): self
+    {
         $relations = ['ticketTypes', 'speakers', 'schedules', 'faqs'];
         $events = Event::query()->where('organization_id', $organization->id)->with($relations)->latest('id');
 

@@ -37,12 +37,17 @@
             <p class="mx-auto max-w-2xl text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg lg:mx-0">{{ $tagline }}</p>
 
             @if ($checkoutUrl)
+                @php
+                    $isMultiTenant = !App\Models\PlatformSetting::isDedicatedMode();
+                    $highlightsUrl = $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'highlights']) : route('dedicated.highlights');
+                    $aboutUrl = $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'about']) : route('dedicated.about');
+                @endphp
                 <div class="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row lg:justify-start">
-                    <a href="{{ $phase === 'ended' ? route('dedicated.highlights') : $checkoutUrl }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--dedicated-accent)] px-7 py-3.5 text-sm font-bold text-white shadow-md transition hover:opacity-90 press-scale sm:w-auto">
+                    <a href="{{ $phase === 'ended' ? $highlightsUrl : $checkoutUrl }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--dedicated-accent)] px-7 py-3.5 text-sm font-bold text-white shadow-md transition hover:opacity-90 press-scale sm:w-auto">
                         <span>{{ match ($phase) { 'live' => 'Happening Now · Get Passes', 'ended' => 'Relive the Highlights', default => 'Reserve Your Seat' } }}</span>
                         <span aria-hidden="true">→</span>
                     </a>
-                    <a href="{{ route('dedicated.about') }}" class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-6 py-3.5 text-center text-sm font-semibold shadow-2xs transition hover:bg-[var(--bg-subtle)] press-scale sm:w-auto">
+                    <a href="{{ $aboutUrl }}" class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-6 py-3.5 text-center text-sm font-semibold shadow-2xs transition hover:bg-[var(--bg-subtle)] press-scale sm:w-auto">
                         Explore the Gathering
                     </a>
                 </div>

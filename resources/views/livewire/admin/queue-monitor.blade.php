@@ -12,17 +12,26 @@
     @endif
 
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-2xs">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Pending jobs</span>
-            <div class="mt-1 font-mono text-2xl font-bold tabular-nums">{{ number_format($pendingCount) }}</div>
+        <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-xs">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-[var(--text-secondary)]">Pending jobs</span>
+                <span class="size-2 rounded-full bg-sky-500"></span>
+            </div>
+            <div class="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">{{ number_format($pendingCount) }}</div>
         </div>
-        <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-2xs">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Failed jobs</span>
-            <div @class(['mt-1 font-mono text-2xl font-bold tabular-nums', 'text-rose-600' => $failedCount > 0])>{{ number_format($failedCount) }}</div>
+        <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-xs">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-[var(--text-secondary)]">Failed jobs</span>
+                <span @class(['size-2 rounded-full', 'bg-rose-500' => $failedCount > 0, 'bg-emerald-500' => $failedCount === 0])></span>
+            </div>
+            <div @class(['mt-2 font-mono text-2xl font-bold tabular-nums', 'text-rose-600' => $failedCount > 0, 'text-[var(--text-primary)]' => $failedCount === 0])>{{ number_format($failedCount) }}</div>
         </div>
-        <div class="col-span-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-2xs lg:col-span-1">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Broadcast batches</span>
-            <div class="mt-1 font-mono text-2xl font-bold tabular-nums">{{ $broadcasts->count() }}</div>
+        <div class="col-span-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-xs lg:col-span-1">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-[var(--text-secondary)]">Broadcast batches</span>
+                <span class="size-2 rounded-full bg-violet-500"></span>
+            </div>
+            <div class="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">{{ $broadcasts->count() }}</div>
         </div>
     </div>
 

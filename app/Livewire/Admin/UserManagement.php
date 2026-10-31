@@ -10,6 +10,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Layout;
@@ -19,7 +21,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 #[Layout('layouts.admin')]
-#[Title('Staff & Usher Management')]
+#[Title('Team & Staff Management')]
 class UserManagement extends Component
 {
     use WithPagination;
@@ -37,7 +39,11 @@ class UserManagement extends Component
 
     public string $password = '';
 
-    public string $role = 'usher';
+    public string $role = 'staff';
+
+    public string $provisionMode = 'password';
+
+    public ?string $generatedInviteLink = null;
 
     public ?string $subdivisionId = null;
 
@@ -58,8 +64,9 @@ class UserManagement extends Component
         $actor = $this->actor();
 
         $this->resetValidation();
-        $this->reset(['editingUserId', 'name', 'email', 'password']);
-        $this->role = 'usher';
+        $this->reset(['editingUserId', 'name', 'email', 'password', 'generatedInviteLink']);
+        $this->role = 'staff';
+        $this->provisionMode = 'password';
         $this->subdivisionId = $actor->subdivision_id === null ? null : (string) $actor->subdivision_id;
         $this->isModalOpen = true;
     }
@@ -77,6 +84,7 @@ class UserManagement extends Component
         $this->name = $member->name;
         $this->email = $member->email;
         $this->password = '';
+        $this->generatedInviteLink = null;
         $this->role = in_array($member->role, User::ASSIGNABLE_ROLES, true) ? $member->role : 'admin';
         $this->subdivisionId = $member->subdivision_id === null ? null : (string) $member->subdivision_id;
         $this->isModalOpen = true;
@@ -87,6 +95,7 @@ class UserManagement extends Component
         $this->isModalOpen = false;
         $this->editingUserId = null;
         $this->password = '';
+        $this->generatedInviteLink = null;
     }
 
     public function save(): void
@@ -94,13 +103,14 @@ class UserManagement extends Component
         $actor = $this->actor();
         $organizationId = (int) $actor->organization_id;
         $editingSelf = $this->editingUserId === $actor->id;
+        $isInviteMode = $this->editingUserId === null && $this->provisionMode === 'invite';
 
         // Admins can never change their own role, so a stray request cannot lock them out or escalate them.
         if ($editingSelf) {
             $this->role = (string) $actor->role;
         }
 
-        // Zone-bound admins can only provision staff inside their own zone.
+        // Subdivision-bound admins can only provision staff inside their own subdivision.
         if ($actor->subdivision_id !== null) {
             $this->subdivisionId = (string) $actor->subdivision_id;
         }
@@ -108,6 +118,12 @@ class UserManagement extends Component
         if ($this->subdivisionId === '') {
             $this->subdivisionId = null;
         }
+
+        $passwordRules = match (true) {
+            $isInviteMode => ['nullable'],
+            $this->editingUserId === null => ['required', 'string', Password::default()],
+            default => ['nullable', 'string', Password::default()],
+        };
 
         $this->validate(
             [
@@ -120,7 +136,7 @@ class UserManagement extends Component
                     'max:255',
                     Rule::unique(User::class, 'email')->ignore($this->editingUserId),
                 ],
-                'password' => [$this->editingUserId === null ? 'required' : 'nullable', 'string', Password::default()],
+                'password' => $passwordRules,
                 'role' => $editingSelf ? ['required', 'string'] : ['required', Rule::in(User::ASSIGNABLE_ROLES)],
                 'subdivisionId' => [
                     'nullable',
@@ -129,10 +145,10 @@ class UserManagement extends Component
                 ],
             ],
             [],
-            ['subdivisionId' => 'zone'],
+            ['subdivisionId' => 'subdivision'],
         );
 
-        $member = DB::transaction(function () use ($actor, $organizationId): ?User {
+        $member = DB::transaction(function () use ($actor, $organizationId, $isInviteMode): ?User {
             $member = $this->editingUserId === null
                 ? new User()
                 : $this->members($actor)->whereKey($this->editingUserId)->lockForUpdate()->first();
@@ -143,13 +159,14 @@ class UserManagement extends Component
 
             $member->fill(['name' => $this->name, 'email' => $this->email]);
 
-            if ($this->password !== '') {
+            if ($isInviteMode) {
+                $member->password = Str::random(32);
+                $member->forceFill(['email_verified_at' => null]);
+            } elseif ($this->password !== '') {
                 $member->password = $this->password;
-            }
-
-            if (!$member->exists) {
-                // Accounts provisioned by an organisation admin are vouched for, so they can sign in immediately.
-                $member->forceFill(['email_verified_at' => now()]);
+                if (!$member->exists) {
+                    $member->forceFill(['email_verified_at' => now()]);
+                }
             }
 
             // Privilege fields are never mass-assigned: membership goes through the sanctioned method.
@@ -161,8 +178,16 @@ class UserManagement extends Component
         });
 
         if ($member !== null) {
+            if ($isInviteMode) {
+                $token = PasswordBroker::broker()->createToken($member);
+                $this->generatedInviteLink = route('password.reset', ['token' => $token, 'email' => $member->email]);
+                $this->flashMessage = "{$member->name} was invited. Copy the activation link below if email is offline.";
+
+                return;
+            }
+
             $this->flashMessage = $this->editingUserId === null
-                ? "{$member->name} was added to your team."
+                ? "{$member->name} was added to your team with instant password login."
                 : "{$member->name}'s access was updated.";
         }
 
@@ -249,7 +274,7 @@ class UserManagement extends Component
             'members' => $members,
             'subdivisions' => $subdivisions,
             'actor' => $actor,
-            'roles' => User::ASSIGNABLE_ROLES,
+            'roles' => ['admin', 'staff'],
         ]);
     }
 }

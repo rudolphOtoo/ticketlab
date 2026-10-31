@@ -71,9 +71,23 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->role === 'superadmin' || $this->role === 'super_admin';
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->isSuperAdmin()
+            || ($this->organization_id !== null && in_array($this->role, self::ADMIN_ROLES, true));
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->organization_id !== null && in_array($this->role, ['staff', 'usher'], true);
+    }
+
+    /**
+     * @deprecated Use isStaff() instead.
+     */
     public function isUsher(): bool
     {
-        return $this->role === 'usher';
+        return $this->isStaff();
     }
 
     /**
@@ -105,8 +119,8 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return match (true) {
             $this->isSuperAdmin() => route('platform.dashboard'),
             $this->organization_id === null => null,
-            $this->isUsher() => route('ops.scanner'),
-            default => route('admin.index'),
+            $this->isAdmin() => route('admin.index'),
+            default => route('ops.scanner'),
         };
     }
 

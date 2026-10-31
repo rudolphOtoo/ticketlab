@@ -23,7 +23,7 @@ test('guests see public navigation and sign in, never internal tools', function 
         ->assertDontSee('Manage Event');
 });
 
-test('staff get a single discrete manage event pill instead of ops links', function (): void {
+test('admins get a single discrete manage event pill pointing to admin.index', function (): void {
     $this
         ->actingAs(staff_member('admin'))
         ->get(route('public.events.index'))
@@ -34,9 +34,9 @@ test('staff get a single discrete manage event pill instead of ops links', funct
         ->assertDontSee('>Scanner<', false);
 });
 
-test('ushers are pointed at the gate terminal from the public site', function (): void {
+test('staff are pointed at the gate terminal from the public site', function (): void {
     $this
-        ->actingAs(staff_member('usher'))
+        ->actingAs(staff_member('staff'))
         ->get(route('public.events.index'))
         ->assertSee('Manage Event')
         ->assertSee(route('ops.scanner'), false);
@@ -50,14 +50,13 @@ test('dashboard routes every role to its own surface', function (string $role, s
     $this->actingAs($user)->get(route('dashboard'))->assertRedirect(route($expectedRoute));
 })->with([
     'admin' => ['admin', 'admin.index'],
-    'staff' => ['staff', 'admin.index'],
-    'usher' => ['usher', 'ops.scanner'],
+    'staff' => ['staff', 'ops.scanner'],
     'super admin' => ['super_admin', 'platform.dashboard'],
 ]);
 
 test('ops terminal shell contains only the scanner and cash desk', function (): void {
     $this
-        ->actingAs(staff_member('usher'))
+        ->actingAs(staff_member('staff'))
         ->get(route('ops.scanner'))
         ->assertOk()
         ->assertSee('Door Scanner')
@@ -76,18 +75,10 @@ test('admin shell exposes the full administrative sidebar and active event switc
         ->assertSee('Events')
         ->assertSee('Broadcast Hub')
         ->assertSee('Queue Monitor')
-        ->assertSee('Staff &amp; Ushers', false)
+        ->assertSee('Team &amp; Staff', false)
         ->assertSee('Create your first event');
 });
 
-test('staff role does not see team management in the sidebar', function (): void {
-    $this
-        ->actingAs(staff_member('staff'))
-        ->get(route('admin.index'))
-        ->assertOk()
-        ->assertDontSee('Staff &amp; Ushers', false);
-});
-
-test('ushers remain locked out of the admin surface', function (): void {
-    $this->actingAs(staff_member('usher'))->get(route('admin.index'))->assertForbidden();
+test('staff remain locked out of the admin surface', function (): void {
+    $this->actingAs(staff_member('staff'))->get(route('admin.index'))->assertForbidden();
 });
