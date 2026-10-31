@@ -1,3 +1,5 @@
+.env*
+.neon
 /vendor
 bootstrap/cache/*.php
 !public/build/**
