@@ -32,4 +32,32 @@ Route::get('partnership', DedicatedPageController::class)->defaults('page', 'par
 Route::get('faq', DedicatedPageController::class)->defaults('page', 'faq')->name('dedicated.faq');
 Route::get('contact', DedicatedPageController::class)->defaults('page', 'contact')->name('dedicated.contact');
 
+Route::get('api/run-scheduler', function (\Illuminate\Http\Request $request) {
+    $expectedToken = env('SCHEDULER_TOKEN');
+    if ($expectedToken && $request->query('token') !== $expectedToken) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+
+    return response()->json([
+        'message' => 'Scheduler executed',
+        'output' => \Illuminate\Support\Facades\Artisan::output(),
+    ]);
+});
+
+Route::get('api/run-migrate', function (\Illuminate\Http\Request $request) {
+    $expectedToken = env('SCHEDULER_TOKEN');
+    if (! $expectedToken || $request->query('token') !== $expectedToken) {
+        return response()->json(['error' => 'Unauthorized: valid token query parameter required'], 401);
+    }
+
+    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+
+    return response()->json([
+        'message' => 'Migrations executed',
+        'output' => \Illuminate\Support\Facades\Artisan::output(),
+    ]);
+});
+
 require __DIR__ . '/settings.php';
