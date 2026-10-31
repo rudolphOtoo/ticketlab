@@ -1,5 +1,6 @@
 <div class="space-y-6 max-w-7xl mx-auto" x-data="marketingStudio({
     publicUrl: @js($publicUrl),
+    qrEndpoint: @js(route('api.qr')),
     headline: @entangle('flyerHeadline'),
     tagline: @entangle('flyerTagline'),
     venue: @entangle('flyerVenue'),
@@ -10,23 +11,17 @@
     showQr: @entangle('showQrCode'),
     qrFg: @entangle('qrFgColor'),
     qrBg: @entangle('qrBgColor'),
-    speakerName: @js($featuredSpeaker?->name ?? ''),
-    speakerTitle: @js($featuredSpeaker?->title ?? ''),
-    speakerTopic: @js($featuredSpeaker?->topic ?? ''),
-    speakerPhoto: @js($featuredSpeaker?->photo_path ?? ''),
+    featuredSpeakerId: @entangle('featuredSpeakerId'),
+    background: @entangle('backgroundUrl'),
+    speakers: @js($speakers->mapWithKeys(fn ($spk) => [$spk->id => ['name' => $spk->name, 'title' => $spk->title_role, 'topic' => $spk->topic]])),
     priceText: @js($lowestTicketPrice !== null ? 'Tickets from GHS ' . number_format((float) $lowestTicketPrice, 2) : 'Free Admission'),
     orgName: @js($organization?->name ?? 'TicketLab')
-})" x-init="initCanvas()">
+})">
 
     <!-- Studio Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--border-hairline)] pb-5">
         <div>
-            <div class="flex items-center gap-2.5">
-                <h1 class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Marketing Studio</h1>
-                <span class="rounded-full bg-[var(--accent-brand)]/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase text-[var(--accent-brand)]">
-                    Social Flyers & Vector QR
-                </span>
-            </div>
+            <h1 class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Marketing Studio</h1>
             <p class="text-xs text-[var(--text-secondary)] mt-1">
                 Generate high-resolution social media flyers with instant aspect-ratio switching and print-ready vector QR passes.
             </p>
@@ -39,7 +34,7 @@
                     View Public Page
                 </a>
             @endif
-            <button type="button" @click="downloadFlyer()" id="export-png" class="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-xs font-semibold text-[var(--accent-brand-fg)] shadow-xs hover:opacity-90 active:scale-95 transition">
+            <button type="button" @click="downloadFlyer()" id="export-png" class="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs hover:opacity-90 transition press-scale">
                 <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 Export PNG Flyer
             </button>
@@ -54,11 +49,13 @@
                 
                 <!-- Tab Switcher -->
                 <div class="flex rounded-xl bg-[var(--bg-subtle)] p-1 border border-[var(--border-hairline)] text-xs font-medium">
-                    <button type="button" @click="activeTab = 'flyer'" :class="activeTab === 'flyer' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'" class="flex-1 py-2 rounded-lg transition text-center cursor-pointer">
-                        🎨 Social Media Flyer
+                    <button type="button" @click="activeTab = 'flyer'" :class="activeTab === 'flyer' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'" class="flex-1 py-2 rounded-lg transition text-center cursor-pointer flex items-center justify-center gap-1.5 press-scale">
+                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <span>Social Media Flyer</span>
                     </button>
-                    <button type="button" @click="activeTab = 'qr'" :class="activeTab === 'qr' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'" class="flex-1 py-2 rounded-lg transition text-center cursor-pointer">
-                        ⚡ Vector Link QR Code
+                    <button type="button" @click="activeTab = 'qr'" :class="activeTab === 'qr' ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs font-semibold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'" class="flex-1 py-2 rounded-lg transition text-center cursor-pointer flex items-center justify-center gap-1.5 press-scale">
+                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                        <span>Vector Link QR Code</span>
                     </button>
                 </div>
 
@@ -67,21 +64,21 @@
                     
                     <!-- Aspect Ratio Switcher -->
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Aspect Ratio Presets</label>
+                        <label class="text-xs font-semibold text-[var(--text-secondary)]">Aspect Ratio Presets</label>
                         <div class="grid grid-cols-3 gap-2">
-                            <button type="button" wire:click="setAspectRatio('1:1')" @click="renderFlyer()" class="cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border text-center transition {{ $selectedAspectRatio === '1:1' ? 'border-[var(--accent-brand)] bg-[var(--accent-brand)]/10 text-[var(--text-primary)] font-semibold' : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]' }}">
+                            <button type="button" wire:click="setAspectRatio('1:1')" class="cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border text-center transition {{ $selectedAspectRatio === '1:1' ? 'border-[var(--accent-brand)] bg-[var(--accent-brand)]/10 text-[var(--text-primary)] font-semibold' : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]' }}">
                                 <div class="size-6 border-2 border-current rounded-xs mb-1.5"></div>
                                 <span class="text-xs font-medium">1:1 Square</span>
                                 <span class="text-[10px] text-[var(--text-tertiary)]">Instagram / FB</span>
                             </button>
 
-                            <button type="button" wire:click="setAspectRatio('9:16')" @click="renderFlyer()" class="cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border text-center transition {{ $selectedAspectRatio === '9:16' ? 'border-[var(--accent-brand)] bg-[var(--accent-brand)]/10 text-[var(--text-primary)] font-semibold' : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]' }}">
+                            <button type="button" wire:click="setAspectRatio('9:16')" class="cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border text-center transition {{ $selectedAspectRatio === '9:16' ? 'border-[var(--accent-brand)] bg-[var(--accent-brand)]/10 text-[var(--text-primary)] font-semibold' : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]' }}">
                                 <div class="w-4 h-6 border-2 border-current rounded-xs mb-1.5"></div>
                                 <span class="text-xs font-medium">9:16 Story</span>
                                 <span class="text-[10px] text-[var(--text-tertiary)]">WhatsApp / TikTok</span>
                             </button>
 
-                            <button type="button" wire:click="setAspectRatio('16:9')" @click="renderFlyer()" class="cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border text-center transition {{ $selectedAspectRatio === '16:9' ? 'border-[var(--accent-brand)] bg-[var(--accent-brand)]/10 text-[var(--text-primary)] font-semibold' : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]' }}">
+                            <button type="button" wire:click="setAspectRatio('16:9')" class="cursor-pointer flex flex-col items-center justify-center p-3 rounded-xl border text-center transition {{ $selectedAspectRatio === '16:9' ? 'border-[var(--accent-brand)] bg-[var(--accent-brand)]/10 text-[var(--text-primary)] font-semibold' : 'border-[var(--border-hairline)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]' }}">
                                 <div class="w-6 h-3.5 border-2 border-current rounded-xs mb-1.5 mt-1.5"></div>
                                 <span class="text-xs font-medium">16:9 Banner</span>
                                 <span class="text-[10px] text-[var(--text-tertiary)]">X / Website Banner</span>
@@ -91,44 +88,55 @@
 
                     <!-- Theme & Brand Palette -->
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Theme Palette & Accents</label>
+                        <label class="text-xs font-semibold text-[var(--text-secondary)]">Theme Palette & Accents</label>
                         <div class="flex items-center gap-2">
                             @foreach (['amethyst' => '#7c3aed', 'emerald' => '#059669', 'amber' => '#d97706', 'rose' => '#e11d48', 'slate' => '#0f172a'] as $preset => $hex)
-                                <button type="button" wire:click="setPreset('{{ $preset }}')" @click="renderFlyer()" class="size-7 rounded-full transition-transform {{ $themePreset === $preset ? 'ring-2 ring-offset-2 ring-[var(--text-primary)] scale-110' : 'hover:scale-105' }}" style="background-color: {{ $hex }};" title="{{ ucfirst($preset) }}"></button>
+                                <button type="button" wire:click="setPreset('{{ $preset }}')" class="size-7 rounded-full transition-transform {{ $themePreset === $preset ? 'ring-2 ring-offset-2 ring-[var(--text-primary)] scale-110' : 'hover:scale-105' }}" style="background-color: {{ $hex }};" title="{{ ucfirst($preset) }}"></button>
                             @endforeach
-                            <input type="color" wire:model.live="accentColor" @change="renderFlyer()" class="size-7 rounded-full cursor-pointer border-0 bg-transparent p-0" title="Custom Hex">
+                            <input type="color" wire:model.live="accentColor" class="size-7 rounded-full cursor-pointer border-0 bg-transparent p-0" title="Custom Hex">
                         </div>
+                    </div>
+
+                    <!-- Custom Background Image -->
+                    <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
+                        <label for="flyer-background" class="text-xs font-semibold text-[var(--text-secondary)]">Background Image</label>
+                        <input id="flyer-background" type="file" accept="image/jpeg,image/png,image/webp" wire:model="backgroundImage" class="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--text-primary)]">
+                        <div wire:loading wire:target="backgroundImage" class="text-[11px] text-[var(--text-tertiary)]">Uploading…</div>
+                        @error('backgroundImage') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
+                        @if ($backgroundUrl)
+                            <button type="button" wire:click="removeBackground" class="cursor-pointer text-[11px] font-semibold text-rose-600 hover:underline">Remove background</button>
+                        @endif
                     </div>
 
                     <!-- Flyer Copy & Details -->
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Flyer Information</label>
+                        <label class="text-xs font-semibold text-[var(--text-secondary)]">Flyer Information</label>
                         
                         <div class="space-y-1">
                             <label class="text-xs font-medium text-[var(--text-secondary)]">Main Headline</label>
-                            <input type="text" x-model="headline" @input="renderFlyer()" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
+                            <input type="text" x-model="headline" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
                         </div>
 
                         <div class="space-y-1">
                             <label class="text-xs font-medium text-[var(--text-secondary)]">Tagline / Subtitle</label>
-                            <input type="text" x-model="tagline" @input="renderFlyer()" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
+                            <input type="text" x-model="tagline" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <div class="space-y-1">
                                 <label class="text-xs font-medium text-[var(--text-secondary)]">Venue / Location</label>
-                                <input type="text" x-model="venue" @input="renderFlyer()" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
+                                <input type="text" x-model="venue" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
                             </div>
                             <div class="space-y-1">
                                 <label class="text-xs font-medium text-[var(--text-secondary)]">Date & Time</label>
-                                <input type="text" x-model="date" @input="renderFlyer()" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
+                                <input type="text" x-model="date" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
                             </div>
                         </div>
 
                         @if ($speakers->isNotEmpty())
                             <div class="space-y-1">
                                 <label class="text-xs font-medium text-[var(--text-secondary)]">Featured Speaker Badge</label>
-                                <select wire:model.live="featuredSpeakerId" @change="$nextTick(() => renderFlyer())" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
+                                <select wire:model.live="featuredSpeakerId" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-brand)] transition">
                                     <option value="">None (Generic Event Flyer)</option>
                                     @foreach ($speakers as $spk)
                                         <option value="{{ $spk->id }}">{{ $spk->name }} ({{ $spk->title ?? $spk->title_role ?? 'Guest' }})</option>
@@ -139,7 +147,7 @@
 
                         <div class="flex items-center justify-between pt-2 border-t border-[var(--border-hairline)]">
                             <span class="text-xs text-[var(--text-secondary)]">Show Public Ticket QR Code</span>
-                            <input type="checkbox" x-model="showQr" @change="renderFlyer()" class="size-4 rounded-sm border-[var(--border-hairline)] text-[var(--accent-brand)]">
+                            <input type="checkbox" x-model="showQr" class="size-4 rounded-sm border-[var(--border-hairline)] text-[var(--accent-brand)]">
                         </div>
                     </div>
                 </div>
@@ -148,7 +156,7 @@
                 <div x-show="activeTab === 'qr'" class="space-y-5" style="display: none;">
                     
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-4">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Public Event URL Pass</label>
+                        <label class="text-xs font-semibold text-[var(--text-secondary)]">Public Event URL Pass</label>
                         
                         <div class="flex items-center gap-2">
                             <input type="text" readonly value="{{ $publicUrl }}" class="flex-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs font-mono text-[var(--text-primary)] truncate">
@@ -161,14 +169,14 @@
                             <div class="space-y-1">
                                 <label class="text-xs font-medium text-[var(--text-secondary)]">Foreground Color</label>
                                 <div class="flex items-center gap-2">
-                                    <input type="color" x-model="qrFg" @change="renderQrOnly()" class="size-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
+                                    <input type="color" x-model="qrFg" class="size-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
                                     <span class="text-xs font-mono" x-text="qrFg"></span>
                                 </div>
                             </div>
                             <div class="space-y-1">
                                 <label class="text-xs font-medium text-[var(--text-secondary)]">Background Color</label>
                                 <div class="flex items-center gap-2">
-                                    <input type="color" x-model="qrBg" @change="renderQrOnly()" class="size-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
+                                    <input type="color" x-model="qrBg" class="size-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
                                     <span class="text-xs font-mono" x-text="qrBg"></span>
                                 </div>
                             </div>
@@ -190,7 +198,7 @@
             <!-- Preview Canvas Pane (Right 7 Cols) -->
             <div class="lg:col-span-7 space-y-4">
                 
-                <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm flex flex-col items-center justify-center min-h-[520px]">
+                <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md flex flex-col items-center justify-center min-h-[520px]">
                     
                     <!-- Flyer Mode Canvas -->
                     <div x-show="activeTab === 'flyer'" class="flex flex-col items-center w-full">
@@ -220,185 +228,243 @@
         </div>
 </div>
 
-<!-- Embedded Vanilla QR & Flyer Engine Script -->
+<!-- Flyer & QR Engine: real scannable QR codes come from /api/qr; everything is drawn same-origin so exports never taint the canvas. -->
 <script>
 function marketingStudio(config) {
-    return {
-        canvas: null,
-        ctx: null,
-        qrCanvas: null,
-        qrCtx: null,
+    const FLYER_SIZES = { '1:1': [1080, 1080], '9:16': [1080, 1920], '16:9': [1920, 1080] };
 
-        initCanvas() {
+    return {
+        ...config,
+        canvas: null,
+        qrCanvas: null,
+        qrImage: null,
+        backgroundImage: null,
+
+        init() {
             this.$nextTick(() => {
                 this.canvas = document.getElementById('flyerCanvas');
-                if (this.canvas) {
-                    this.ctx = this.canvas.getContext('2d');
-                }
                 this.qrCanvas = document.getElementById('qrStandaloneCanvas');
-                if (this.qrCanvas) {
-                    this.qrCtx = this.qrCanvas.getContext('2d');
-                }
-                this.renderFlyer();
-                this.renderQrOnly();
+                this.loadBackground();
+                this.loadQr();
             });
+
+            ['headline', 'tagline', 'venue', 'date', 'badge', 'accentColor', 'aspectRatio', 'showQr', 'featuredSpeakerId']
+                .forEach((key) => this.$watch(key, () => this.renderFlyer()));
+            ['qrFg', 'qrBg'].forEach((key) => this.$watch(key, () => this.loadQr()));
+            this.$watch('background', () => this.loadBackground());
+        },
+
+        qrUrl(format, size = 600) {
+            const params = new URLSearchParams({
+                content: this.publicUrl,
+                format,
+                size: String(size),
+                fg: this.qrFg || '#121316',
+                bg: this.qrBg || '#ffffff',
+                margin: '2',
+            });
+
+            return `${this.qrEndpoint}?${params.toString()}`;
+        },
+
+        loadImage(src) {
+            return new Promise((resolve) => {
+                if (!src) { resolve(null); return; }
+                const image = new Image();
+                image.onload = () => resolve(image);
+                image.onerror = () => resolve(null);
+                image.src = src;
+            });
+        },
+
+        async loadQr() {
+            this.qrImage = await this.loadImage(this.qrUrl('png'));
+            this.renderFlyer();
+            this.renderQrOnly();
+        },
+
+        async loadBackground() {
+            this.backgroundImage = await this.loadImage(this.background);
+            this.renderFlyer();
+        },
+
+        /**
+         * Word-wraps text into at most maxLines lines, ellipsising the last one, and returns the y below the block.
+         */
+        wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+            const words = String(text || '').split(/\s+/).filter(Boolean);
+            const lines = [];
+            let line = '';
+
+            for (const word of words) {
+                const candidate = line ? `${line} ${word}` : word;
+                if (ctx.measureText(candidate).width > maxWidth && line) {
+                    lines.push(line);
+                    line = word;
+                } else {
+                    line = candidate;
+                }
+            }
+            if (line) lines.push(line);
+
+            if (lines.length > maxLines) {
+                lines.length = maxLines;
+                let last = lines[maxLines - 1];
+                while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
+                lines[maxLines - 1] = `${last.trimEnd()}…`;
+            }
+
+            lines.forEach((text, index) => ctx.fillText(text, x, y + index * lineHeight));
+
+            return y + lines.length * lineHeight;
+        },
+
+        drawCover(ctx, image, width, height) {
+            const scale = Math.max(width / image.width, height / image.height);
+            const w = image.width * scale;
+            const h = image.height * scale;
+            ctx.drawImage(image, (width - w) / 2, (height - h) / 2, w, h);
         },
 
         renderFlyer() {
             if (!this.canvas) return;
 
-            // Dimensions based on aspect ratio
-            let width = 1080;
-            let height = 1080;
-            if (config.aspectRatio === '9:16') {
-                width = 1080;
-                height = 1920;
-            } else if (config.aspectRatio === '16:9') {
-                width = 1920;
-                height = 1080;
-            }
+            const [width, height] = FLYER_SIZES[this.aspectRatio] || FLYER_SIZES['1:1'];
+            const landscape = width > height;
+            const pad = landscape ? 96 : 80;
+            const accent = /^#[0-9a-f]{6}$/i.test(this.accentColor || '') ? this.accentColor : '#6366f1';
+            const qrSize = landscape ? 300 : 220;
+            const showQr = this.showQr && this.qrImage;
+            const textWidth = landscape && showQr ? width - pad * 3 - qrSize : width - pad * 2;
 
             this.canvas.width = width;
             this.canvas.height = height;
+            const ctx = this.canvas.getContext('2d');
+            ctx.textBaseline = 'alphabetic';
+            ctx.textAlign = 'left';
 
-            const ctx = this.ctx;
-            const accent = config.accentColor || '#6366f1';
+            // Background: uploaded image (cover + scrim) or the basalt gradient.
+            if (this.backgroundImage) {
+                this.drawCover(ctx, this.backgroundImage, width, height);
+                const scrim = ctx.createLinearGradient(0, 0, 0, height);
+                scrim.addColorStop(0, 'rgba(9,10,15,0.55)');
+                scrim.addColorStop(1, 'rgba(9,10,15,0.9)');
+                ctx.fillStyle = scrim;
+                ctx.fillRect(0, 0, width, height);
+            } else {
+                const bg = ctx.createLinearGradient(0, 0, width, height);
+                bg.addColorStop(0, '#090a0f');
+                bg.addColorStop(0.5, '#12131a');
+                bg.addColorStop(1, '#181926');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, width, height);
+            }
 
-            // Background Gradient (Deep Serene Basalt with Accent Glow)
-            const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-            bgGrad.addColorStop(0, '#090a0f');
-            bgGrad.addColorStop(0.5, '#12131a');
-            bgGrad.addColorStop(1, '#181926');
-            ctx.fillStyle = bgGrad;
+            const orb = ctx.createRadialGradient(width * 0.8, height * 0.2, 50, width * 0.8, height * 0.2, width * 0.6);
+            orb.addColorStop(0, `${accent}55`);
+            orb.addColorStop(1, 'transparent');
+            ctx.fillStyle = orb;
             ctx.fillRect(0, 0, width, height);
 
-            // Ambient Accent Orb
-            const orbGrad = ctx.createRadialGradient(width * 0.8, height * 0.2, 50, width * 0.8, height * 0.2, width * 0.6);
-            orbGrad.addColorStop(0, accent + '55');
-            orbGrad.addColorStop(1, 'transparent');
-            ctx.fillStyle = orbGrad;
-            ctx.fillRect(0, 0, width, height);
-
-            // Top Header: Org Badge
+            // Organisation + badge pill.
+            let y = pad + 20;
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 28px sans-serif';
-            ctx.fillText(config.orgName.toUpperCase(), 80, 100);
+            y = this.wrapText(ctx, (this.orgName || '').toUpperCase(), pad, y, width - pad * 2, 34, 1) + 10;
 
-            // Accent Badge
+            ctx.font = 'bold 18px sans-serif';
+            const badge = (this.badge || '').slice(0, 40);
+            const badgeWidth = ctx.measureText(badge).width + 40;
             ctx.fillStyle = accent;
             ctx.beginPath();
-            ctx.roundRect(80, 130, 200, 36, 18);
+            ctx.roundRect(pad, y, badgeWidth, 40, 20);
             ctx.fill();
-
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.fillText(config.badge, 100, 154);
+            ctx.fillText(badge, pad + 20, y + 27);
 
-            // Main Event Title (Headline)
+            // Headline + tagline, wrapped to the available column.
+            const titleSize = landscape ? 76 : (height > width ? 84 : 68);
+            ctx.font = `900 ${titleSize}px sans-serif`;
             ctx.fillStyle = '#ffffff';
-            ctx.font = '900 ' + (width === 1920 ? '72px' : '64px') + ' sans-serif';
-            
-            // Multiline wrap for title
-            const titleWords = config.headline.split(' ');
-            let titleLine = '';
-            let titleY = height * 0.28;
-            for (let n = 0; n < titleWords.length; n++) {
-                let testLine = titleLine + titleWords[n] + ' ';
-                let metrics = ctx.measureText(testLine);
-                if (metrics.width > width - 180 && n > 0) {
-                    ctx.fillText(titleLine, 80, titleY);
-                    titleLine = titleWords[n] + ' ';
-                    titleY += 72;
-                } else {
-                    titleLine = testLine;
-                }
-            }
-            ctx.fillText(titleLine, 80, titleY);
+            y = this.wrapText(ctx, this.headline, pad, y + 70 + titleSize, textWidth, titleSize * 1.08, 3);
 
-            // Tagline
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = '300 28px sans-serif';
-            ctx.fillText(config.tagline, 80, titleY + 50);
+            ctx.font = '300 30px sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            y = this.wrapText(ctx, this.tagline, pad, y + 24, textWidth, 40, 3);
 
-            // Featured Speaker Card (if present)
-            let speakerCardY = titleY + 110;
-            if (config.speakerName) {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            // Featured speaker card.
+            const speaker = this.speakers?.[this.featuredSpeakerId];
+            if (speaker && y + 200 < height - 300) {
+                const cardY = y + 40;
+                ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.roundRect(80, speakerCardY, width - 160, 150, 24);
+                ctx.roundRect(pad, cardY, textWidth, 150, 24);
                 ctx.fill();
                 ctx.stroke();
 
-                // Speaker Avatar Circle
                 ctx.fillStyle = accent;
                 ctx.beginPath();
-                ctx.arc(155, speakerCardY + 75, 45, 0, Math.PI * 2);
+                ctx.arc(pad + 75, cardY + 75, 45, 0, Math.PI * 2);
                 ctx.fill();
-
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 36px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(config.speakerName.charAt(0), 155, speakerCardY + 88);
+                ctx.fillText(speaker.name.charAt(0), pad + 75, cardY + 88);
                 ctx.textAlign = 'left';
 
-                // Speaker Details
-                ctx.fillStyle = '#ffffff';
+                const detailWidth = textWidth - 190;
                 ctx.font = 'bold 32px sans-serif';
-                ctx.fillText(config.speakerName, 230, speakerCardY + 60);
-
+                this.wrapText(ctx, speaker.name, pad + 150, cardY + 58, detailWidth, 36, 1);
                 ctx.fillStyle = '#cbd5e1';
                 ctx.font = '22px sans-serif';
-                ctx.fillText(config.speakerTitle || 'Keynote Speaker', 230, speakerCardY + 95);
-
-                if (config.speakerTopic) {
+                this.wrapText(ctx, speaker.title || 'Keynote Speaker', pad + 150, cardY + 93, detailWidth, 26, 1);
+                if (speaker.topic) {
                     ctx.fillStyle = '#fbbf24';
                     ctx.font = 'italic 20px sans-serif';
-                    ctx.fillText('Topic: ' + config.speakerTopic, 230, speakerCardY + 125);
+                    this.wrapText(ctx, `Topic: ${speaker.topic}`, pad + 150, cardY + 124, detailWidth, 24, 1);
                 }
             }
 
-            // Bottom Strip: Venue, Date & Price
-            const bottomY = height - 120;
-            
-            // Date & Venue
+            // Footer: date, venue and price, kept clear of the QR block.
+            const footerWidth = showQr && !landscape ? width - pad * 3 - qrSize : textWidth;
+            const bottom = height - pad;
+            ctx.font = '26px sans-serif';
+            const venueLines = Math.min(2, Math.ceil(ctx.measureText(this.venue || '').width / footerWidth) || 1);
+            const footerTop = bottom - 64 - venueLines * 34 - 48;
+
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 30px sans-serif';
-            ctx.fillText('📅 ' + config.date, 80, bottomY - 50);
-
+            this.wrapText(ctx, this.date, pad, footerTop, footerWidth, 36, 1);
             ctx.fillStyle = '#94a3b8';
             ctx.font = '26px sans-serif';
-            ctx.fillText('📍 ' + config.venue, 80, bottomY);
+            this.wrapText(ctx, this.venue, pad, footerTop + 46, footerWidth, 34, 2);
 
-            // Price Tag Pill
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.beginPath();
-            ctx.roundRect(80, bottomY + 25, 320, 48, 12);
-            ctx.fill();
-
-            ctx.fillStyle = '#38bdf8';
             ctx.font = 'bold 22px sans-serif';
-            ctx.fillText('🎟️ ' + config.priceText, 95, bottomY + 57);
+            const priceWidth = Math.min(footerWidth, ctx.measureText(this.priceText).width + 40);
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.beginPath();
+            ctx.roundRect(pad, bottom - 48, priceWidth, 48, 12);
+            ctx.fill();
+            ctx.fillStyle = '#38bdf8';
+            this.wrapText(ctx, this.priceText, pad + 20, bottom - 16, priceWidth - 40, 26, 1);
 
-            // QR Code in bottom-right corner
-            if (config.showQr) {
-                const qrBoxSize = 180;
-                const qrX = width - qrBoxSize - 80;
-                const qrY = height - qrBoxSize - 80;
-
+            if (showQr) {
+                const qrX = width - qrSize - pad;
+                const qrY = height - qrSize - pad;
                 ctx.fillStyle = '#ffffff';
                 ctx.beginPath();
-                ctx.roundRect(qrX, qrY, qrBoxSize, qrBoxSize, 16);
+                ctx.roundRect(qrX - 14, qrY - 14, qrSize + 28, qrSize + 28, 20);
                 ctx.fill();
-
-                // Draw QR Pattern
-                this.drawQrMatrix(ctx, qrX + 15, qrY + 15, qrBoxSize - 30, config.qrFg, '#ffffff');
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(this.qrImage, qrX, qrY, qrSize, qrSize);
+                ctx.imageSmoothingEnabled = true;
 
                 ctx.fillStyle = '#94a3b8';
                 ctx.font = 'bold 16px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('SCAN FOR PASS', qrX + qrBoxSize / 2, qrY - 12);
+                ctx.fillText('SCAN FOR TICKETS', qrX + qrSize / 2, qrY - 26);
                 ctx.textAlign = 'left';
             }
         },
@@ -408,90 +474,44 @@ function marketingStudio(config) {
             const size = 512;
             this.qrCanvas.width = size;
             this.qrCanvas.height = size;
-            const ctx = this.qrCtx;
-
-            ctx.fillStyle = config.qrBg;
+            const ctx = this.qrCanvas.getContext('2d');
+            ctx.fillStyle = this.qrBg || '#ffffff';
             ctx.fillRect(0, 0, size, size);
-
-            this.drawQrMatrix(ctx, 40, 40, size - 80, config.qrFg, config.qrBg);
+            if (this.qrImage) {
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(this.qrImage, 0, 0, size, size);
+            }
         },
 
-        drawQrMatrix(ctx, x, y, size, fg, bg) {
-            // High-precision pseudo QR pattern matrix representing public pass
-            const grid = 25;
-            const cell = size / grid;
+        slug() {
+            return (this.headline || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'event';
+        },
 
-            ctx.fillStyle = fg;
-
-            // 3 Standard Position Finder Patterns
-            const drawFinder = (rX, rY) => {
-                ctx.fillRect(rX, rY, cell * 7, cell * 7);
-                ctx.fillStyle = bg;
-                ctx.fillRect(rX + cell, rY + cell, cell * 5, cell * 5);
-                ctx.fillStyle = fg;
-                ctx.fillRect(rX + cell * 2, rY + cell * 2, cell * 3, cell * 3);
-            };
-
-            drawFinder(x, y);
-            drawFinder(x + cell * (grid - 7), y);
-            drawFinder(x, y + cell * (grid - 7));
-
-            // Timing strips
-            for (let i = 8; i < grid - 8; i++) {
-                if (i % 2 === 0) {
-                    ctx.fillRect(x + i * cell, y + 6 * cell, cell, cell);
-                    ctx.fillRect(x + 6 * cell, y + i * cell, cell, cell);
-                }
-            }
-
-            // Pseudo deterministic data cells based on URL
-            const url = config.publicUrl;
-            for (let r = 0; r < grid; r++) {
-                for (let c = 0; c < grid; c++) {
-                    if ((r < 8 && (c < 8 || c >= grid - 8)) || (r >= grid - 8 && c < 8)) {
-                        continue;
-                    }
-                    const charCode = url.charCodeAt((r * grid + c) % url.length);
-                    if ((charCode + r + c) % 3 === 0) {
-                        ctx.fillRect(x + c * cell, y + r * cell, cell, cell);
-                    }
-                }
-            }
+        triggerDownload(href, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = href;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
         },
 
         downloadFlyer() {
             if (!this.canvas) return;
-            const link = document.createElement('a');
-            link.download = (config.headline || 'event-flyer').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + config.aspectRatio.replace(':', '-') + '.png';
-            link.href = this.canvas.toDataURL('image/png');
-            link.click();
+            this.triggerDownload(this.canvas.toDataURL('image/png'), `${this.slug()}-${this.aspectRatio.replace(':', 'x')}.png`);
         },
 
-        downloadQrPng() {
-            if (!this.qrCanvas) return;
-            const link = document.createElement('a');
-            link.download = 'ticketlab-qr-pass.png';
-            link.href = this.qrCanvas.toDataURL('image/png');
-            link.click();
+        async downloadQr(format) {
+            const response = await fetch(this.qrUrl(format, 1024), { credentials: 'same-origin' });
+            if (!response.ok) return;
+            const url = URL.createObjectURL(await response.blob());
+            this.triggerDownload(url, `${this.slug()}-qr.${format}`);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         },
 
-        downloadQrSvg() {
-            const svgData = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-                <rect width="100%" height="100%" fill="${config.qrBg}"/>
-                <path d="M40 40h140v140H40zM332 40h140v140H332zM40 332h140v140H40z" fill="${config.qrFg}"/>
-                <rect x="60" y="60" width="100" height="100" fill="${config.qrBg}"/>
-                <rect x="80" y="80" width="60" height="60" fill="${config.qrFg}"/>
-                <rect x="352" y="60" width="100" height="100" fill="${config.qrBg}"/>
-                <rect x="372" y="80" width="60" height="60" fill="${config.qrFg}"/>
-                <rect x="60" y="352" width="100" height="100" fill="${config.qrBg}"/>
-                <rect x="80" y="372" width="60" height="60" fill="${config.qrFg}"/>
-            </svg>`;
-            const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-            const link = document.createElement('a');
-            link.download = 'ticketlab-vector-qr.svg';
-            link.href = URL.createObjectURL(blob);
-            link.click();
-        }
+        downloadQrPng() { return this.downloadQr('png'); },
+
+        downloadQrSvg() { return this.downloadQr('svg'); },
     };
 }
 </script>

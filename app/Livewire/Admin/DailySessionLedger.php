@@ -14,6 +14,7 @@ use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
 use App\Services\Ledger\SessionReportService;
+use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-#[Layout('layouts.ops')]
+#[Layout('layouts.admin')]
 #[Title('Financial Closeout & Attendance')]
 class DailySessionLedger extends Component
 {
@@ -61,7 +62,6 @@ class DailySessionLedger extends Component
         $capacityTotal = $this->capacityTotal($event);
 
         $locked = DB::transaction(function () use ($reportService, $event, $capacityTotal): bool {
-            /** @var SessionLedger|null $session */
             $session = $this->sessions()->whereKey($this->activeSessionId)->lockForUpdate()->first();
 
             // Re-checked under the row lock so two concurrent closeouts cannot both freeze figures.
@@ -139,7 +139,13 @@ class DailySessionLedger extends Component
 
     private function getActiveEvent(): ?Event
     {
-        $events = Event::query()->when($this->orgId(), static fn($q, $orgId) => $q->where('organization_id', $orgId));
+        $orgId = $this->orgId();
+
+        if ($this->eventId === null && $orgId !== null) {
+            return ActiveEvent::resolve($orgId);
+        }
+
+        $events = Event::query()->when($orgId, static fn($q, $orgId) => $q->where('organization_id', $orgId));
 
         return $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
     }
@@ -180,23 +186,25 @@ class DailySessionLedger extends Component
         $orgId = $this->orgId();
 
         $totals = $this->ledgerTotals($orgId);
-        $turnoutCount = $totals['checked_in'];
+
+        // Gate turnout and the live feed follow the active event; cash and online totals stay per daily session.
+        $eventAttendees = Attendee::query()
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->when($event, static fn($q, Event $active) => $q->whereIn('ticket_type_id', TicketType::query()
+                ->select('id')
+                ->where('event_id', $active->id)));
+        $turnoutCount = (clone $eventAttendees)->whereNotNull('checked_in_at')->count();
 
         $capacityTotal = $this->capacityTotal($event);
         if ($capacityTotal === 0) {
-            $capacityTotal = max(
-                1,
-                Attendee::query()
-                    ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
-                    ->count(),
-            );
+            $capacityTotal = max(1, (clone $eventAttendees)->count());
         }
 
         $turnoutRate = (int) round(($turnoutCount / $capacityTotal) * 100);
 
-        $liveGateFeed = Attendee::with(['subdivision', 'ticketType'])
+        $liveGateFeed = (clone $eventAttendees)
+            ->with(['subdivision', 'ticketType'])
             ->whereNotNull('checked_in_at')
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
             ->latest('checked_in_at')
             ->take(4)
             ->get();

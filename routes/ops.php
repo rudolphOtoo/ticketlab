@@ -2,12 +2,19 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Admin\AdminOverview;
 use App\Livewire\Admin\AttendeeRoster;
+use App\Livewire\Admin\BespokeStudio;
+use App\Livewire\Admin\BroadcastHub;
 use App\Livewire\Admin\DailySessionLedger;
 use App\Livewire\Admin\DataExportCentral;
 use App\Livewire\Admin\EventCustomizer;
+use App\Livewire\Admin\EventManager;
 use App\Livewire\Admin\MarketingStudio;
+use App\Livewire\Admin\QueueMonitor;
+use App\Livewire\Admin\SubdivisionManager;
 use App\Livewire\Admin\TicketManager;
+use App\Livewire\Admin\UserManagement;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
 use App\Livewire\Platform\PlatformDashboard;
@@ -32,14 +39,28 @@ Route::middleware(['auth', 'subdivision.access:ops'])
 
         // On-site walk-in cash desk portal
         Route::get('cash-desk', CashDeskTerminal::class)->name('cash-desk');
+        Route::redirect('pos', 'cash-desk')->name('pos');
     });
 
 Route::middleware(['auth', 'subdivision.access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        // Root admin route redirects to dashboard
-        Route::redirect('/', '/dashboard')->name('index');
+        // Tenant admin command overview for the active event
+        Route::get('/', AdminOverview::class)->name('index');
+
+        // Event lifecycle CRUD & active event selection
+        Route::get('events', EventManager::class)->name('events');
+
+        // Staff & team management (RBAC)
+        Route::get('users', UserManagement::class)->name('users');
+
+        // Subdivision management (CRUD)
+        Route::get('subdivisions', SubdivisionManager::class)->name('subdivisions');
+
+        // Batched reminder emails & queue health
+        Route::get('broadcasts', BroadcastHub::class)->name('broadcasts');
+        Route::get('queue-monitor', QueueMonitor::class)->name('queue-monitor');
 
         // Daily session ledger declaration & lockdown
         Route::get('sessions', DailySessionLedger::class)->name('sessions');
@@ -52,6 +73,9 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Non-coder visual event customizer studio
         Route::get('studio', EventCustomizer::class)->name('studio');
+
+        // Bespoke portal CMS: sub-pages & navigation flow
+        Route::get('studio/bespoke', BespokeStudio::class)->name('studio.bespoke');
 
         // Marketing studio: promotional flyers & vector QR studio
         Route::get('studio/marketing', MarketingStudio::class)->name('studio.marketing');

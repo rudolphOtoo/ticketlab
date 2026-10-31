@@ -23,6 +23,9 @@
     --bg-subtle: #f3f1ec;
     --bg-hover: #efece6;
 
+    /* Inputs sit one step brighter than canvas so text is clearly readable */
+    --bg-input: #ffffff;
+
     /* Text & Typography */
     --text-primary: #18181b;
     --text-secondary: #71717a;
@@ -32,6 +35,10 @@
     --border-hairline: #e4e2dc;
     --border-focused: #18181b;
 
+    /* Distinctive Brand Accent (Anti-Slop Indigo/Violet) */
+    --accent-brand: #6366f1;
+    --accent-brand-subtle: #eef2ff;
+
     /* Soothing Semantic Accents (Anti-Neon) */
     --status-success: #15803d;        /* Calming Nordic Pine */
     --status-success-bg: #f0fdf4;
@@ -39,6 +46,39 @@
     --status-warning-bg: #fffbeb;
     --status-danger: #b91c1c;         /* Subdued Brick Red */
     --status-danger-bg: #fef2f2;
+
+    /* ==========================================================================
+       5-Level Elevation Shadow System (Refactoring UI dual-layer method)
+       Light Mode: warm-tinted shadows (hsl(40,20%,x)) for the linen canvas feel.
+
+       Each level = cast shadow (large, soft) + ambient occlusion (tight, dark).
+       Ambient layer fades as elevation rises — element is "further from surface".
+       ========================================================================== */
+
+    /* Level 1 — Bare separation: subtle cards on the canvas */
+    --shadow-xs:  0 1px 2px 0 rgba(24, 18, 8, 0.06);
+
+    /* Level 2 — Low raise: buttons, form inputs, table chips */
+    --shadow-sm:  0 1px 3px 0 rgba(24, 18, 8, 0.10),
+                  0 1px 2px -1px rgba(24, 18, 8, 0.10);
+
+    /* Level 3 — Floating: dropdowns, popovers, hover-raised cards */
+    --shadow-md:  0 4px 6px -1px rgba(24, 18, 8, 0.10),
+                  0 2px 4px -2px rgba(24, 18, 8, 0.10);
+
+    /* Level 4 — High: sticky headers, sidebars, active drag items */
+    --shadow-lg:  0 10px 15px -3px rgba(24, 18, 8, 0.10),
+                  0 4px  6px -4px rgba(24, 18, 8, 0.08);
+
+    /* Level 5 — Modal: dialogs, command palettes, full overlays */
+    --shadow-xl:  0 20px 25px -5px rgba(24, 18, 8, 0.12),
+                  0  8px 10px -6px rgba(24, 18, 8, 0.06);
+
+    /* Level 6 — Maximum: large modals, critical overlays */
+    --shadow-2xl: 0 25px 50px -12px rgba(24, 18, 8, 0.20);
+
+    /* Inset shadow for recessed form inputs (light simulates top-lip shadow) */
+    --shadow-inset: inset 0 1px 2px 0 rgba(24, 18, 8, 0.06);
 }
 
 html.dark,
@@ -56,6 +96,9 @@ html.dark,
     --bg-subtle: #20232b;
     --bg-hover: #282c36;
 
+    /* Inputs sit clearly above canvas in dark mode — brighter than bg-canvas */
+    --bg-input: #1e2026;
+
     /* Text & Typography */
     --text-primary: #f4f4f5;
     --text-secondary: #9ca3af;
@@ -65,6 +108,10 @@ html.dark,
     --border-hairline: rgba(255, 255, 255, 0.08);
     --border-focused: #f4f4f5;
 
+    /* Distinctive Brand Accent in Dark */
+    --accent-brand: #818cf8;
+    --accent-brand-subtle: rgba(129, 140, 248, 0.15);
+
     /* Soothing Semantic Accents in Dark */
     --status-success: #34d399;    /* Gentle Sage */
     --status-success-bg: rgba(52, 211, 153, 0.12);
@@ -72,4 +119,28 @@ html.dark,
     --status-warning-bg: rgba(251, 191, 36, 0.12);
     --status-danger: #f87171;
     --status-danger-bg: rgba(248, 113, 113, 0.12);
+
+    /* ==========================================================================
+       5-Level Elevation Shadow System — Dark Mode
+       Dark shadows are more opaque (more visible against dark backgrounds).
+       Cast shadows use slight blue-tint (matching the Velvet Basalt palette).
+       ========================================================================== */
+
+    --shadow-xs:  0 1px 2px 0 rgba(0, 0, 0, 0.30);
+
+    --shadow-sm:  0 1px 3px 0 rgba(0, 0, 0, 0.40),
+                  0 1px 2px -1px rgba(0, 0, 0, 0.30);
+
+    --shadow-md:  0 4px 6px -1px rgba(0, 0, 0, 0.40),
+                  0 2px 4px -2px rgba(0, 0, 0, 0.30);
+
+    --shadow-lg:  0 10px 15px -3px rgba(0, 0, 0, 0.45),
+                  0  4px  6px -4px rgba(0, 0, 0, 0.30);
+
+    --shadow-xl:  0 20px 25px -5px rgba(0, 0, 0, 0.50),
+                  0  8px 10px -6px rgba(0, 0, 0, 0.25);
+
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.60);
+
+    --shadow-inset: inset 0 1px 3px 0 rgba(0, 0, 0, 0.35);
 }

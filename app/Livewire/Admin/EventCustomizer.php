@@ -9,6 +9,7 @@ use App\Livewire\Admin\Concerns\ManagesEventFormFields;
 use App\Livewire\Admin\Concerns\ManagesEventSchedules;
 use App\Livewire\Admin\Concerns\ManagesEventSpeakers;
 use App\Models\Event;
+use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
@@ -17,7 +18,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Layout('layouts.ops')]
+#[Layout('layouts.admin')]
 #[Title('Event Customizer Studio')]
 class EventCustomizer extends Component
 {
@@ -75,9 +76,7 @@ class EventCustomizer extends Component
             $event = Event::query()->where('organization_id', $this->organizationId)->whereKey($eventId)->first();
         }
 
-        if ($event === null && $this->organizationId !== null) {
-            $event = Event::query()->where('organization_id', $this->organizationId)->latest('id')->first();
-        }
+        $event ??= ActiveEvent::resolve($this->organizationId);
 
         if ($event !== null) {
             $this->selectedEventId = $event->id;
@@ -90,6 +89,7 @@ class EventCustomizer extends Component
         $event = $this->getCurrentEvent();
 
         if ($event !== null) {
+            ActiveEvent::set($event);
             $this->loadEventData($event);
         }
     }
@@ -98,8 +98,8 @@ class EventCustomizer extends Component
     {
         $this->title = $event->title;
         $this->venue = $event->venue ?? '';
-        $this->start_at = $event->start_at?->format('Y-m-d\TH:i');
-        $this->end_at = $event->end_at?->format('Y-m-d\TH:i');
+        $this->start_at = $event->start_at->format('Y-m-d\TH:i');
+        $this->end_at = $event->end_at->format('Y-m-d\TH:i');
         $this->banner_path = $event->banner_path ?? '';
 
         $custom = is_array($event->customization) ? $event->customization : [];
@@ -111,7 +111,7 @@ class EventCustomizer extends Component
         $this->show_speakers = (bool) ($custom['show_speakers'] ?? true);
         $this->show_schedule = (bool) ($custom['show_schedule'] ?? true);
         $this->show_faqs = (bool) ($custom['show_faqs'] ?? true);
-        $this->is_public = (bool) ($event->is_public ?? true);
+        $this->is_public = $event->is_public;
     }
 
     public function saveBrandAndHero(): void

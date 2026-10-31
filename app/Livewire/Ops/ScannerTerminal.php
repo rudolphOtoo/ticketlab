@@ -8,6 +8,7 @@ use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Subdivision;
 use App\Models\TicketType;
+use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -48,14 +49,29 @@ class ScannerTerminal extends Component
         }
 
         $result = DB::transaction(function () use ($cleanHash) {
-            $query = Attendee::with(['ticketType', 'subdivision'])->where('qr_code_hash', $cleanHash)->lockForUpdate();
+            $user = auth()->user();
+            $orgId = $user?->organization_id;
+            $effectiveEventId = $this->eventId ?? ActiveEvent::id($orgId);
 
-            if (auth()->check() && auth()->user()?->organization_id) {
-                $query->where('organization_id', auth()->user()->organization_id);
+            // Fail-closed: Cannot validate passes without resolved organization context.
+            if ($orgId === null && $effectiveEventId === null) {
+                return [
+                    'state' => 'invalid',
+                    'payload' => [
+                        'status' => 'INVALID',
+                        'message' => 'Scanner terminal not bound to an active event or organization.',
+                    ],
+                ];
             }
 
-            if ($this->eventId) {
-                $query->whereHas('ticketType', fn($q) => $q->where('event_id', $this->eventId));
+            $query = Attendee::with(['ticketType', 'subdivision'])->where('qr_code_hash', $cleanHash)->lockForUpdate();
+
+            if ($orgId !== null) {
+                $query->where('organization_id', $orgId);
+            }
+
+            if ($effectiveEventId !== null) {
+                $query->whereHas('ticketType', fn($q) => $q->where('event_id', $effectiveEventId));
             }
 
             $attendee = $query->first();
@@ -77,6 +93,7 @@ class ScannerTerminal extends Component
                         'status' => 'DUPLICATE',
                         'name' => $attendee->name,
                         'tier' => $attendee->ticketType->name,
+                        'subdivision' => $attendee->subdivision->name ?? 'Main Arena',
                         'zone' => $attendee->subdivision->name ?? 'Main Arena',
                         'scanned_at' => $attendee->checked_in_at->format('h:i:s A'),
                         'message' => 'Pass was already scanned earlier today.',
@@ -96,6 +113,7 @@ class ScannerTerminal extends Component
                     'status' => 'VERIFIED',
                     'name' => $attendee->name,
                     'tier' => $attendee->ticketType->name,
+                    'subdivision' => $attendee->subdivision->name ?? 'Main Arena',
                     'zone' => $attendee->subdivision->name ?? 'Main Arena',
                     'scanned_at' => now()->format('h:i:s A'),
                     'message' => 'Admitted to event. Gate clearance granted.',
@@ -128,7 +146,11 @@ class ScannerTerminal extends Component
         $user = auth()->user();
         $orgId = $user?->organization_id;
         $events = $this->forOrganization(Event::query(), $orgId);
-        $event = $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
+        $event = match (true) {
+            $this->eventId !== null => $events->find($this->eventId),
+            $orgId !== null => ActiveEvent::resolve($orgId),
+            default => $events->latest()->first(),
+        };
 
         $activeSubdivision = $user?->subdivision_id
             ? Subdivision::query()->find($user->subdivision_id)

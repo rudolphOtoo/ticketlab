@@ -9,6 +9,9 @@ use App\Models\EventFaq;
 use App\Models\Organization;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<EventFaq>
+ */
 class EventFaqFactory extends Factory
 {
     protected $model = EventFaq::class;

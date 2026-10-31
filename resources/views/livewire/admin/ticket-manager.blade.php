@@ -81,8 +81,9 @@
             </div>
             <h3 class="mt-4 text-sm font-semibold text-[var(--text-primary)]">No active event found</h3>
             <p class="mt-1 text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
-                Please create or publish an event in the Customizer Studio before configuring ticket categories.
+                Create an event before configuring ticket categories.
             </p>
+            <a href="{{ route('admin.events') }}" wire:navigate class="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs press-scale">+ Create Event</a>
         </div>
     @elseif ($ticketTypes->isEmpty())
         <div class="rounded-3xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-12 text-center">
@@ -195,14 +196,14 @@
                             @endif
                         </span>
 
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center gap-1.5">
                             <button
                                 type="button"
                                 wire:click="editTicketType({{ $tier->id }})"
-                                class="p-1 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition press-scale cursor-pointer"
+                                class="inline-flex items-center gap-1 p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] transition active:scale-[0.96] cursor-pointer"
                                 title="Edit Tier"
                             >
-                                <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>
                             </button>
@@ -211,12 +212,23 @@
                                 <button
                                     type="button"
                                     wire:click="deleteTicketType({{ $tier->id }})"
-                                    wire:confirm="Are you sure you want to delete this ticket tier? This action cannot be undone."
-                                    class="p-1 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition press-scale cursor-pointer"
+                                    wire:confirm="Permanently delete '{{ $tier->name }}'? This action cannot be undone."
+                                    class="inline-flex items-center gap-1 p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-500/30 hover:bg-rose-500/10 transition active:scale-[0.96] cursor-pointer"
                                     title="Delete Tier"
                                 >
-                                    <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            @else
+                                <button
+                                    type="button"
+                                    wire:click="deleteTicketType({{ $tier->id }})"
+                                    class="inline-flex items-center gap-1 p-1.5 rounded-lg border border-[var(--border-hairline)] text-[var(--text-tertiary)] hover:text-amber-600 hover:bg-amber-500/10 transition active:scale-[0.96] cursor-pointer"
+                                    title="Locked: {{ $sold }} tickets sold. Click to learn how to pause sales."
+                                >
+                                    <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                     </svg>
                                 </button>
                             @endif
@@ -401,20 +413,38 @@
                     </div>
 
                     <!-- Buttons -->
-                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-hairline)]">
-                        <button
-                            type="button"
-                            wire:click="closeModal"
-                            class="px-4 py-2 rounded-xl border border-[var(--border-hairline)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition press-scale cursor-pointer"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            class="px-4 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-xs press-scale cursor-pointer"
-                        >
-                            {{ $editingTicketTypeId ? 'Save Changes' : 'Create Category' }}
-                        </button>
+                    <div class="flex items-center justify-between gap-3 pt-4 border-t border-[var(--border-hairline)]">
+                        <div>
+                            @if ($editingTicketTypeId)
+                                <button
+                                    type="button"
+                                    wire:click="deleteTicketType({{ $editingTicketTypeId }})"
+                                    wire:confirm="Permanently delete this ticket tier? This action cannot be undone."
+                                    class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition active:scale-[0.97] cursor-pointer"
+                                >
+                                    <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    <span>Delete Tier</span>
+                                </button>
+                            @endif
+                        </div>
+
+                        <div class="flex items-center gap-2.5">
+                            <button
+                                type="button"
+                                wire:click="closeModal"
+                                class="px-4 py-2 rounded-xl border border-[var(--border-hairline)] text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition active:scale-[0.97] cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                class="px-4 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-xs active:scale-[0.97] cursor-pointer"
+                            >
+                                {{ $editingTicketTypeId ? 'Save Changes' : 'Create Category' }}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

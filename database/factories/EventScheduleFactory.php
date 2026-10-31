@@ -9,6 +9,9 @@ use App\Models\EventSchedule;
 use App\Models\Organization;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<EventSchedule>
+ */
 class EventScheduleFactory extends Factory
 {
     protected $model = EventSchedule::class;

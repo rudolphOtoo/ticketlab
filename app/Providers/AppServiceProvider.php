@@ -17,7 +17,10 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->singleton(\App\Services\Sms\Contracts\SmsGatewayInterface::class, \App\Services\Sms\SmsManager::class);
+    }
 
     /**
      * Bootstrap any application services.

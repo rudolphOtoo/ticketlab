@@ -39,4 +39,24 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
     }
+
+    public function test_registration_provisions_organization_and_assigns_admin(): void
+    {
+        $response = $this->post(route('register.store'), [
+            'organization_name' => 'Kingdom Gatherings',
+            'name' => 'Pastor Mensah',
+            'email' => 'mensah@kingdom.org',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $user = \App\Models\User::query()->where('email', 'mensah@kingdom.org')->firstOrFail();
+        expect($user->role)->toBe('admin')
+            ->and($user->organization)->not->toBeNull()
+            ->and($user->organization->name)->toBe('Kingdom Gatherings')
+            ->and($user->organization->slug)->toBe('kingdom-gatherings')
+            ->and($user->isAdmin())->toBeTrue();
+    }
 }

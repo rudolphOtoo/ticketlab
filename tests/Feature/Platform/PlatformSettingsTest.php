@@ -10,7 +10,6 @@ use App\Models\Organization;
 use App\Models\PlatformSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\View;
 use Livewire\Livewire;
 
 beforeEach(function (): void {

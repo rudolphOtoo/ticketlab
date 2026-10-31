@@ -3,14 +3,22 @@
 declare(strict_types=1);
 
 test('error views exist and extend branded layout', function (): void {
-    expect(resource_path('views/errors/401.blade.php'))->toBeFile()
-        ->and(resource_path('views/errors/403.blade.php'))->toBeFile()
-        ->and(resource_path('views/errors/404.blade.php'))->toBeFile()
-        ->and(resource_path('views/errors/419.blade.php'))->toBeFile()
-        ->and(resource_path('views/errors/429.blade.php'))->toBeFile()
-        ->and(resource_path('views/errors/500.blade.php'))->toBeFile()
-        ->and(resource_path('views/errors/503.blade.php'))->toBeFile()
-        ->and(resource_path('views/errors/layout.blade.php'))->toBeFile();
+    expect(resource_path('views/errors/401.blade.php'))
+        ->toBeFile()
+        ->and(resource_path('views/errors/403.blade.php'))
+        ->toBeFile()
+        ->and(resource_path('views/errors/404.blade.php'))
+        ->toBeFile()
+        ->and(resource_path('views/errors/419.blade.php'))
+        ->toBeFile()
+        ->and(resource_path('views/errors/429.blade.php'))
+        ->toBeFile()
+        ->and(resource_path('views/errors/500.blade.php'))
+        ->toBeFile()
+        ->and(resource_path('views/errors/503.blade.php'))
+        ->toBeFile()
+        ->and(resource_path('views/errors/layout.blade.php'))
+        ->toBeFile();
 });
 
 test('non-existent route returns 404 and renders serene studio branded error page', function (): void {

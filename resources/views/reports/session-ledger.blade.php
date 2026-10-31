@@ -213,12 +213,12 @@
     </table>
 
     @if(!empty($zoneBreakdown))
-        <h3 style="margin: 20px 0 8px 0; font-size: 12px; text-transform: uppercase; color: #334155;">Zone Throughput Breakdown</h3>
+        <h3 style="margin: 20px 0 8px 0; font-size: 12px; text-transform: uppercase; color: #334155;">Subdivision Throughput Breakdown</h3>
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Subdivision / Zone</th>
-                    <th>Zone Code</th>
+                    <th>Subdivision</th>
+                    <th>Code</th>
                     <th class="text-right">Admitted Count</th>
                 </tr>
             </thead>

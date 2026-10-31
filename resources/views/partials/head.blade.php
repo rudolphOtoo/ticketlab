@@ -129,6 +129,21 @@ html:not(.dark)::view-transition-old(root) {
 html:not(.dark)::view-transition-new(root) {
     z-index: 1;
 }
+
+/* ==========================================================================
+   Theme-Switch Flash Fix
+   Forces color-scheme on the view-transition pseudo-elements so browser-native
+   controls (scrollbars, selects, inputs) don't flash OS-default styling
+   during the circular clip animation between light ↔ dark mode.
+   ========================================================================== */
+html.dark::view-transition-new(root),
+html.dark::view-transition-old(root) {
+    color-scheme: dark;
+}
+html:not(.dark)::view-transition-new(root),
+html:not(.dark)::view-transition-old(root) {
+    color-scheme: light;
+}
 </style>
 
 @vite(['resources/css/app.css', 'resources/js/app.js'])

@@ -247,3 +247,58 @@ test('dynamic questionnaire responses are persisted to attendees custom_fields u
     expect($attendee->custom_fields['t_shirt_size']['value'])->toBe('Large');
     expect($attendee->custom_fields['department']['value'])->toBe('Media & IT');
 });
+
+test('a sold-out race surfaces a friendly quantity error instead of crashing checkout', function (): void {
+    $org = Organization::factory()->create();
+    $event = Event::factory()->create(['organization_id' => $org->id, 'status' => 'published']);
+    $ticket = TicketType::factory()->create([
+        'event_id' => $event->id,
+        'price' => 50,
+        'total_capacity' => 1,
+        'available_quantity' => 1,
+    ]);
+
+    $component = Livewire::test(EventShow::class, ['org_slug' => $org->slug, 'event_slug' => $event->slug])
+        ->set('ticketTypeId', $ticket->id)
+        ->set('quantity', 1)
+        ->set('customerName', 'Late Buyer')
+        ->set('customerEmail', 'late@example.com')
+        ->set('customerPhone', '0244000000');
+
+    // Another buyer takes the last seat between page load and checkout.
+    $ticket->update(['available_quantity' => 0]);
+
+    $component->call('startCheckout')->assertHasErrors(['quantity'])->assertSet('orderReference', null);
+});
+
+test('questionnaire options containing commas validate correctly', function (): void {
+    $org = Organization::factory()->create();
+    $event = Event::factory()->create(['organization_id' => $org->id, 'status' => 'published']);
+    $ticket = TicketType::factory()->create(['event_id' => $event->id, 'price' => 50, 'available_quantity' => 10]);
+
+    EventFormField::create([
+        'organization_id' => $org->id,
+        'event_id' => $event->id,
+        'field_key' => 'city',
+        'label' => 'City',
+        'field_type' => 'select',
+        'options' => ['Accra, Greater Accra', 'Kumasi, Ashanti'],
+        'is_required' => true,
+        'sort_order' => 1,
+    ]);
+
+    $checkout = fn(string $answer) => Livewire::test(EventShow::class, [
+        'org_slug' => $org->slug,
+        'event_slug' => $event->slug,
+    ])
+        ->set('ticketTypeId', $ticket->id)
+        ->set('quantity', 1)
+        ->set('customerName', 'Ama')
+        ->set('customerEmail', 'ama@example.com')
+        ->set('customerPhone', '0244000000')
+        ->set('customFieldResponses.city', $answer)
+        ->call('startCheckout');
+
+    $checkout('Accra, Greater Accra')->assertHasNoErrors();
+    $checkout('Accra')->assertHasErrors(['customFieldResponses.city']);
+});

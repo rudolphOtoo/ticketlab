@@ -49,7 +49,9 @@ test('registration cannot smuggle a role or organization through the request', f
 
     $user = User::query()->where('email', 'sneaky@example.com')->firstOrFail();
 
-    expect($user->role)->toBe('attendee')->and($user->organization_id)->toBeNull();
+    expect($user->role)->toBe('admin')
+        ->and($user->organization_id)->not->toBe($org->id)
+        ->and($user->isSuperAdmin())->toBeFalse();
 });
 
 test('membership is granted only through the explicit model method', function () {

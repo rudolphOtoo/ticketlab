@@ -27,6 +27,11 @@ trait ManagesEventFormFields
 
     public string $field_options_raw = '';
 
+    /** @var list<string> */
+    public array $field_options = [];
+
+    public string $newOptionInput = '';
+
     public bool $field_is_required = false;
 
     public int $field_sort_order = 0;
@@ -40,9 +45,32 @@ trait ManagesEventFormFields
         $this->field_input_type = 'text';
         $this->field_placeholder = '';
         $this->field_options_raw = '';
+        $this->field_options = [];
+        $this->newOptionInput = '';
         $this->field_is_required = false;
         $this->field_sort_order = 0;
         $this->isFieldModalOpen = true;
+    }
+
+    public function addOption(): void
+    {
+        $trimmed = trim($this->newOptionInput);
+
+        if ($trimmed !== '' && !in_array($trimmed, $this->field_options, true)) {
+            $this->field_options[] = $trimmed;
+            $this->newOptionInput = '';
+        }
+    }
+
+    public function removeOption(int $index): void
+    {
+        if (array_key_exists($index, $this->field_options)) {
+            $this->field_options = array_values(array_filter(
+                $this->field_options,
+                static fn(int $k): bool => $k !== $index,
+                ARRAY_FILTER_USE_KEY,
+            ));
+        }
     }
 
     public function editField(int $id): void
@@ -54,15 +82,19 @@ trait ManagesEventFormFields
             return;
         }
 
-        $this->editingFieldId = $field->id;
-        $this->field_label = $field->label;
-        $this->field_key = $field->field_key;
-        $this->field_input_type = $field->input_type;
-        $this->field_placeholder = $field->placeholder ?? '';
-        $this->field_options_raw = is_array($field->options) ? implode(', ', $field->options) : '';
-        $this->field_is_required = (bool) $field->is_required;
-        $this->field_sort_order = (int) $field->sort_order;
-        $this->isFieldModalOpen = true;
+        $this->fill([
+            'editingFieldId' => $field->id,
+            'field_label' => $field->label,
+            'field_key' => $field->field_key,
+            'field_input_type' => $field->input_type,
+            'field_placeholder' => $field->placeholder ?? '',
+            'field_options_raw' => is_array($field->options) ? implode(', ', $field->options) : '',
+            'field_options' => is_array($field->options) ? array_values($field->options) : [],
+            'newOptionInput' => '',
+            'field_is_required' => $field->is_required,
+            'field_sort_order' => $field->sort_order,
+            'isFieldModalOpen' => true,
+        ]);
     }
 
     public function updatedFieldLabel(string $label): void
@@ -74,11 +106,8 @@ trait ManagesEventFormFields
 
     public function saveField(): void
     {
-        if (trim($this->field_key) === '') {
-            $this->field_key = str_replace('-', '_', Str::slug($this->field_label));
-        } else {
-            $this->field_key = str_replace('-', '_', Str::slug($this->field_key));
-        }
+        $keySource = trim($this->field_key) === '' ? $this->field_label : $this->field_key;
+        $this->field_key = str_replace('-', '_', Str::slug($keySource));
 
         $this->validate([
             'field_label' => ['required', 'string', 'max:100'],
@@ -99,44 +128,54 @@ trait ManagesEventFormFields
         $options = null;
 
         if (in_array($this->field_input_type, ['select', 'radio', 'checkbox'], true)) {
-            $options = array_values(array_filter(array_map('trim', explode(',', $this->field_options_raw))));
+            $options = !empty($this->field_options)
+                ? $this->field_options
+                : array_values(array_filter(array_map('trim', explode(',', $this->field_options_raw))));
         }
 
-        if ($this->editingFieldId !== null) {
-            $field = $this->findScopedField($this->editingFieldId);
-
-            if ($field !== null) {
-                $field->update([
-                    'field_key' => Str::snake($this->field_key),
-                    'label' => $this->field_label,
-                    'input_type' => $this->field_input_type,
-                    'placeholder' => $this->field_placeholder,
-                    'options' => $options,
-                    'is_required' => $this->field_is_required,
-                    'sort_order' => $this->field_sort_order,
-                ]);
-
-                $this->flashMessage = "Questionnaire field '{$field->label}' updated.";
-            }
-        } else {
-            EventFormField::create([
-                'organization_id' => $this->organizationId,
-                'event_id' => $event->id,
-                'field_key' => Str::snake($this->field_key),
-                'label' => $this->field_label,
-                'input_type' => $this->field_input_type,
-                'placeholder' => $this->field_placeholder,
-                'options' => $options,
-                'is_required' => $this->field_is_required,
-                'sort_order' => $this->field_sort_order,
-                'is_active' => true,
-            ]);
-
-            $this->flashMessage = "Custom field '{$this->field_label}' added to checkout form.";
-        }
+        $this->flashMessage = $this->persistField($event->id, $options) ?? $this->flashMessage;
 
         $this->isFieldModalOpen = false;
         $this->editingFieldId = null;
+    }
+
+    /**
+     * Create or update the questionnaire field behind the modal and return the confirmation to flash.
+     *
+     * @param list<string>|null $options
+     */
+    private function persistField(int $eventId, ?array $options): ?string
+    {
+        $attributes = [
+            'field_key' => Str::snake($this->field_key),
+            'label' => $this->field_label,
+            'input_type' => $this->field_input_type,
+            'placeholder' => $this->field_placeholder,
+            'options' => $options,
+            'is_required' => $this->field_is_required,
+            'sort_order' => $this->field_sort_order,
+        ];
+
+        if ($this->editingFieldId === null) {
+            EventFormField::create([
+                'organization_id' => $this->organizationId,
+                'event_id' => $eventId,
+                ...$attributes,
+                'is_active' => true,
+            ]);
+
+            return "Custom field '{$this->field_label}' added to checkout form.";
+        }
+
+        $field = $this->findScopedField($this->editingFieldId);
+
+        if ($field === null) {
+            return null;
+        }
+
+        $field->update($attributes);
+
+        return "Questionnaire field '{$field->label}' updated.";
     }
 
     public function deleteField(int $id): void

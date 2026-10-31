@@ -7,16 +7,23 @@ namespace App\Livewire\Admin;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\ActiveEvent;
+use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
-#[Layout('layouts.ops')]
+#[Layout('layouts.admin')]
 #[Title('Marketing Studio')]
 class MarketingStudio extends Component
 {
+    use WithFileUploads;
+
     public ?int $selectedEventId = null;
 
     public string $selectedAspectRatio = '1:1';
@@ -46,9 +53,24 @@ class MarketingStudio extends Component
 
     public int $qrMargin = 2;
 
+    public ?TemporaryUploadedFile $backgroundImage = null;
+
+    /** Same-origin URL of the uploaded flyer background; server-set only so exports never draw a foreign image. */
+    #[Locked]
+    public ?string $backgroundUrl = null;
+
+    #[Locked]
+    public ?string $backgroundPath = null;
+
     public function mount(): void
     {
         $this->authorizedUser();
+
+        // Sensible placeholder copy when the organisation has no event yet.
+        $this->flyerHeadline = 'Sample Event Title';
+        $this->flyerTagline = 'Join us for a transformative experience.';
+        $this->flyerVenue = 'Main Convention Center';
+        $this->flyerDate = 'Upcoming Event';
 
         $event = $this->event();
         if ($event !== null) {
@@ -57,20 +79,42 @@ class MarketingStudio extends Component
             $customization = is_array($event->customization) ? $event->customization : [];
             $this->flyerTagline = (string) ($customization['tagline'] ?? 'Join us for a transformative experience.');
             $this->flyerVenue = (string) ($customization['venue_name'] ?? 'Main Convention Center');
-            $this->flyerDate = $event->start_at ? $event->start_at->format('M d, Y • h:i A') : 'Upcoming Event';
+            $this->flyerDate = $event->start_at->format('M d, Y • h:i A');
 
             $firstSpeaker = $event->speakers()->orderBy('sort_order')->first();
             $this->featuredSpeakerId = $firstSpeaker?->id;
-        } else {
-            $this->flyerHeadline = 'Sample Event Title';
-            $this->flyerTagline = 'Join us for a transformative experience.';
-            $this->flyerVenue = 'Main Convention Center';
-            $this->flyerDate = 'Upcoming Event';
         }
 
         $this->accentColor = $this->normalizeHexColor($this->accentColor, '#6366f1');
         $this->qrFgColor = $this->normalizeHexColor($this->qrFgColor, '#121316');
         $this->qrBgColor = $this->normalizeHexColor($this->qrBgColor, '#ffffff');
+    }
+
+    public function updatedBackgroundImage(): void
+    {
+        $user = $this->authorizedUser();
+
+        $this->validate(['backgroundImage' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120']]);
+
+        $upload = $this->backgroundImage;
+
+        if ($upload === null) {
+            return;
+        }
+
+        $this->removeBackground();
+        $this->backgroundPath = MediaUrl::store($upload, 'flyers/' . ($user->organization_id ?? 'platform'));
+        // Root-relative so the canvas loads it same-origin even when APP_URL differs from the browsing host.
+        $relativeUrl = parse_url((string) MediaUrl::resolve($this->backgroundPath), PHP_URL_PATH);
+        $this->backgroundUrl = is_string($relativeUrl) ? $relativeUrl : null;
+        $this->backgroundImage = null;
+    }
+
+    public function removeBackground(): void
+    {
+        MediaUrl::deleteStored($this->backgroundPath);
+        $this->backgroundPath = null;
+        $this->backgroundUrl = null;
     }
 
     public function setAspectRatio(string $ratio): void
@@ -122,7 +166,6 @@ class MarketingStudio extends Component
         }
 
         if ($this->selectedEventId !== null) {
-            /** @var Event|null $event */
             $event = Event::query()->where('organization_id', $orgId)->whereKey($this->selectedEventId)->first();
 
             if ($event !== null) {
@@ -130,7 +173,7 @@ class MarketingStudio extends Component
             }
         }
 
-        return Event::query()->where('organization_id', $orgId)->latest('id')->first();
+        return ActiveEvent::resolve($orgId);
     }
 
     private function authorizedUser(): User
@@ -141,7 +184,7 @@ class MarketingStudio extends Component
             abort(401);
         }
 
-        if ($user->isUsher() || !$user->hasOrganizationAccess()) {
+        if (!$user->isAdmin() || !$user->hasOrganizationAccess()) {
             abort(403);
         }
 
@@ -162,10 +205,14 @@ class MarketingStudio extends Component
     {
         $user = $this->authorizedUser();
         $event = $this->event();
-        $org = $event?->organization ?? ($user->organization_id ? Organization::find($user->organization_id) : null);
+        $org = match (true) {
+            $event !== null => $event->organization,
+            $user->organization_id !== null => Organization::find($user->organization_id),
+            default => null,
+        };
 
         $events = Event::query()
-            ->when($org?->id, fn($query, $orgId) => $query->where('organization_id', $orgId))
+            ->when($org?->id, static fn($query, $orgId) => $query->where('organization_id', $orgId))
             ->orderByDesc('start_at')
             ->get();
 
@@ -173,8 +220,8 @@ class MarketingStudio extends Component
         $ticketTypes = $event ? $event->ticketTypes()->where('is_active', true)->get() : collect();
         $lowestTicketPrice = $ticketTypes->min('price');
 
-        $publicUrl = $event && $org
-            ? route('public.event.show', ['org_slug' => $org->slug, 'event_slug' => $event->slug])
+        $publicUrl = $event !== null
+            ? route('public.event.show', ['org_slug' => $event->organization->slug, 'event_slug' => $event->slug])
             : url('/');
 
         $featuredSpeaker = $this->featuredSpeakerId !== null

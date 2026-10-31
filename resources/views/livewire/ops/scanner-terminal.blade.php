@@ -189,7 +189,7 @@
                         <span class="rounded-md bg-white/70 dark:bg-black/40 px-2 py-0.5 font-medium border border-current/20">
                             {{ $scanResult['tier'] }}
                         </span>
-                        <span class="text-[var(--text-secondary)]">Zone: {{ $scanResult['zone'] }}</span>
+                        <span class="text-[var(--text-secondary)]">Subdivision: {{ $scanResult['subdivision'] ?? $scanResult['zone'] }}</span>
                         <span class="ml-auto font-mono text-[11px] text-[var(--text-tertiary)]">{{ $scanResult['scanned_at'] }}</span>
                     </div>
                 @endif
@@ -203,28 +203,6 @@
             </div>
         </div>
     @endif
-
-    <!-- Test Triggers for Instant Field Validation -->
-    <div class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-xs flex flex-col gap-3">
-        <span class="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Simulate Scanner Recognition</span>
-        <div class="grid grid-cols-3 gap-2">
-            <button type="button"
-                    wire:click="validatePass('{{ hash('sha256', 'TL-PASS-KWESI-002') }}')"
-                    class="cursor-pointer rounded-lg border border-[var(--status-success)] bg-[var(--status-success-bg)] py-2 px-2 text-center text-xs font-semibold text-[var(--status-success)] hover:opacity-85 transition">
-                🟢 Test Valid
-            </button>
-            <button type="button"
-                    wire:click="validatePass('{{ hash('sha256', 'TL-PASS-AMA-001') }}')"
-                    class="cursor-pointer rounded-lg border border-[var(--status-warning)] bg-[var(--status-warning-bg)] py-2 px-2 text-center text-xs font-semibold text-[var(--status-warning)] hover:opacity-85 transition">
-                🟡 Test Dupe
-            </button>
-            <button type="button"
-                    wire:click="validatePass('FORGED_HASH_9999')"
-                    class="cursor-pointer rounded-lg border border-[var(--status-danger)] bg-[var(--status-danger-bg)] py-2 px-2 text-center text-xs font-semibold text-[var(--status-danger)] hover:opacity-85 transition">
-                🔴 Test Invalid
-            </button>
-        </div>
-    </div>
 
     <!-- Manual Search Fallback Input -->
     <div class="w-full flex items-center gap-2">

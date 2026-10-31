@@ -17,7 +17,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Layout('layouts.ops')]
+#[Layout('layouts.platform')]
 #[Title('Developer Super Admin Console')]
 class PlatformDashboard extends Component
 {
@@ -82,6 +82,24 @@ class PlatformDashboard extends Component
         $this->selectedTenantId = null;
     }
 
+    public function jumpToTenantAdmin(int $tenantId): void
+    {
+        $tenant = Organization::query()->find($tenantId);
+
+        if ($tenant === null) {
+            return;
+        }
+
+        $event = $tenant->events()->latest('id')->first();
+
+        if ($event !== null) {
+            \App\Support\ActiveEvent::set($event);
+        }
+
+        // Redirect to admin overview for that organization
+        $this->redirectRoute('admin.index', navigate: true);
+    }
+
     /**
      * @return array{database: string, cache: string, queue: string, failed_jobs: int}
      */
@@ -119,34 +137,40 @@ class PlatformDashboard extends Component
 
         // Total paid tickets count across all organizations
         $this->paidTicketsCount = Attendee::query()
-            ->whereHas('order', function ($query): void {
+            ->whereHas('order', static function ($query): void {
                 $query->where('payment_status', OrderStatus::Paid->value);
             })
             ->count();
 
         // Platform fee accumulator: GHS 3.00 per paid ticket sold
-        $this->platformFeeAccumulator = (float) ($this->paidTicketsCount * 3.00);
+        $this->platformFeeAccumulator = $this->paidTicketsCount * 3.00;
 
         // Fetch tenants with aggregated event counts
         $tenantQuery = Organization::query()->withCount('events');
 
         if (trim($this->tenantSearch) !== '') {
             $term = '%' . trim($this->tenantSearch) . '%';
-            $tenantQuery->where(function ($q) use ($term): void {
+            $tenantQuery->where(static function ($q) use ($term): void {
                 $q->where('name', 'like', $term)->orWhere('slug', 'like', $term);
             });
         }
 
-        /** @var Collection<int, Organization> $tenants */
         $tenants = $tenantQuery->latest('id')->take(25)->get();
 
         $selectedTenant = null;
         $tenantEvents = Collection::empty();
+        $selectedTenantStats = null;
 
         if ($this->selectedTenantId !== null) {
             $selectedTenant = Organization::query()->find($this->selectedTenantId);
             if ($selectedTenant !== null) {
                 $tenantEvents = $selectedTenant->events()->with('ticketTypes')->latest('id')->get();
+                $selectedTenantStats = [
+                    'usersCount' => $selectedTenant->users()->count(),
+                    'ordersCount' => Order::query()->where('organization_id', $selectedTenant->id)->where('payment_status', OrderStatus::Paid->value)->count(),
+                    'revenue' => (float) Order::query()->where('organization_id', $selectedTenant->id)->where('payment_status', OrderStatus::Paid->value)->sum('gross_amount'),
+                    'attendeesCount' => Attendee::query()->where('organization_id', $selectedTenant->id)->count(),
+                ];
             }
         }
 
@@ -159,6 +183,7 @@ class PlatformDashboard extends Component
             'health' => $this->getSystemHealth(),
             'tenants' => $tenants,
             'selectedTenant' => $selectedTenant,
+            'selectedTenantStats' => $selectedTenantStats,
             'tenantEvents' => $tenantEvents,
             'allOrganizations' => Organization::query()->orderBy('name')->get(['id', 'name', 'slug']),
         ]);

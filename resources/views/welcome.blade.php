@@ -87,92 +87,107 @@
                     </form>
                 </div>
 
-                <!-- Right Spotlight Card Column -->
-                <div class="lg:col-span-5">
-                    @if ($spotlightEvent)
-                        @php
-                            $spotlightCustom = is_array($spotlightEvent->customization) ? $spotlightEvent->customization : [];
-                            $spotlightHeadline = $spotlightCustom['headline'] ?? $spotlightEvent->title;
-                            $minPrice = $spotlightEvent->ticketTypes->min('price');
-                        @endphp
-                        <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-7 shadow-sm relative overflow-hidden group">
-                            
-                            <!-- Cover Accent -->
-                            @if ($spotlightEvent->banner_path)
-                                <div class="h-40 -mx-6 sm:-mx-7 -mt-6 sm:-mt-7 mb-5 overflow-hidden relative bg-[var(--bg-subtle)]">
-                                    <img
-                                        src="{{ $spotlightEvent->banner_path }}"
-                                        alt="{{ $spotlightEvent->title }}"
-                                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                    <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-surface)] to-transparent"></div>
-                                </div>
-                            @endif
-
-                            <div class="space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                                        Spotlight Event
-                                    </span>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                                        Open for Passes
-                                    </span>
-                                </div>
-
-                                <div>
-                                    <h2 class="font-serif text-2xl font-bold text-[var(--text-primary)] leading-snug">
-                                        {{ $spotlightEvent->title }}
-                                    </h2>
-                                    @if ($spotlightHeadline && $spotlightHeadline !== $spotlightEvent->title)
-                                        <p class="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2 leading-relaxed">
-                                            {{ $spotlightHeadline }}
-                                        </p>
-                                    @endif
-                                </div>
-
-                                <!-- Metadata -->
-                                <div class="space-y-2 py-3 border-y border-[var(--border-hairline)] text-xs text-[var(--text-secondary)]">
-                                    <div class="flex items-center gap-2">
-                                        <svg class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <span>
-                                            {{ $spotlightEvent->start_at ? $spotlightEvent->start_at->format('F j, Y · g:i A') : 'Date to be announced' }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <svg class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        <span class="truncate">{{ $spotlightEvent->venue ?: 'Venue details to follow' }}</span>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-center justify-between pt-1">
-                                    <div>
-                                        <span class="block text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Admission</span>
-                                        <span class="text-sm font-bold text-[var(--text-primary)]">
-                                            @if ($spotlightEvent->ticketTypes->isEmpty())
-                                                TBA
-                                            @elseif ($minPrice == 0)
-                                                Free Pass
-                                            @else
-                                                GHS {{ number_format((float) $minPrice, 2) }}
-                                            @endif
-                                        </span>
-                                    </div>
-
-                                    <a
-                                        href="{{ route('public.event.show', ['org_slug' => $spotlightEvent->organization->slug, 'event_slug' => $spotlightEvent->slug]) }}"
-                                        class="px-4 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale inline-flex items-center gap-1.5"
+                <!-- Right Spotlight Card Column with Micro-Switcher -->
+                <div class="lg:col-span-5" x-data="{ activeIndex: 0 }">
+                    @if ($featuredEvents->isNotEmpty())
+                        @if ($featuredEvents->count() > 1)
+                            <div class="flex items-center gap-1.5 pb-3 overflow-x-auto">
+                                @foreach ($featuredEvents->take(3) as $idx => $eventOption)
+                                    <button
+                                        type="button"
+                                        @click="activeIndex = {{ $idx }}"
+                                        class="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition cursor-pointer"
+                                        :class="activeIndex === {{ $idx }} ? 'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' : 'bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'"
                                     >
-                                        <span>Get Passes</span>
-                                        <span>→</span>
-                                    </a>
+                                        {{ $idx + 1 }} · {{ \Illuminate\Support\Str::limit($eventOption->title, 16) }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        @foreach ($featuredEvents->take(3) as $idx => $spotlightEvent)
+                            @php
+                                $spotlightCustom = is_array($spotlightEvent->customization) ? $spotlightEvent->customization : [];
+                                $spotlightHeadline = $spotlightCustom['headline'] ?? $spotlightEvent->title;
+                                $minPrice = $spotlightEvent->ticketTypes->min('price');
+                            @endphp
+                            <div x-show="activeIndex === {{ $idx }}" x-cloak class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-7 shadow-sm relative overflow-hidden group">
+                                @if ($spotlightEvent->bannerUrl())
+                                    <div class="h-40 -mx-6 sm:-mx-7 -mt-6 sm:-mt-7 mb-5 overflow-hidden relative bg-[var(--bg-subtle)]">
+                                        <img
+                                            src="{{ $spotlightEvent->bannerUrl() }}"
+                                            alt="{{ $spotlightEvent->title }}"
+                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                        <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-surface)] to-transparent"></div>
+                                    </div>
+                                @endif
+
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                                            Spotlight Event
+                                        </span>
+                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                                            Open for Passes
+                                        </span>
+                                    </div>
+
+                                    <div>
+                                        <h2 class="font-serif text-2xl font-bold text-[var(--text-primary)] leading-snug">
+                                            {{ $spotlightEvent->title }}
+                                        </h2>
+                                        @if ($spotlightHeadline && $spotlightHeadline !== $spotlightEvent->title)
+                                            <p class="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2 leading-relaxed">
+                                                {{ $spotlightHeadline }}
+                                            </p>
+                                        @endif
+                                    </div>
+
+                                    <!-- Metadata -->
+                                    <div class="space-y-2 py-3 border-y border-[var(--border-hairline)] text-xs text-[var(--text-secondary)]">
+                                        <div class="flex items-center gap-2">
+                                            <svg class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <span>
+                                                {{ $spotlightEvent->start_at ? $spotlightEvent->start_at->format('F j, Y · g:i A') : 'Date to be announced' }}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <svg class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            <span class="truncate">{{ $spotlightEvent->venue ?: 'Venue details to follow' }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-1">
+                                        <div>
+                                            <span class="block text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Admission</span>
+                                            <span class="text-sm font-bold text-[var(--text-primary)]">
+                                                @if ($spotlightEvent->ticketTypes->isEmpty())
+                                                    TBA
+                                                @elseif ($minPrice == 0)
+                                                    Free Pass
+                                                @else
+                                                    GHS {{ number_format((float) $minPrice, 2) }}
+                                                @endif
+                                            </span>
+                                        </div>
+
+                                        <a
+                                            href="{{ route('public.event.show', ['org_slug' => $spotlightEvent->organization->slug, 'event_slug' => $spotlightEvent->slug]) }}"
+                                            class="px-4 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale inline-flex items-center gap-1.5"
+                                        >
+                                            <span>Get Passes</span>
+                                            <span>→</span>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        @endforeach
                     @else
                         <div class="rounded-3xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-8 text-center space-y-3">
                             <div class="size-12 rounded-2xl bg-[var(--bg-subtle)] text-[var(--text-tertiary)] flex items-center justify-center mx-auto">
@@ -199,23 +214,31 @@
         <!-- Highlights & Values Banner -->
         <section class="max-w-6xl mx-auto px-4 sm:px-6 py-8 w-full border-t border-[var(--border-hairline)]">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center md:text-left">
-                <div class="space-y-1">
-                    <span class="text-xl">💳</span>
+                <div class="space-y-2">
+                    <div class="size-9 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] flex items-center justify-center mx-auto md:mx-0 shadow-xs">
+                        <svg class="size-4.5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                    </div>
                     <h3 class="text-xs font-bold text-[var(--text-primary)]">MoMo & Card Friendly</h3>
-                    <p class="text-[11px] text-[var(--text-secondary)]">Instant, secure settlement with Ghana Mobile Money & debit cards.</p>
+                    <p class="text-[11px] text-[var(--text-secondary)]">Instant settlement with Ghana Mobile Money & debit cards.</p>
                 </div>
-                <div class="space-y-1">
-                    <span class="text-xl">🎟</span>
+                <div class="space-y-2">
+                    <div class="size-9 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] flex items-center justify-center mx-auto md:mx-0 shadow-xs">
+                        <svg class="size-4.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+                    </div>
                     <h3 class="text-xs font-bold text-[var(--text-primary)]">Digital Pass on Mobile</h3>
-                    <p class="text-[11px] text-[var(--text-secondary)]">Instant QR confirmation delivered directly to your screen & email.</p>
+                    <p class="text-[11px] text-[var(--text-secondary)]">Instant QR confirmation delivered directly to screen & email.</p>
                 </div>
-                <div class="space-y-1">
-                    <span class="text-xl">⚡</span>
+                <div class="space-y-2">
+                    <div class="size-9 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] flex items-center justify-center mx-auto md:mx-0 shadow-xs">
+                        <svg class="size-4.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
                     <h3 class="text-xs font-bold text-[var(--text-primary)]">Sub-Second Check-in</h3>
                     <p class="text-[11px] text-[var(--text-secondary)]">Swift camera scanners keep attendee lines moving smoothly at the gate.</p>
                 </div>
-                <div class="space-y-1">
-                    <span class="text-xl">🤝</span>
+                <div class="space-y-2">
+                    <div class="size-9 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] flex items-center justify-center mx-auto md:mx-0 shadow-xs">
+                        <svg class="size-4.5 text-sky-600 dark:text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    </div>
                     <h3 class="text-xs font-bold text-[var(--text-primary)]">Community First</h3>
                     <p class="text-[11px] text-[var(--text-secondary)]">Your attendee data belongs to you. No unwanted spam or vendor lock-in.</p>
                 </div>
@@ -247,9 +270,9 @@
                         @endphp
                         <article class="flex flex-col justify-between rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-2xs subtle-hover-glow transition group">
                             <div class="relative h-36 bg-[var(--bg-subtle)] overflow-hidden">
-                                @if ($item->banner_path)
+                                @if ($item->bannerUrl())
                                     <img
-                                        src="{{ $item->banner_path }}"
+                                        src="{{ $item->bannerUrl() }}"
                                         alt="{{ $item->title }}"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
@@ -407,7 +430,7 @@
 
                 <div class="flex items-center gap-5 text-xs text-[var(--text-secondary)]">
                     <a href="{{ route('public.events.index') }}" class="hover:text-[var(--text-primary)] transition">Explore Events</a>
-                    <a href="{{ route('dashboard') }}" class="hover:text-[var(--text-primary)] transition">Operations Hub</a>
+                    <a href="{{ route('dashboard') }}" class="hover:text-[var(--text-primary)] transition">Organizer Sign In</a>
                     <a href="{{ url('/settings/profile') }}" class="hover:text-[var(--text-primary)] transition">Account</a>
                 </div>
             </div>

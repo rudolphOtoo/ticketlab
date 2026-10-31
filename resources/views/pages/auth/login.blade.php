@@ -21,7 +21,7 @@
                     required
                     autofocus
                     autocomplete="email"
-                    placeholder="usher@summit.org"
+                    placeholder="staff@ticketlab.test"
                     class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-hidden transition focus:border-[var(--border-focused)] focus:bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-focused)]"
                 />
                 @error('email')
@@ -77,9 +77,9 @@
         </form>
 
         <div class="text-xs text-center text-[var(--text-secondary)]">
-            <span>{{ __('Need staff access?') }}</span>
+            <span>{{ __('Host your own events?') }}</span>
             <a href="{{ route('register') }}" class="font-medium text-[var(--text-primary)] underline underline-offset-4 hover:opacity-80" wire:navigate>
-                {{ __('Register staff account') }}
+                {{ __('Register your organization') }}
             </a>
         </div>
     </div>

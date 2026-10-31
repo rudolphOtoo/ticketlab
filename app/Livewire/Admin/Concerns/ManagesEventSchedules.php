@@ -56,16 +56,18 @@ trait ManagesEventSchedules
             return;
         }
 
-        $this->editingScheduleId = $schedule->id;
-        $this->schedule_day_label = $schedule->day_label;
-        $this->schedule_session_title = $schedule->session_title;
-        $this->schedule_speaker_name = $schedule->speaker_name ?? '';
-        $this->schedule_venue_hall = $schedule->venue_hall ?? '';
-        $this->schedule_start_time = $schedule->start_time ?? '09:00';
-        $this->schedule_end_time = $schedule->end_time ?? '10:30';
-        $this->schedule_description = $schedule->description ?? '';
-        $this->schedule_sort_order = (int) $schedule->sort_order;
-        $this->isScheduleModalOpen = true;
+        $this->fill([
+            'editingScheduleId' => $schedule->id,
+            'schedule_day_label' => $schedule->day_label,
+            'schedule_session_title' => $schedule->session_title,
+            'schedule_speaker_name' => (string) $schedule->speaker_name,
+            'schedule_venue_hall' => (string) $schedule->venue_hall,
+            'schedule_start_time' => $schedule->start_time ?? '09:00',
+            'schedule_end_time' => $schedule->end_time ?? '10:30',
+            'schedule_description' => (string) $schedule->description,
+            'schedule_sort_order' => $schedule->sort_order,
+            'isScheduleModalOpen' => true,
+        ]);
     }
 
     public function saveSchedule(): void
@@ -87,42 +89,47 @@ trait ManagesEventSchedules
             return;
         }
 
-        if ($this->editingScheduleId !== null) {
-            $schedule = $this->findScopedSchedule($this->editingScheduleId);
-
-            if ($schedule !== null) {
-                $schedule->update([
-                    'day_label' => $this->schedule_day_label,
-                    'session_title' => $this->schedule_session_title,
-                    'speaker_name' => $this->schedule_speaker_name,
-                    'venue_hall' => $this->schedule_venue_hall,
-                    'start_time' => $this->schedule_start_time,
-                    'end_time' => $this->schedule_end_time,
-                    'description' => $this->schedule_description,
-                    'sort_order' => $this->schedule_sort_order,
-                ]);
-
-                $this->flashMessage = "Program session '{$schedule->session_title}' updated.";
-            }
-        } else {
-            EventSchedule::create([
-                'organization_id' => $this->organizationId,
-                'event_id' => $event->id,
-                'day_label' => $this->schedule_day_label,
-                'session_title' => $this->schedule_session_title,
-                'speaker_name' => $this->schedule_speaker_name,
-                'venue_hall' => $this->schedule_venue_hall,
-                'start_time' => $this->schedule_start_time,
-                'end_time' => $this->schedule_end_time,
-                'description' => $this->schedule_description,
-                'sort_order' => $this->schedule_sort_order,
-            ]);
-
-            $this->flashMessage = "Program session '{$this->schedule_session_title}' added.";
-        }
+        $this->flashMessage = $this->persistSchedule($event->id) ?? $this->flashMessage;
 
         $this->isScheduleModalOpen = false;
         $this->editingScheduleId = null;
+    }
+
+    /**
+     * Create or update the schedule row behind the modal and return the confirmation to flash.
+     */
+    private function persistSchedule(int $eventId): ?string
+    {
+        $attributes = [
+            'day_label' => $this->schedule_day_label,
+            'session_title' => $this->schedule_session_title,
+            'speaker_name' => $this->schedule_speaker_name,
+            'venue_hall' => $this->schedule_venue_hall,
+            'start_time' => $this->schedule_start_time,
+            'end_time' => $this->schedule_end_time,
+            'description' => $this->schedule_description,
+            'sort_order' => $this->schedule_sort_order,
+        ];
+
+        if ($this->editingScheduleId === null) {
+            EventSchedule::create([
+                'organization_id' => $this->organizationId,
+                'event_id' => $eventId,
+                ...$attributes,
+            ]);
+
+            return "Program session '{$this->schedule_session_title}' added.";
+        }
+
+        $schedule = $this->findScopedSchedule($this->editingScheduleId);
+
+        if ($schedule === null) {
+            return null;
+        }
+
+        $schedule->update($attributes);
+
+        return "Program session '{$schedule->session_title}' updated.";
     }
 
     public function deleteSchedule(int $id): void
