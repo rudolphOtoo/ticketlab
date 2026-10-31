@@ -59,6 +59,11 @@ return [
             'throw' => false,
             'report' => false,
         ],
+
+        'vercel_temp' => [
+            'driver' => 'local',
+            'root' => '/tmp',
+        ],
     ],
 
     /*

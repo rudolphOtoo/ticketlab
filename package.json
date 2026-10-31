@@ -4,6 +4,7 @@
     "type": "module",
     "scripts": {
         "build": "vp build",
+        "vercel-build": "npm run build",
         "dev": "vp dev"
     },
     "dependencies": {
