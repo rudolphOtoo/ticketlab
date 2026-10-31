@@ -35,3 +35,4 @@ if ($uri !== '/' && ! str_contains($uri, '..')) {
 }
 
 require __DIR__ . '/../public/index.php';
+

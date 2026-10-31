@@ -86,3 +86,4 @@ Use [cron-job.org](https://cron-job.org) or Vercel Crons:
 - ✅ `api/index.php` serverless fallback gateway for Lambda asset routing.
 - ✅ `bootstrap/app.php` dynamically mounts `/tmp/storage` (cache, views, sessions) on Vercel and trusts all reverse proxies.
 - ✅ `config/database.php` supports `DATABASE_URL` with SSL mode `require` for Neon PostgreSQL.
+

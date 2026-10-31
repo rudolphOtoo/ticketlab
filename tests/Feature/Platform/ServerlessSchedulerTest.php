@@ -25,3 +25,4 @@ test('run migrate endpoint requires secret token', function () {
     $unauthorized = $this->get('api/run-migrate');
     $unauthorized->assertStatus(401);
 });
+
