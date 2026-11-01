@@ -6,18 +6,18 @@ namespace App\Http\Controllers\Payment;
 
 use App\Http\Controllers\Controller;
 use App\Services\Payment\OrderFulfillmentException;
-use App\Services\Payment\PayZephyrService;
+use App\Services\Payment\PaystackGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PaystackWebhookController extends Controller
 {
-    public function handle(Request $request, PayZephyrService $payZephyr): JsonResponse
+    public function handle(Request $request, PaystackGateway $paystack): JsonResponse
     {
         $header = $request->header('x-paystack-signature');
         $signature = is_string($header) ? $header : null;
 
-        if (!$payZephyr->verifySignature($request->getContent(), $signature)) {
+        if (!$paystack->verifySignature($request->getContent(), $signature)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid webhook signature.',
@@ -44,7 +44,7 @@ class PaystackWebhookController extends Controller
 
         try {
             /** @var array<string, mixed> $data */
-            $order = $payZephyr->handleChargeSuccess($data);
+            $order = $paystack->handleChargeSuccess($data);
         } catch (OrderFulfillmentException) {
             return response()->json([
                 'status' => 'requires_review',

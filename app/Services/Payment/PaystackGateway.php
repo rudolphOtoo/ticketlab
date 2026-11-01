@@ -12,10 +12,10 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Thin server-side Paystack/PayZephyr handshake used for callback
+ * Thin server-side Paystack client used for callback
  * verification and signature-validated webhook fulfilment.
  */
-class PayZephyrService
+class PaystackGateway
 {
     public function __construct(
         private readonly OrderFulfillmentService $fulfillment,
@@ -110,17 +110,6 @@ class PayZephyrService
         throw new PaystackCheckoutException('We could not start this payment. Please try again shortly.');
     }
 
-    public function verifyAndFulfill(string $reference): ?Order
-    {
-        $data = $this->verify($reference);
-
-        if (!$this->isSuccessful($data)) {
-            return null;
-        }
-
-        return $this->fulfillment->fulfillReference($reference, $data);
-    }
-
     /**
      * @param array<string, mixed> $data
      */
@@ -174,10 +163,5 @@ class PayZephyrService
     public function isSuccessful(array $data): bool
     {
         return ($data['status'] ?? null) === 'success';
-    }
-
-    public function publicKey(): string
-    {
-        return (string) config('services.paystack.public_key', '');
     }
 }

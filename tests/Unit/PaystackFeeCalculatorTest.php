@@ -4,77 +4,69 @@ declare(strict_types=1);
 
 use App\Services\PaystackFeeCalculator;
 
-beforeEach(function () {
-    $this->calculator = new PaystackFeeCalculator();
+/**
+ * What Paystack keeps from a gross charge at 1.95%, rounded to the pesewa as Paystack settles it.
+ */
+function paystack_fee_pesewas(int $grossPesewas): int
+{
+    return (int) round($grossPesewas * PaystackFeeCalculator::RATE);
+}
+
+it('grosses up a ticket so the buyer covers the 1.95% processing fee', function () {
+    // 100.00 / (1 - 0.0195) = 101.989..., rounded up to the pesewa.
+    expect(PaystackFeeCalculator::grossPesewas(100))
+        ->toBe(10_199)
+        ->and(PaystackFeeCalculator::gross(100))
+        ->toBe(101.99);
 });
 
-it('calculates gross amount for zero net loss with 1.95% fee rate', function () {
-    $netAmount = 100.00;
-    $grossAmount = $this->calculator->calculateGrossAmount($netAmount, 0.0195);
-
-    // Expected: 100 / (1 - 0.0195) = 100 / 0.9805 = 101.999...
-    expect($grossAmount)->toBe(101.99);
+it('adds the platform fee before grossing up', function () {
+    // (50.00 + 2.00) / 0.9805 = 53.034..., rounded up.
+    expect(PaystackFeeCalculator::grossPesewas(50, 2))->toBe(5_304);
 });
 
-it('ensures zero net loss for Ghana MoMo transactions', function () {
-    $netAmount = 50.00;
-    $breakdown = $this->calculator->getBreakdown($netAmount, 0.0195);
-
-    expect($breakdown['net_received'])->toBe($breakdown['net_amount']);
-    expect($breakdown['zero_net_loss_verified'])->toBeTrue();
+it('charges nothing for free tickets', function () {
+    expect(PaystackFeeCalculator::grossPesewas(0))
+        ->toBe(0)
+        ->and(PaystackFeeCalculator::breakdown(0)['gross_pesewas'])
+        ->toBe(0);
 });
 
-it('calculates fee amount correctly', function () {
-    $grossAmount = 101.99;
-    $feeAmount = $this->calculator->calculateFeeAmount($grossAmount, 0.0195);
+it('never leaves the organiser short after Paystack takes its fee', function (float $net, float $platformFee) {
+    $breakdown = PaystackFeeCalculator::breakdown($net, $platformFee);
+    $gross = $breakdown['gross_pesewas'];
+    $kept = $breakdown['net_pesewas'] + $breakdown['platform_fee_pesewas'];
 
-    expect($feeAmount)->toBe(1.99);
+    // Zero net loss, overcharging the buyer by at most a pesewa (Paystack rounds its fee to the nearest one).
+    expect($gross - paystack_fee_pesewas($gross))
+        ->toBeGreaterThanOrEqual($kept)
+        ->and($gross - paystack_fee_pesewas($gross) - $kept)
+        ->toBeLessThanOrEqual(1);
+})->with([
+    'GHS 10' => [10.00, 0],
+    'GHS 25.50' => [25.50, 0],
+    'GHS 50 + fee' => [50.00, 2.00],
+    'GHS 100' => [100.00, 0],
+    'GHS 250 + fee' => [250.00, 5.00],
+    'GHS 500' => [500.00, 0],
+]);
+
+it('reconciles every component of the breakdown to the gross charge', function () {
+    $breakdown = PaystackFeeCalculator::breakdown('199.99', '3.50');
+
+    expect($breakdown['net_pesewas'] + $breakdown['platform_fee_pesewas'] + $breakdown['processing_fee_pesewas'])
+        ->toBe($breakdown['gross_pesewas'])
+        ->and($breakdown['net'])
+        ->toBe(199.99)
+        ->and($breakdown['platform_fee'])
+        ->toBe(3.5)
+        ->and($breakdown['rate'])
+        ->toBe(0.0195);
 });
 
-it('calculates net amount from gross amount', function () {
-    $grossAmount = 101.99;
-    $netAmount = $this->calculator->calculateNetAmount($grossAmount, 0.0195);
-
-    expect($netAmount)->toBe(100.00);
+it('converts amounts to pesewas without floating point drift', function () {
+    expect(PaystackFeeCalculator::toPesewas('0.29'))
+        ->toBe(29)
+        ->and(PaystackFeeCalculator::toPesewas(19.99))
+        ->toBe(1_999);
 });
-
-it('handles breakdown correctly', function () {
-    $netAmount = 100.00;
-    $breakdown = $this->calculator->getBreakdown($netAmount, 0.0195);
-
-    expect($breakdown)->toHaveKeys([
-        'net_amount',
-        'gross_amount',
-        'fee_rate',
-        'percentage_fee',
-        'flat_fee',
-        'total_fee',
-        'net_received',
-        'zero_net_loss_verified',
-    ]);
-
-    expect($breakdown['fee_rate'])->toBe(0.0195);
-    expect($breakdown['flat_fee'])->toBe(0.0);
-});
-
-it('throws exception for fee rate >= 1', function () {
-    $this->calculator->calculateGrossAmount(100, 1.5);
-})->throws(InvalidArgumentException::class);
-
-it('throws exception for net amount <= 0', function () {
-    $this->calculator->calculateGrossAmount(0, 0.0195);
-})->throws(InvalidArgumentException::class);
-
-it('handles flat fees correctly', function () {
-    $netAmount = 100.00;
-    $flatFee = 1.00;
-    $grossAmount = $this->calculator->calculateGrossAmount($netAmount, 0.0195, $flatFee);
-
-    // Expected: (100 + 1) / (1 - 0.0195) = 101 / 0.9805 = ~103.01
-    expect($grossAmount)->toBe(103.01);
-});
-
-it('verifies zero net loss with various amounts', function (float $netAmount) {
-    $breakdown = $this->calculator->getBreakdown($netAmount, 0.0195);
-    expect($breakdown['net_received'])->toBe($netAmount);
-})->with([10.00, 25.50, 50.00, 100.00, 250.00, 500.00]);

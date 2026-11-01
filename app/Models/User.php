@@ -86,14 +86,6 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
-     * @deprecated Use isStaff() instead.
-     */
-    public function isUsher(): bool
-    {
-        return $this->isStaff();
-    }
-
-    /**
      * Tenancy is never initialised globally, so every staff surface must check
      * organisation membership explicitly instead of trusting the tenant scope.
      */

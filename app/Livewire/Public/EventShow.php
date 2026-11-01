@@ -14,7 +14,7 @@ use App\Models\TicketType;
 use App\Services\Payment\OrderFulfillmentService;
 use App\Services\Payment\PaystackCheckout;
 use App\Services\Payment\PaystackCheckoutException;
-use App\Services\Payment\PayZephyrService;
+use App\Services\Payment\PaystackGateway;
 use App\Services\Payment\PendingOrderService;
 use App\Services\PaystackFeeCalculator;
 use App\Services\Reservation\TicketReservationService;
@@ -97,7 +97,7 @@ class EventShow extends Component
 
         $defaultTicket = $event
             ->ticketTypes
-            ->filter(static fn($ticket) => $ticket->available_quantity > 0)
+            ->filter(static fn(TicketType $ticket): bool => $ticket->isOnSale() && $ticket->available_quantity > 0)
             ->sortBy('price')
             ->first();
 
@@ -109,7 +109,7 @@ class EventShow extends Component
     {
         $ticketType = $this->event()->ticketTypes()->whereKey($ticketTypeId)->first();
 
-        if ($ticketType === null) {
+        if ($ticketType === null || !$ticketType->isOnSale()) {
             return;
         }
 
@@ -175,7 +175,7 @@ class EventShow extends Component
         $pendingOrders ??= app(PendingOrderService::class);
         $event = $this->event();
         $organization = Organization::query()->findOrFail($event->organization_id);
-        $formFields = $event->formFields()->where('is_active', true)->orderBy('sort_order')->get();
+        $formFields = $event->formFields;
 
         $validated = $this->validate(...$this->checkoutRules($formFields));
 
@@ -241,10 +241,10 @@ class EventShow extends Component
         }
 
         try {
-            $payZephyr = app(PayZephyrService::class);
-            $verification = $payZephyr->verify($reference);
+            $paystack = app(PaystackGateway::class);
+            $verification = $paystack->verify($reference);
 
-            if ($payZephyr->isSuccessful($verification)) {
+            if ($paystack->isSuccessful($verification)) {
                 app(OrderFulfillmentService::class)->fulfill($order, $verification);
             }
         } catch (Throwable $exception) {
@@ -265,6 +265,10 @@ class EventShow extends Component
 
     public function availabilityBadge(TicketType $ticketType): string
     {
+        if (!$ticketType->isOnSale()) {
+            return $ticketType->sales_start_at?->isFuture() === true ? 'Coming Soon' : 'Sales Closed';
+        }
+
         if ($ticketType->available_quantity <= 0) {
             return 'Sold Out';
         }
@@ -277,7 +281,7 @@ class EventShow extends Component
     public function availabilityBadgeClass(TicketType $ticketType): string
     {
         return match ($this->availabilityBadge($ticketType)) {
-            'Sold Out' => 'bg-zinc-200 text-zinc-600',
+            'Sold Out', 'Sales Closed', 'Coming Soon' => 'bg-zinc-200 text-zinc-600',
             'Limited' => 'bg-amber-100 text-amber-800',
             default => 'bg-emerald-100 text-emerald-800',
         };
@@ -285,18 +289,20 @@ class EventShow extends Component
 
     public function render(): View
     {
+        // One query per relation, already ordered for display; nothing below re-queries them.
         $event = $this->event()->load([
             'organization',
             'ticketTypes',
-            'speakers',
-            'schedules',
-            'faqs' => static fn($q) => $q->where('is_published', true),
-            'formFields' => static fn($q) => $q->where('is_active', true),
+            'speakers' => static fn($q) => $q->orderBy('sort_order'),
+            'schedules' => static fn($q) => $q->orderBy('sort_order'),
+            'faqs' => static fn($q) => $q->where('is_published', true)->orderBy('sort_order'),
+            'formFields' => static fn($q) => $q->where('is_active', true)->orderBy('sort_order'),
         ]);
         $organization = $event->organization;
 
         /** @var Collection<int, TicketType> $ticketTypes */
-        $ticketTypes = $event->ticketTypes->sortBy('price')->values();
+        // Paused tiers are hidden; tiers outside their sales window stay visible but cannot be selected.
+        $ticketTypes = $event->ticketTypes->where('is_active', true)->sortBy('price')->values();
 
         $selectedTicketType = $ticketTypes->firstWhere('id', $this->ticketTypeId);
 
@@ -304,9 +310,9 @@ class EventShow extends Component
 
         $breakdown = PaystackFeeCalculator::breakdown($subtotal, $this->platformFee($organization));
 
-        $speakers = $event->speakers()->orderBy('sort_order')->get();
-        $schedules = $event->schedules()->orderBy('sort_order')->get();
-        $faqs = $event->faqs()->where('is_published', true)->orderBy('sort_order')->get();
+        $speakers = $event->speakers;
+        $schedules = $event->schedules;
+        $faqs = $event->faqs;
 
         if ($this->faqSearch !== '') {
             $search = Str::lower($this->faqSearch);
@@ -362,13 +368,23 @@ class EventShow extends Component
         return false;
     }
 
+    /**
+     * Online sales honour the tier's pause switch and sales window set in Tickets & Pricing.
+     */
     private function checkoutTicketType(Event $event, int $ticketTypeId): TicketType
     {
-        return (
-            $event->ticketTypes()->whereKey($ticketTypeId)->first() ?? throw ValidationException::withMessages([
-                'ticketTypeId' => 'The selected ticket tier is unavailable.',
-            ])
-        );
+        $ticketType = $event
+            ->ticketTypes()
+            ->whereKey($ticketTypeId)
+            ->first() ?? throw ValidationException::withMessages([
+            'ticketTypeId' => 'The selected ticket tier is unavailable.',
+        ]);
+
+        if (!$ticketType->isOnSale()) {
+            throw ValidationException::withMessages(['ticketTypeId' => 'This ticket tier is not on sale right now.']);
+        }
+
+        return $ticketType;
     }
 
     /**
