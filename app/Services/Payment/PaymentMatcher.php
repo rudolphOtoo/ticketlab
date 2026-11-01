@@ -6,6 +6,7 @@ namespace App\Services\Payment;
 
 use App\Enums\PaymentMethod;
 use App\Models\Order;
+use App\Services\PaystackFeeCalculator;
 
 class PaymentMatcher
 {
@@ -16,7 +17,7 @@ class PaymentMatcher
     {
         $reference = $payment['reference'] ?? null;
 
-        if (!is_string($reference) || $reference === '' || !hash_equals($order->reference, $reference)) {
+        if (!is_string($reference) || $reference === '' || !hash_equals($order->gatewayReference(), $reference)) {
             throw new OrderFulfillmentException('The payment reference does not match this order.');
         }
 
@@ -35,6 +36,39 @@ class PaymentMatcher
 
         if ($currency === '' || $currency !== $expectedCurrency) {
             throw new OrderFulfillmentException('The payment currency does not match the order currency.');
+        }
+
+        $this->assertRouting($order, $payment);
+    }
+
+    /**
+     * Revenue for a zone must have settled into that zone's subaccount, at exactly the ticket value.
+     *
+     * @param array<string, mixed> $payment
+     */
+    private function assertRouting(Order $order, array $payment): void
+    {
+        $expected = $order->payout_subaccount_code;
+
+        if ($expected === null && !array_key_exists('subaccount', $payment)) {
+            return;
+        }
+
+        $subaccount = $payment['subaccount'] ?? null;
+        $actual = is_array($subaccount) ? $subaccount['subaccount_code'] ?? null : null;
+
+        if ($actual !== $expected) {
+            throw new OrderFulfillmentException('The payment settled to a different payout account than this order.');
+        }
+
+        $share = $payment['fees_split']['subaccount'] ?? null;
+
+        if (
+            $expected !== null
+            && is_numeric($share)
+            && (int) $share !== PaystackFeeCalculator::toPesewas($order->net_amount)
+        ) {
+            throw new OrderFulfillmentException('The zone payout share does not match the ticket value.');
         }
     }
 

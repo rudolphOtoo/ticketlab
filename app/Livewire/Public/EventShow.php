@@ -12,6 +12,8 @@ use App\Models\Reservation;
 use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Services\Payment\OrderFulfillmentService;
+use App\Services\Payment\PaystackCheckout;
+use App\Services\Payment\PaystackCheckoutException;
 use App\Services\Payment\PayZephyrService;
 use App\Services\Payment\PendingOrderService;
 use App\Services\PaystackFeeCalculator;
@@ -20,6 +22,7 @@ use App\Services\Reservation\TicketSoldOutException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -32,6 +35,8 @@ use Throwable;
 #[Layout('layouts.public')]
 class EventShow extends Component
 {
+    private const int CHECKOUTS_PER_WINDOW = 15;
+
     public int $organizationId;
 
     public int $eventId;
@@ -174,6 +179,12 @@ class EventShow extends Component
 
         $validated = $this->validate(...$this->checkoutRules($formFields));
 
+        if ($this->checkoutThrottled()) {
+            $this->addError('payment', 'Too many checkout attempts. Please wait a few minutes and try again.');
+
+            return;
+        }
+
         $quantity = (int) $validated['quantity'];
         $ticketType = $this->checkoutTicketType($event, (int) $validated['ticketTypeId']);
         $subdivision = $this->checkoutSubdivision($organization, $validated['subdivisionId'] ?? null);
@@ -200,7 +211,13 @@ class EventShow extends Component
 
         try {
             $order = $pendingOrders->persist($reservation, $orderAttributes);
-        } catch (InvalidArgumentException $exception) {
+            $session = app(PaystackCheckout::class)->begin($order, $subdivision, [
+                'ticket_type' => $ticketType->name,
+                'quantity' => $reservation->quantity,
+                'organization_id' => $order->organization_id,
+                'subdivision' => $subdivision?->name,
+            ]);
+        } catch (InvalidArgumentException|PaystackCheckoutException $exception) {
             $this->addError('payment', $exception->getMessage());
 
             return;
@@ -209,13 +226,13 @@ class EventShow extends Component
         $this->orderReference = $order->reference;
         $this->flashMessage = 'Your seats are held for 15 minutes. Complete payment to receive your QR pass.';
 
-        $this->dispatch('open-paystack', payload: $this->paystackPayload($order, $ticketType, $quantity, $subdivision));
+        $this->dispatch('open-paystack', accessCode: $session['access_code'], reference: $session['reference']);
     }
 
     #[On('payment-completed')]
     public function paymentCompleted(string $reference): void
     {
-        $order = Order::query()->where('reference', $reference)->first();
+        $order = Order::findByGatewayReference($reference);
 
         if ($order === null) {
             $this->addError('payment', 'We could not locate that order.');
@@ -327,6 +344,22 @@ class EventShow extends Component
             'customization' => $customization,
             'viewingSpeaker' => $viewingSpeaker,
         ]);
+    }
+
+    /**
+     * Each attempt holds seats and opens a Paystack transaction, so scripted retries are capped per client.
+     */
+    private function checkoutThrottled(): bool
+    {
+        $limiterKey = 'checkout:' . (request()->ip() ?? 'unknown');
+
+        if (RateLimiter::tooManyAttempts($limiterKey, self::CHECKOUTS_PER_WINDOW)) {
+            return true;
+        }
+
+        RateLimiter::hit($limiterKey, 600);
+
+        return false;
     }
 
     private function checkoutTicketType(Event $event, int $ticketTypeId): TicketType
@@ -519,31 +552,6 @@ class EventShow extends Component
         $sessionId = session()->getId();
 
         return $sessionId !== '' ? $sessionId : Str::uuid()->toString();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function paystackPayload(
-        Order $order,
-        TicketType $ticketType,
-        int $quantity,
-        ?Subdivision $subdivision,
-    ): array {
-        return [
-            'key' => app(PayZephyrService::class)->publicKey(),
-            'email' => $order->customer_email,
-            'amount' => $order->gross_pesewas,
-            'currency' => $order->currency,
-            'reference' => $order->reference,
-            'subaccount' => $subdivision?->paystack_subaccount_code,
-            'metadata' => [
-                'order_reference' => $order->reference,
-                'ticket_type' => $ticketType->name,
-                'quantity' => $quantity,
-                'organization_id' => $order->organization_id,
-            ],
-        ];
     }
 
     private function event(): Event
