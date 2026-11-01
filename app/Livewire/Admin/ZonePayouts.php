@@ -118,17 +118,11 @@ class ZonePayouts extends Component
     {
         $result = $subaccounts->inspect($code);
 
-        $message = match (true) {
-            $result['recognised'] === true => null,
-            // Known to Paystack but unusable (deactivated, wrong currency): the resolver says why.
-            $result['details'] !== [] => $result['message'],
-            $result['recognised'] === false => 'Paystack does not recognise this subaccount for the '
-                . $subaccounts->mode()
-                . ' keys.',
-            default => $result['message'] ?? 'Paystack could not be reached. Try again.',
-        };
-
-        return [...$this->summary($result['details']), 'recognised' => $result['recognised'], 'message' => $message];
+        return [
+            ...$this->summary($result['details']),
+            'recognised' => $result['recognised'],
+            'message' => $subaccounts->rejectionReason($result),
+        ];
     }
 
     /**

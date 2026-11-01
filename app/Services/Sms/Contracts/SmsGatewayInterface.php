@@ -24,4 +24,3 @@ interface SmsGatewayInterface
      */
     public function isEnabled(): bool;
 }
-

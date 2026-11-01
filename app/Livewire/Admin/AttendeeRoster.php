@@ -131,7 +131,7 @@ class AttendeeRoster extends Component
         $user = auth()->user();
         $eventId = ActiveEvent::id($user?->organization_id);
         $firstTier = TicketType::query()
-            ->when($eventId, fn($q) => $q->where('event_id', $eventId))
+            ->when($eventId, static fn($q) => $q->where('event_id', $eventId))
             ->first();
 
         $this->manual_ticket_type_id = $firstTier?->id;
@@ -179,7 +179,7 @@ class AttendeeRoster extends Component
         ]);
 
         $ticketType = TicketType::query()
-            ->whereHas('event', fn($q) => $q->where('organization_id', $orgId))
+            ->whereHas('event', static fn($q) => $q->where('organization_id', $orgId))
             ->whereKey($this->manual_ticket_type_id)
             ->first();
 
@@ -197,7 +197,7 @@ class AttendeeRoster extends Component
                 'reference' => $ref,
                 'customer_name' => $this->manual_name,
                 'customer_email' => $this->manual_email,
-                'customer_phone' => $this->manual_phone ?: '0000000000',
+                'customer_phone' => $this->manualPhone(),
                 'gross_amount' => 0.00,
                 'platform_fee' => 0.00,
                 'net_amount' => 0.00,
@@ -226,7 +226,7 @@ class AttendeeRoster extends Component
                 'ticket_type_id' => $ticketType->id,
                 'name' => $this->manual_name,
                 'email' => $this->manual_email,
-                'phone' => $this->manual_phone ?: '0000000000',
+                'phone' => $this->manualPhone(),
                 'qr_code_hash' => $qrHash,
                 'checked_in_at' => null,
                 'checked_in_by' => null,
@@ -260,8 +260,8 @@ class AttendeeRoster extends Component
         $this->edit_email = $attendee->email;
         $this->edit_phone = $attendee->phone;
 
-        $custom = (array) ($attendee->custom_fields ?? []);
-        $this->edit_tags = (array) ($custom['tags'] ?? []);
+        $custom = $attendee->custom_fields ?? [];
+        $this->edit_tags = array_values(array_filter((array) ($custom['tags'] ?? []), is_string(...)));
         $this->newEditTagInput = '';
         $this->isEditModalOpen = true;
     }
@@ -313,13 +313,13 @@ class AttendeeRoster extends Component
             'edit_tags' => ['array'],
         ]);
 
-        $custom = (array) ($attendee->custom_fields ?? []);
+        $custom = $attendee->custom_fields ?? [];
         $custom['tags'] = $this->edit_tags;
 
         $attendee->update([
             'name' => $this->edit_name,
             'email' => $this->edit_email,
-            'phone' => $this->edit_phone ?: $attendee->phone,
+            'phone' => $this->edit_phone !== '' ? $this->edit_phone : $attendee->phone,
             'custom_fields' => $custom,
         ]);
 
@@ -340,7 +340,10 @@ class AttendeeRoster extends Component
         $limiterKey = "resend_pass:{$attendee->id}";
 
         if (RateLimiter::tooManyAttempts($limiterKey, 3)) {
-            $this->flashMessage = "Email throttle active. Please wait " . RateLimiter::availableIn($limiterKey) . " seconds before sending again.";
+            $this->flashMessage =
+                'Email throttle active. Please wait '
+                . RateLimiter::availableIn($limiterKey)
+                . ' seconds before sending again.';
             return;
         }
 
@@ -361,10 +364,8 @@ class AttendeeRoster extends Component
 
         $name = $attendee->name;
 
-        DB::transaction(function () use ($attendee): void {
-            if ($attendee->ticketType) {
-                $attendee->ticketType->increment('available_quantity');
-            }
+        DB::transaction(static function () use ($attendee): void {
+            $attendee->ticketType()->increment('available_quantity');
             $attendee->delete();
         });
 
@@ -460,6 +461,16 @@ class AttendeeRoster extends Component
         }
 
         return $query->latest();
+    }
+
+    /**
+     * Door sales may skip the phone; orders and passes still need a placeholder value.
+     */
+    private function manualPhone(): string
+    {
+        $phone = trim($this->manual_phone);
+
+        return $phone !== '' ? $phone : '0000000000';
     }
 
     public function render(): View

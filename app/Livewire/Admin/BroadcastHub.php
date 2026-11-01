@@ -86,13 +86,16 @@ class BroadcastHub extends Component
             'recipients_count' => $recipients->count(),
         ]);
 
-        $jobs = $recipients->values()->map(
-            static fn(Attendee $recipient, int $index): SendEventReminders => (new SendEventReminders(
+        $jobs = $recipients
+            ->values()
+            ->map(static fn(Attendee $recipient, int $index): SendEventReminders => new SendEventReminders(
                 $broadcast->id,
                 $recipient->email,
                 $recipient->name,
-            ))->onQueue('broadcasts')->delay(now()->addSeconds((int) floor($index / 25) * 5)),
-        )->all();
+            )
+                ->onQueue('broadcasts')
+                ->delay(now()->addSeconds((int) floor($index / 25) * 5)))
+            ->all();
 
         $batch = Bus::batch($jobs)->name("Broadcast: {$this->subject}")->allowFailures()->dispatch();
 

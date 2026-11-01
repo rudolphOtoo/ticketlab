@@ -4,6 +4,7 @@
 
 <x-layouts::dedicated :organization="$organization" :event="$event">
     @include('tenants.partials.hero')
+    @include('tenants.partials.events')
     @include('tenants.partials.marquee')
     @include('tenants.partials.about')
 

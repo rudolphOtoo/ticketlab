@@ -24,4 +24,3 @@ class TenantHomeController extends Controller
         return view(view()->exists($override) ? $override : 'tenants.default-bespoke', $site->viewData());
     }
 }
-

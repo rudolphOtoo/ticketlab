@@ -18,22 +18,20 @@ class SmsManager implements SmsGatewayInterface
     /** @var array<string, SmsGatewayInterface> */
     protected array $drivers = [];
 
-    public function __construct(protected Application $app) {}
+    public function __construct(
+        protected Application $app,
+    ) {}
 
     public function driver(?string $name = null): SmsGatewayInterface
     {
         $name ??= (string) config('sms.default', 'null');
 
-        if (! isset($this->drivers[$name])) {
-            $this->drivers[$name] = $this->createDriver($name);
-        }
-
-        return $this->drivers[$name];
+        return $this->drivers[$name] ??= $this->createDriver($name);
     }
 
     public function send(string $to, string $message, array $context = []): bool
     {
-        if (! $this->isEnabled()) {
+        if (!$this->isEnabled()) {
             return false;
         }
 
@@ -51,10 +49,7 @@ class SmsManager implements SmsGatewayInterface
         $senderId = (string) config('sms.sender_id', 'TicketLab');
 
         return match ($driver) {
-            'log' => new LogSmsGateway(
-                (string) config('sms.drivers.log.channel', 'single'),
-                $enabled,
-            ),
+            'log' => new LogSmsGateway((string) config('sms.drivers.log.channel', 'single'), $enabled),
             'mnotify' => new MnotifySmsGateway(
                 (string) config('sms.drivers.mnotify.api_key', ''),
                 $senderId,
@@ -65,4 +60,3 @@ class SmsManager implements SmsGatewayInterface
         };
     }
 }
-

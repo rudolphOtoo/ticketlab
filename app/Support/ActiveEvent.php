@@ -33,7 +33,14 @@ final class ActiveEvent
             }
         }
 
-        return $events->latest('id')->first();
+        $fallback = $events->latest('id')->first();
+
+        // Pin the fallback, so creating another event later never silently moves the admin off this one.
+        if ($fallback !== null) {
+            self::set($fallback);
+        }
+
+        return $fallback;
     }
 
     public static function id(?int $organizationId): ?int
