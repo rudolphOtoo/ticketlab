@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+// Normalize SCRIPT_NAME and SCRIPT_FILENAME so Laravel's Symfony Request base URL
+// resolves to root ("") instead of "/api", fixing route resolution and URL generation on Vercel serverless.
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['SCRIPT_FILENAME'] = __DIR__ . '/../public/index.php';
+
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
 
 // Vercel Edge Fallback: Serve static assets generated inside the PHP Lambda

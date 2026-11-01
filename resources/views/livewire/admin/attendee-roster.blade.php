@@ -148,16 +148,16 @@
 
     <!-- Attendee Table View -->
     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-xs">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
+        <div class="overflow-x-auto table-scrollbar">
+            <table class="w-full text-left text-xs min-w-[940px]">
                 <thead class="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                     <tr>
-                        <th class="py-3 px-4">Attendee Credentials</th>
-                        <th class="py-3 px-4">Subdivision</th>
-                        <th class="py-3 px-4">Pass Tier</th>
-                        <th class="py-3 px-4">Digital Pass Hash</th>
-                        <th class="py-3 px-4 text-center">Status</th>
-                        <th class="py-3 px-4 text-right">Actions</th>
+                        <th class="py-3 px-4 min-w-[220px]">Attendee Credentials</th>
+                        <th class="py-3 px-4 min-w-[120px]">Subdivision</th>
+                        <th class="py-3 px-4 min-w-[120px]">Pass Tier</th>
+                        <th class="py-3 px-4 min-w-[130px]">Digital Pass Hash</th>
+                        <th class="py-3 px-4 text-center min-w-[100px]">Status</th>
+                        <th class="py-3 px-4 text-right min-w-[240px]">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-[var(--border-hairline)]">
@@ -222,8 +222,8 @@
                             </td>
 
                             <!-- Actions -->
-                            <td class="py-3 px-4 text-right">
-                                <div class="inline-flex items-center gap-1">
+                            <td class="py-3 px-4 text-right whitespace-nowrap min-w-[240px]">
+                                <div class="inline-flex items-center gap-1.5 justify-end">
                                     <button
                                         type="button"
                                         wire:click="toggleCheckIn({{ $att->id }})"
@@ -241,6 +241,19 @@
                                         <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        wire:click="voidPass({{ $att->id }})"
+                                        wire:confirm="Permanently delete attendee '{{ $att->name }}' and restore ticket availability?"
+                                        class="cursor-pointer inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition active:scale-95"
+                                        title="Delete Attendee"
+                                    >
+                                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        <span>Delete</span>
                                     </button>
 
                                     <button
@@ -520,10 +533,13 @@
                     <button
                         type="button"
                         wire:click="voidPass({{ $selectedAttendee->id }})"
-                        wire:confirm="Permanently void this pass and release the capacity seat?"
-                        class="cursor-pointer rounded-xl border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 py-2 px-3 text-xs font-semibold transition active:scale-95"
+                        wire:confirm="Permanently delete attendee '{{ $selectedAttendee->name }}' and restore ticket availability?"
+                        class="cursor-pointer inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 py-2 px-3 text-xs font-semibold transition active:scale-95"
                     >
-                        Void Pass
+                        <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span>Delete Attendee</span>
                     </button>
 
                     <button

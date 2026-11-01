@@ -1,6 +1,6 @@
 /.phpunit.cache
 /node_modules
-/public/build
+# /public/build
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
@@ -56,3 +56,6 @@ memory/wiki/
 INBOX.md
 # <<< Conscience OS Isolation (Host Mode) <<<
 .neon
+
+.vercel
+.env*

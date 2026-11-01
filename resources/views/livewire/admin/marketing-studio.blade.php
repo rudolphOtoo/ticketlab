@@ -1,6 +1,7 @@
 <div class="space-y-6 max-w-7xl mx-auto" x-data="marketingStudio({
     publicUrl: @js($publicUrl),
     qrEndpoint: @js(route('api.qr')),
+    initialQrDataUri: @js($initialQrPngDataUri),
     headline: @entangle('flyerHeadline'),
     tagline: @entangle('flyerTagline'),
     venue: @entangle('flyerVenue'),
@@ -23,7 +24,7 @@
         <div>
             <h1 class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Marketing Studio</h1>
             <p class="text-xs text-[var(--text-secondary)] mt-1">
-                Generate high-resolution social media flyers with instant aspect-ratio switching and print-ready vector QR passes.
+                Create social media flyers and download printable QR passes for your event.
             </p>
         </div>
 
@@ -99,13 +100,18 @@
 
                     <!-- Custom Background Image -->
                     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 space-y-3">
-                        <label for="flyer-background" class="text-xs font-semibold text-[var(--text-secondary)]">Background Image</label>
-                        <input id="flyer-background" type="file" accept="image/jpeg,image/png,image/webp" wire:model="backgroundImage" class="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--text-primary)]">
-                        <div wire:loading wire:target="backgroundImage" class="text-[11px] text-[var(--text-tertiary)]">Uploading…</div>
-                        @error('backgroundImage') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
-                        @if ($backgroundUrl)
-                            <button type="button" wire:click="removeBackground" class="cursor-pointer text-[11px] font-semibold text-rose-600 hover:underline">Remove background</button>
-                        @endif
+                        <div class="flex items-center justify-between">
+                            <label for="flyer-background" class="text-xs font-semibold text-[var(--text-secondary)]">Event Background Image</label>
+                            <span class="text-[10px] text-[var(--text-tertiary)]">Auto-framed hero</span>
+                        </div>
+                        <input id="flyer-background" type="file" accept="image/jpeg,image/png,image/webp" @change="onBackgroundSelected($event)" class="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--text-primary)]">
+                        <div x-show="hasBackground" class="flex items-center justify-between pt-1">
+                            <span class="text-[11px] text-emerald-500 font-medium flex items-center gap-1">
+                                <svg class="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                Image active
+                            </span>
+                            <button type="button" @click="clearBackground()" class="cursor-pointer text-[11px] font-semibold text-rose-500 hover:text-rose-400 hover:underline">Remove background</button>
+                        </div>
                     </div>
 
                     <!-- Flyer Copy & Details -->
@@ -169,16 +175,38 @@
                             <div class="space-y-1">
                                 <label class="text-xs font-medium text-[var(--text-secondary)]">Foreground Color</label>
                                 <div class="flex items-center gap-2">
-                                    <input type="color" x-model="qrFg" class="size-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
+                                    <input type="color" x-model="qrFg" @input="debouncedLoadQr()" class="size-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
                                     <span class="text-xs font-mono" x-text="qrFg"></span>
                                 </div>
                             </div>
                             <div class="space-y-1">
                                 <label class="text-xs font-medium text-[var(--text-secondary)]">Background Color</label>
                                 <div class="flex items-center gap-2">
-                                    <input type="color" x-model="qrBg" class="size-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
+                                    <input type="color" x-model="qrBg" @input="debouncedLoadQr()" class="size-8 rounded-lg cursor-pointer border-0 bg-transparent p-0">
                                     <span class="text-xs font-mono" x-text="qrBg"></span>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Reset to Classic Black & White and Quick Contrast Presets -->
+                        <div class="space-y-2 pt-1">
+                            <label class="text-[11px] font-semibold text-[var(--text-secondary)]">Instant Contrast Presets</label>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button type="button" @click="setQrColors('#121316', '#ffffff')" class="cursor-pointer text-[11px] px-2.5 py-1 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition">
+                                    Classic
+                                </button>
+                                <button type="button" @click="setQrColors('#7c3aed', '#ffffff')" class="cursor-pointer text-[11px] px-2.5 py-1 rounded-md border border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition">
+                                    Amethyst
+                                </button>
+                                <button type="button" @click="setQrColors('#059669', '#ffffff')" class="cursor-pointer text-[11px] px-2.5 py-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition">
+                                    Emerald
+                                </button>
+                                <button type="button" @click="setQrColors('#e11d48', '#ffffff')" class="cursor-pointer text-[11px] px-2.5 py-1 rounded-md border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition">
+                                    Rose
+                                </button>
+                                <button type="button" @click="setQrColors('#ffffff', '#090a0f')" class="cursor-pointer text-[11px] px-2.5 py-1 rounded-md border border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 transition">
+                                    Dark Mode
+                                </button>
                             </div>
                         </div>
 
@@ -195,8 +223,8 @@
 
             </div>
 
-            <!-- Preview Canvas Pane (Right 7 Cols) -->
-            <div class="lg:col-span-7 space-y-4">
+            <!-- Preview Canvas Pane (Right 7 Cols - wire:ignore shields canvas from DOM wiping) -->
+            <div class="lg:col-span-7 space-y-4" wire:ignore>
                 
                 <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md flex flex-col items-center justify-center min-h-[520px]">
                     
@@ -239,29 +267,106 @@ function marketingStudio(config) {
         qrCanvas: null,
         qrImage: null,
         backgroundImage: null,
+        backgroundBlobUrl: null,
+        hasBackground: Boolean(config.background),
+        _qrDebounce: null,
 
         init() {
-            this.$nextTick(() => {
+            this.$nextTick(async () => {
                 this.canvas = document.getElementById('flyerCanvas');
                 this.qrCanvas = document.getElementById('qrStandaloneCanvas');
+                if (this.initialQrDataUri) {
+                    this.qrImage = await this.loadImage(this.initialQrDataUri);
+                    this.renderQrOnly();
+                }
                 this.loadBackground();
                 this.loadQr();
             });
 
             ['headline', 'tagline', 'venue', 'date', 'badge', 'accentColor', 'aspectRatio', 'showQr', 'featuredSpeakerId']
                 .forEach((key) => this.$watch(key, () => this.renderFlyer()));
-            ['qrFg', 'qrBg'].forEach((key) => this.$watch(key, () => this.loadQr()));
+            ['qrFg', 'qrBg'].forEach((key) => this.$watch(key, () => this.debouncedLoadQr()));
+            this.$watch('activeTab', (tab) => {
+                if (tab === 'qr') {
+                    this.$nextTick(() => this.renderQrOnly());
+                } else {
+                    this.$nextTick(() => this.renderFlyer());
+                }
+            });
             this.$watch('background', () => this.loadBackground());
         },
 
+        onBackgroundSelected(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (this.backgroundBlobUrl) {
+                URL.revokeObjectURL(this.backgroundBlobUrl);
+            }
+            this.backgroundBlobUrl = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                this.backgroundImage = img;
+                this.hasBackground = true;
+                this.renderFlyer();
+            };
+            img.src = this.backgroundBlobUrl;
+        },
+
+        clearBackground() {
+            if (this.backgroundBlobUrl) {
+                URL.revokeObjectURL(this.backgroundBlobUrl);
+                this.backgroundBlobUrl = null;
+            }
+            this.backgroundImage = null;
+            this.hasBackground = false;
+            const input = document.getElementById('flyer-background');
+            if (input) input.value = '';
+            if (this.$wire && typeof this.$wire.removeBackground === 'function') {
+                this.$wire.removeBackground();
+            }
+            this.renderFlyer();
+        },
+
+        resetQrClassic() {
+            this.setQrColors('#121316', '#ffffff');
+        },
+
+        setQrColors(fg, bg) {
+            this.qrFg = fg;
+            this.qrBg = bg;
+            this.loadQr();
+        },
+
+        safeRoundRect(ctx, x, y, w, h, r) {
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(x, y, w, h, r);
+            } else {
+                const radius = Math.min(typeof r === 'number' ? r : 0, w / 2, h / 2);
+                ctx.moveTo(x + radius, y);
+                ctx.arcTo(x + w, y, x + w, y + h, radius);
+                ctx.arcTo(x + w, y + h, x, y + h, radius);
+                ctx.arcTo(x, y + h, x, y, radius);
+                ctx.arcTo(x, y, x + w, y, radius);
+                ctx.closePath();
+            }
+        },
+
+        debouncedLoadQr() {
+            clearTimeout(this._qrDebounce);
+            this._qrDebounce = setTimeout(() => this.loadQr(), 160);
+        },
+
         qrUrl(format, size = 600) {
+            const cleanFg = String(this.qrFg || '#121316').trim().replace(/^#/, '');
+            const cleanBg = String(this.qrBg || '#ffffff').trim().replace(/^#/, '');
             const params = new URLSearchParams({
                 content: this.publicUrl,
                 format,
                 size: String(size),
-                fg: this.qrFg || '#121316',
-                bg: this.qrBg || '#ffffff',
+                fg: cleanFg,
+                bg: cleanBg,
                 margin: '2',
+                _t: String(Date.now()),
             });
 
             return `${this.qrEndpoint}?${params.toString()}`;
@@ -271,26 +376,56 @@ function marketingStudio(config) {
             return new Promise((resolve) => {
                 if (!src) { resolve(null); return; }
                 const image = new Image();
+                image.crossOrigin = 'anonymous';
                 image.onload = () => resolve(image);
-                image.onerror = () => resolve(null);
+                image.onerror = (e) => {
+                    console.warn('Image load fallback', e);
+                    resolve(null);
+                };
                 image.src = src;
             });
         },
 
         async loadQr() {
-            this.qrImage = await this.loadImage(this.qrUrl('png'));
+            try {
+                const response = await fetch(this.qrUrl('png', 600), {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'image/png' }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    const img = await this.loadImage(objectUrl);
+                    if (img) {
+                        this.qrImage = img;
+                    }
+                    setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+                } else {
+                    console.warn('loadQr response status:', response.status);
+                }
+            } catch (err) {
+                console.warn('loadQr network fallback:', err);
+            }
+
             this.renderFlyer();
             this.renderQrOnly();
         },
 
         async loadBackground() {
-            this.backgroundImage = await this.loadImage(this.background);
+            if (this.backgroundBlobUrl) {
+                return; // User has an active local preview
+            }
+            if (this.background) {
+                this.backgroundImage = await this.loadImage(this.background);
+                this.hasBackground = Boolean(this.backgroundImage);
+            } else {
+                this.backgroundImage = null;
+                this.hasBackground = false;
+            }
             this.renderFlyer();
         },
 
-        /**
-         * Word-wraps text into at most maxLines lines, ellipsising the last one, and returns the y below the block.
-         */
         wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
             const words = String(text || '').split(/\s+/).filter(Boolean);
             const lines = [];
@@ -319,157 +454,301 @@ function marketingStudio(config) {
             return y + lines.length * lineHeight;
         },
 
-        drawCover(ctx, image, width, height) {
-            const scale = Math.max(width / image.width, height / image.height);
-            const w = image.width * scale;
-            const h = image.height * scale;
-            ctx.drawImage(image, (width - w) / 2, (height - h) / 2, w, h);
+        drawCoverInRect(ctx, image, rx, ry, rw, rh, radius = 0) {
+            if (!image || !image.width || !image.height) return;
+            try {
+                ctx.save();
+                if (radius > 0) {
+                    ctx.beginPath();
+                    this.safeRoundRect(ctx, rx, ry, rw, rh, radius);
+                    ctx.clip();
+                } else {
+                    ctx.beginPath();
+                    ctx.rect(rx, ry, rw, rh);
+                    ctx.clip();
+                }
+                const scale = Math.max(rw / image.width, rh / image.height);
+                const w = image.width * scale;
+                const h = image.height * scale;
+                ctx.drawImage(image, rx + (rw - w) / 2, ry + (rh - h) / 2, w, h);
+                ctx.restore();
+            } catch (e) {
+                console.warn('drawCoverInRect notice:', e);
+            }
         },
 
         renderFlyer() {
             if (!this.canvas) return;
+            try {
+                const [width, height] = FLYER_SIZES[this.aspectRatio] || FLYER_SIZES['1:1'];
+                const landscape = width > height;
+                const isStory = height > width;
 
-            const [width, height] = FLYER_SIZES[this.aspectRatio] || FLYER_SIZES['1:1'];
-            const landscape = width > height;
-            const pad = landscape ? 96 : 80;
-            const accent = /^#[0-9a-f]{6}$/i.test(this.accentColor || '') ? this.accentColor : '#6366f1';
-            const qrSize = landscape ? 300 : 220;
-            const showQr = this.showQr && this.qrImage;
-            const textWidth = landscape && showQr ? width - pad * 3 - qrSize : width - pad * 2;
+                const pad = isStory ? 96 : (landscape ? 90 : 80);
+                const accent = /^#[0-9a-f]{6}$/i.test(this.accentColor || '') ? this.accentColor : '#6366f1';
+                
+                const qrSize = isStory ? 320 : (landscape ? 290 : 250);
+                const showQr = this.showQr && this.qrImage;
+                const textWidth = landscape 
+                    ? (this.backgroundImage ? width * 0.52 - pad : (showQr ? width - pad * 3 - qrSize : width - pad * 2)) 
+                    : (showQr && !landscape && !isStory ? width - pad * 3 - qrSize : width - pad * 2);
 
-            this.canvas.width = width;
-            this.canvas.height = height;
-            const ctx = this.canvas.getContext('2d');
-            ctx.textBaseline = 'alphabetic';
-            ctx.textAlign = 'left';
+                this.canvas.width = width;
+                this.canvas.height = height;
+                const ctx = this.canvas.getContext('2d');
+                ctx.textBaseline = 'alphabetic';
+                ctx.textAlign = 'left';
 
-            // Background: uploaded image (cover + scrim) or the basalt gradient.
-            if (this.backgroundImage) {
-                this.drawCover(ctx, this.backgroundImage, width, height);
-                const scrim = ctx.createLinearGradient(0, 0, 0, height);
-                scrim.addColorStop(0, 'rgba(9,10,15,0.55)');
-                scrim.addColorStop(1, 'rgba(9,10,15,0.9)');
-                ctx.fillStyle = scrim;
-                ctx.fillRect(0, 0, width, height);
-            } else {
+                // 1. Base Obsidian/Basalt Gradient
                 const bg = ctx.createLinearGradient(0, 0, width, height);
                 bg.addColorStop(0, '#090a0f');
-                bg.addColorStop(0.5, '#12131a');
+                bg.addColorStop(0.5, '#11121a');
                 bg.addColorStop(1, '#181926');
                 ctx.fillStyle = bg;
                 ctx.fillRect(0, 0, width, height);
-            }
 
-            const orb = ctx.createRadialGradient(width * 0.8, height * 0.2, 50, width * 0.8, height * 0.2, width * 0.6);
-            orb.addColorStop(0, `${accent}55`);
-            orb.addColorStop(1, 'transparent');
-            ctx.fillStyle = orb;
-            ctx.fillRect(0, 0, width, height);
+                // 2. Structured Hero Visual (Allocates dedicated zone preserving text legibility)
+                if (this.backgroundImage) {
+                    if (landscape) {
+                        // 16:9 Landscape: Framed hero photo card on right side
+                        const frameW = Math.round(width * 0.40);
+                        const frameH = height - pad * 2;
+                        const frameX = width - pad - frameW;
+                        const frameY = pad;
 
-            // Organisation + badge pill.
-            let y = pad + 20;
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 28px sans-serif';
-            y = this.wrapText(ctx, (this.orgName || '').toUpperCase(), pad, y, width - pad * 2, 34, 1) + 10;
+                        ctx.save();
+                        ctx.shadowColor = `${accent}66`;
+                        ctx.shadowBlur = 30;
+                        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                        ctx.beginPath();
+                        this.safeRoundRect(ctx, frameX, frameY, frameW, frameH, 24);
+                        ctx.fill();
+                        ctx.restore();
 
-            ctx.font = 'bold 18px sans-serif';
-            const badge = (this.badge || '').slice(0, 40);
-            const badgeWidth = ctx.measureText(badge).width + 40;
-            ctx.fillStyle = accent;
-            ctx.beginPath();
-            ctx.roundRect(pad, y, badgeWidth, 40, 20);
-            ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(badge, pad + 20, y + 27);
+                        this.drawCoverInRect(ctx, this.backgroundImage, frameX, frameY, frameW, frameH, 24);
 
-            // Headline + tagline, wrapped to the available column.
-            const titleSize = landscape ? 76 : (height > width ? 84 : 68);
-            ctx.font = `900 ${titleSize}px sans-serif`;
-            ctx.fillStyle = '#ffffff';
-            y = this.wrapText(ctx, this.headline, pad, y + 70 + titleSize, textWidth, titleSize * 1.08, 3);
+                        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        this.safeRoundRect(ctx, frameX, frameY, frameW, frameH, 24);
+                        ctx.stroke();
+                    } else if (isStory) {
+                        // 9:16 Story: Top 44% hero visual with smooth gradient falloff
+                        const heroH = Math.round(height * 0.44);
+                        this.drawCoverInRect(ctx, this.backgroundImage, 0, 0, width, heroH);
 
-            ctx.font = '300 30px sans-serif';
-            ctx.fillStyle = '#cbd5e1';
-            y = this.wrapText(ctx, this.tagline, pad, y + 24, textWidth, 40, 3);
+                        const fade = ctx.createLinearGradient(0, heroH - 220, 0, heroH);
+                        fade.addColorStop(0, 'rgba(9,10,15,0)');
+                        fade.addColorStop(0.7, 'rgba(9,10,15,0.85)');
+                        fade.addColorStop(1, '#090a0f');
+                        ctx.fillStyle = fade;
+                        ctx.fillRect(0, heroH - 220, width, 220);
 
-            // Featured speaker card.
-            const speaker = this.speakers?.[this.featuredSpeakerId];
-            if (speaker && y + 200 < height - 300) {
-                const cardY = y + 40;
-                ctx.fillStyle = 'rgba(255,255,255,0.06)';
-                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.roundRect(pad, cardY, textWidth, 150, 24);
-                ctx.fill();
-                ctx.stroke();
+                        const topVignette = ctx.createLinearGradient(0, 0, 0, 180);
+                        topVignette.addColorStop(0, 'rgba(9,10,15,0.8)');
+                        topVignette.addColorStop(1, 'rgba(9,10,15,0)');
+                        ctx.fillStyle = topVignette;
+                        ctx.fillRect(0, 0, width, 180);
+                    } else {
+                        // 1:1 Square: Top 46% hero visual with smooth gradient falloff
+                        const heroH = Math.round(height * 0.46);
+                        this.drawCoverInRect(ctx, this.backgroundImage, 0, 0, width, heroH);
 
+                        const fade = ctx.createLinearGradient(0, heroH - 170, 0, heroH);
+                        fade.addColorStop(0, 'rgba(9,10,15,0)');
+                        fade.addColorStop(0.7, 'rgba(9,10,15,0.88)');
+                        fade.addColorStop(1, '#090a0f');
+                        ctx.fillStyle = fade;
+                        ctx.fillRect(0, heroH - 170, width, 170);
+
+                        const topVignette = ctx.createLinearGradient(0, 0, 0, 140);
+                        topVignette.addColorStop(0, 'rgba(9,10,15,0.75)');
+                        topVignette.addColorStop(1, 'rgba(9,10,15,0)');
+                        ctx.fillStyle = topVignette;
+                        ctx.fillRect(0, 0, width, 140);
+                    }
+                } else {
+                    // Ambient Brand Glow Orbs when no image
+                    const orb1 = ctx.createRadialGradient(width * 0.85, height * 0.15, 60, width * 0.85, height * 0.15, width * 0.7);
+                    orb1.addColorStop(0, `${accent}44`);
+                    orb1.addColorStop(1, 'transparent');
+                    ctx.fillStyle = orb1;
+                    ctx.fillRect(0, 0, width, height);
+
+                    if (isStory) {
+                        const orb2 = ctx.createRadialGradient(width * 0.15, height * 0.7, 50, width * 0.15, height * 0.7, width * 0.6);
+                        orb2.addColorStop(0, `${accent}22`);
+                        orb2.addColorStop(1, 'transparent');
+                        ctx.fillStyle = orb2;
+                        ctx.fillRect(0, 0, width, height);
+                    }
+                }
+
+                // 3. Organisation Header
+                const orgFontSize = isStory ? 34 : (landscape ? 30 : 28);
+                let y = isStory ? pad + 40 : (landscape ? pad + 10 : pad + 20);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${orgFontSize}px sans-serif`;
+                try { ctx.letterSpacing = '1px'; } catch (e) {}
+                y = this.wrapText(ctx, (this.orgName || '').toUpperCase(), pad, y, width - pad * 2, orgFontSize + 8, 1) + (isStory ? 24 : 14);
+
+                // 4. Badge Pill
+                const badgeFontSize = isStory ? 22 : 18;
+                ctx.font = `bold ${badgeFontSize}px sans-serif`;
+                const badge = (this.badge || '').slice(0, 40);
+                const badgePaddingX = isStory ? 28 : 20;
+                const badgeHeight = isStory ? 50 : 40;
+                const badgeWidth = ctx.measureText(badge).width + (badgePaddingX * 2);
+                
                 ctx.fillStyle = accent;
                 ctx.beginPath();
-                ctx.arc(pad + 75, cardY + 75, 45, 0, Math.PI * 2);
+                this.safeRoundRect(ctx, pad, y, badgeWidth, badgeHeight, badgeHeight / 2);
                 ctx.fill();
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 36px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(speaker.name.charAt(0), pad + 75, cardY + 88);
-                ctx.textAlign = 'left';
+                ctx.fillText(badge, pad + badgePaddingX, y + (isStory ? 33 : 26));
+                y += badgeHeight + (isStory ? 50 : 36);
 
-                const detailWidth = textWidth - 190;
-                ctx.font = 'bold 32px sans-serif';
-                this.wrapText(ctx, speaker.name, pad + 150, cardY + 58, detailWidth, 36, 1);
+                // 5. Headline & Tagline
+                const titleSize = isStory ? 104 : (landscape ? 76 : 82);
+                ctx.font = `900 ${titleSize}px sans-serif`;
+                ctx.fillStyle = '#ffffff';
+                y = this.wrapText(ctx, this.headline, pad, y + titleSize * 0.8, textWidth, titleSize * 1.1, 3);
+
+                const taglineSize = isStory ? 38 : (landscape ? 30 : 32);
+                ctx.font = `300 ${taglineSize}px sans-serif`;
                 ctx.fillStyle = '#cbd5e1';
-                ctx.font = '22px sans-serif';
-                this.wrapText(ctx, speaker.title || 'Keynote Speaker', pad + 150, cardY + 93, detailWidth, 26, 1);
-                if (speaker.topic) {
-                    ctx.fillStyle = '#fbbf24';
-                    ctx.font = 'italic 20px sans-serif';
-                    this.wrapText(ctx, `Topic: ${speaker.topic}`, pad + 150, cardY + 124, detailWidth, 24, 1);
+                y = this.wrapText(ctx, this.tagline, pad, y + (isStory ? 36 : 24), textWidth, taglineSize * 1.35, 3);
+
+                // 6. Featured Speaker Card (if selected)
+                const speaker = this.speakers?.[this.featuredSpeakerId];
+                const maxCardBottom = height - (isStory ? 600 : (landscape ? 350 : 420));
+                if (speaker && y + 60 < maxCardBottom) {
+                    const cardY = y + (isStory ? 50 : 35);
+                    const cardHeight = isStory ? 190 : 150;
+                    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    this.safeRoundRect(ctx, pad, cardY, textWidth, cardHeight, 24);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    const avatarRadius = isStory ? 55 : 45;
+                    const avatarCenterY = cardY + cardHeight / 2;
+                    ctx.fillStyle = accent;
+                    ctx.beginPath();
+                    ctx.arc(pad + avatarRadius + 30, avatarCenterY, avatarRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `bold ${isStory ? 44 : 36}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(speaker.name.charAt(0), pad + avatarRadius + 30, avatarCenterY + (isStory ? 16 : 13));
+                    ctx.textAlign = 'left';
+
+                    const speakerTextX = pad + (avatarRadius * 2) + 50;
+                    const detailWidth = textWidth - (avatarRadius * 2) - 70;
+                    ctx.font = `bold ${isStory ? 38 : 32}px sans-serif`;
+                    this.wrapText(ctx, speaker.name, speakerTextX, cardY + (isStory ? 65 : 55), detailWidth, isStory ? 44 : 36, 1);
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.font = `${isStory ? 26 : 22}px sans-serif`;
+                    this.wrapText(ctx, speaker.title || 'Keynote Speaker', speakerTextX, cardY + (isStory ? 110 : 92), detailWidth, isStory ? 32 : 26, 1);
+                    if (speaker.topic) {
+                        ctx.fillStyle = '#fbbf24';
+                        ctx.font = `italic ${isStory ? 24 : 20}px sans-serif`;
+                        this.wrapText(ctx, `Topic: ${speaker.topic}`, speakerTextX, cardY + (isStory ? 150 : 124), detailWidth, isStory ? 28 : 24, 1);
+                    }
                 }
-            }
 
-            // Footer: date, venue and price, kept clear of the QR block.
-            const footerWidth = showQr && !landscape ? width - pad * 3 - qrSize : textWidth;
-            const bottom = height - pad;
-            ctx.font = '26px sans-serif';
-            const venueLines = Math.min(2, Math.ceil(ctx.measureText(this.venue || '').width / footerWidth) || 1);
-            const footerTop = bottom - 64 - venueLines * 34 - 48;
+                // 7. Footer: Date, Venue, Price, and QR Pass
+                if (isStory) {
+                    const bottom = height - pad - 40;
+                    const qrY = bottom - qrSize;
+                    const qrX = width - pad - qrSize;
 
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 30px sans-serif';
-            this.wrapText(ctx, this.date, pad, footerTop, footerWidth, 36, 1);
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = '26px sans-serif';
-            this.wrapText(ctx, this.venue, pad, footerTop + 46, footerWidth, 34, 2);
+                    const footerTextWidth = width - pad * 2 - qrSize - 40;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 38px sans-serif';
+                    this.wrapText(ctx, this.date, pad, qrY + 30, footerTextWidth, 46, 1);
 
-            ctx.font = 'bold 22px sans-serif';
-            const priceWidth = Math.min(footerWidth, ctx.measureText(this.priceText).width + 40);
-            ctx.fillStyle = 'rgba(255,255,255,0.1)';
-            ctx.beginPath();
-            ctx.roundRect(pad, bottom - 48, priceWidth, 48, 12);
-            ctx.fill();
-            ctx.fillStyle = '#38bdf8';
-            this.wrapText(ctx, this.priceText, pad + 20, bottom - 16, priceWidth - 40, 26, 1);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '30px sans-serif';
+                    this.wrapText(ctx, this.venue, pad, qrY + 84, footerTextWidth, 38, 2);
 
-            if (showQr) {
-                const qrX = width - qrSize - pad;
-                const qrY = height - qrSize - pad;
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.roundRect(qrX - 14, qrY - 14, qrSize + 28, qrSize + 28, 20);
-                ctx.fill();
-                ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(this.qrImage, qrX, qrY, qrSize, qrSize);
-                ctx.imageSmoothingEnabled = true;
+                    const priceFontSize = 28;
+                    ctx.font = `bold ${priceFontSize}px sans-serif`;
+                    const priceWidth = ctx.measureText(this.priceText).width + 48;
+                    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+                    ctx.beginPath();
+                    this.safeRoundRect(ctx, pad, qrY + 160, priceWidth, 60, 16);
+                    ctx.fill();
+                    ctx.fillStyle = '#38bdf8';
+                    this.wrapText(ctx, this.priceText, pad + 24, qrY + 202, priceWidth - 48, 30, 1);
 
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = 'bold 16px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('SCAN FOR TICKETS', qrX + qrSize / 2, qrY - 26);
-                ctx.textAlign = 'left';
+                    if (showQr) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        this.safeRoundRect(ctx, qrX - 16, qrY - 16, qrSize + 32, qrSize + 32, 24);
+                        ctx.fill();
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.drawImage(this.qrImage, qrX, qrY, qrSize, qrSize);
+                        ctx.imageSmoothingEnabled = true;
+
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.font = 'bold 20px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('SCAN FOR TICKETS', qrX + qrSize / 2, qrY - 28);
+                        ctx.textAlign = 'left';
+                    }
+                } else {
+                    const footerWidth = showQr && !landscape ? width - pad * 3 - qrSize : textWidth;
+                    const bottom = height - pad;
+                    ctx.font = '26px sans-serif';
+                    const venueLines = Math.min(2, Math.ceil(ctx.measureText(this.venue || '').width / footerWidth) || 1);
+                    const footerTop = bottom - 64 - venueLines * 34 - 48;
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 32px sans-serif';
+                    this.wrapText(ctx, this.date, pad, footerTop, footerWidth, 38, 1);
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '26px sans-serif';
+                    this.wrapText(ctx, this.venue, pad, footerTop + 46, footerWidth, 34, 2);
+
+                    ctx.font = 'bold 22px sans-serif';
+                    const priceWidth = Math.min(footerWidth, ctx.measureText(this.priceText).width + 40);
+                    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                    ctx.beginPath();
+                    this.safeRoundRect(ctx, pad, bottom - 48, priceWidth, 48, 12);
+                    ctx.fill();
+                    ctx.fillStyle = '#38bdf8';
+                    this.wrapText(ctx, this.priceText, pad + 20, bottom - 16, priceWidth - 40, 26, 1);
+
+                    if (showQr) {
+                        const qrX = width - qrSize - pad;
+                        const qrY = height - qrSize - pad;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        this.safeRoundRect(ctx, qrX - 14, qrY - 14, qrSize + 28, qrSize + 28, 20);
+                        ctx.fill();
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.drawImage(this.qrImage, qrX, qrY, qrSize, qrSize);
+                        ctx.imageSmoothingEnabled = true;
+
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.font = 'bold 16px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('SCAN FOR TICKETS', qrX + qrSize / 2, qrY - 26);
+                        ctx.textAlign = 'left';
+                    }
+                }
+            } catch (err) {
+                console.error('Flyer render caught exception:', err);
             }
         },
 
         renderQrOnly() {
+            if (!this.qrCanvas) {
+                this.qrCanvas = document.getElementById('qrStandaloneCanvas');
+            }
             if (!this.qrCanvas) return;
             const size = 512;
             this.qrCanvas.width = size;
@@ -480,6 +759,12 @@ function marketingStudio(config) {
             if (this.qrImage) {
                 ctx.imageSmoothingEnabled = false;
                 ctx.drawImage(this.qrImage, 0, 0, size, size);
+            } else {
+                ctx.fillStyle = this.qrFg || '#121316';
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Generating QR...', size / 2, size / 2);
+                ctx.textAlign = 'left';
             }
         },
 
@@ -501,17 +786,32 @@ function marketingStudio(config) {
             this.triggerDownload(this.canvas.toDataURL('image/png'), `${this.slug()}-${this.aspectRatio.replace(':', 'x')}.png`);
         },
 
-        async downloadQr(format) {
-            const response = await fetch(this.qrUrl(format, 1024), { credentials: 'same-origin' });
-            if (!response.ok) return;
-            const url = URL.createObjectURL(await response.blob());
-            this.triggerDownload(url, `${this.slug()}-qr.${format}`);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        downloadQrPng() {
+            this.renderQrOnly();
+            if (!this.qrCanvas) {
+                this.qrCanvas = document.getElementById('qrStandaloneCanvas');
+            }
+            if (!this.qrCanvas) return;
+            const dataUrl = this.qrCanvas.toDataURL('image/png');
+            this.triggerDownload(dataUrl, `${this.slug()}-pass-qr.png`);
         },
 
-        downloadQrPng() { return this.downloadQr('png'); },
-
-        downloadQrSvg() { return this.downloadQr('svg'); },
+        async downloadQrSvg() {
+            try {
+                const response = await fetch(this.qrUrl('svg', 1024), { credentials: 'same-origin' });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    this.triggerDownload(url, `${this.slug()}-pass-qr.svg`);
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                } else {
+                    this.downloadQrPng();
+                }
+            } catch (err) {
+                console.warn('SVG download fallback:', err);
+                this.downloadQrPng();
+            }
+        },
     };
 }
 </script>

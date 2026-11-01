@@ -22,15 +22,19 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('api/paystack/webhook', [PaystackWebhookController::class, 'handle'])
     ->name('public.paystack.webhook')
+    ->middleware('throttle:300,1')
     ->withoutMiddleware([ValidateCsrfToken::class]);
 
 Route::post('api/payzephyr/webhook', [PaystackWebhookController::class, 'handle'])
     ->name('public.payzephyr.webhook')
+    ->middleware('throttle:300,1')
     ->withoutMiddleware([ValidateCsrfToken::class]);
 
 Route::get('events', EventDirectory::class)->name('public.events.index');
 
-Route::get('tickets/{order:reference}', TicketShow::class)->name('public.tickets.show');
+Route::get('tickets/{order:reference}', TicketShow::class)
+    ->name('public.tickets.show')
+    ->middleware('throttle:60,1');
 
 Route::prefix('{org_slug}')
     ->name('public.')

@@ -13,10 +13,10 @@
                 <span class="text-[10px] font-mono text-[var(--text-tertiary)]">PHP {{ PHP_MAJOR_VERSION }}.{{ PHP_MINOR_VERSION }} · Laravel {{ app()->version() }}</span>
             </div>
             <h1 class="text-xl sm:text-2xl font-black tracking-tight text-[var(--text-primary)] mt-1">
-                Platform Engine & Cross-Tenant Oversight
+                Platform Management
             </h1>
             <p class="text-xs text-[var(--text-secondary)] mt-0.5">
-                Multi-tenant infrastructure health, real-time transaction volume, and deployment personality controls.
+                Monitor tenant activity, platform fees, and system settings.
             </p>
         </div>
 
@@ -29,7 +29,7 @@
     </div>
 
     <!-- Executive Metrics Strip (Elevated High-Density Telemetry Cards) -->
-    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         
         <!-- Total Tenants -->
         <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-2xs space-y-2 hover:translate-y-[-2px] transition-transform duration-150">
@@ -100,7 +100,7 @@
         </div>
 
         <!-- System Telemetry -->
-        <div class="col-span-2 lg:col-span-1 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-2xs space-y-2 hover:translate-y-[-2px] transition-transform duration-150">
+        <div class="col-span-1 sm:col-span-2 lg:col-span-1 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-2xs space-y-2 hover:translate-y-[-2px] transition-transform duration-150">
             <div class="flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)]">
                 <span>Infrastructure</span>
                 <div class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">

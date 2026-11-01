@@ -10,6 +10,7 @@
 <head>
     @include('partials.head')
     <title>{{ $title ?? 'Gate Terminal' }} — TicketLab Ops</title>
+    @livewireStyles
 </head>
 <body class="min-h-screen antialiased bg-[var(--bg-canvas)] text-[var(--text-primary)]">
     {{-- Ground Ops terminal shell: deliberately limited to the two door tools, with no administrative or ledger links. --}}
@@ -64,9 +65,30 @@
             </div>
         </header>
 
-        <main class="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-5 md:p-6">
+        <main class="mx-auto w-full max-w-7xl flex-1 p-4 pb-24 sm:p-5 sm:pb-5 md:p-6">
             {{ $slot }}
         </main>
+
+        {{-- Mobile Thumb-friendly Bottom Navigation Bar --}}
+        <nav aria-label="Mobile Gate terminal navigation" class="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-[var(--border-hairline)] bg-[var(--bg-surface)]/95 p-2 backdrop-blur-xl sm:hidden">
+            @foreach ($opsLinks as $link)
+                <a
+                    href="{{ route($link['route']) }}"
+                    wire:navigate
+                    @class([
+                        'flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 text-[11px] font-semibold transition active:scale-95',
+                        'text-[var(--text-primary)] font-bold' => request()->routeIs($link['route']),
+                        'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]' => !request()->routeIs($link['route']),
+                    ])
+                >
+                    <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $link['icon'] }}" />
+                    </svg>
+                    <span>{{ $link['label'] }}</span>
+                </a>
+            @endforeach
+        </nav>
     </div>
+    @livewireScripts
 </body>
 </html>

@@ -1,15 +1,24 @@
-    <script>
-        if (!window.Alpine) {
-            const script = document.createElement('script');
-            script.defer = true;
-            script.src = 'https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js';
-            script.integrity = 'sha256-NYhTz3mvNscbZ+7hO7ZuHjvQ+8g2u7D2/0Zg5jB8X0g=';
-            script.crossOrigin = 'anonymous';
-            document.head.appendChild(script);
-        }
-    </script>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="description" content="{{ $metaDescription ?? 'TicketLab — Universal Event Ticketing & Ground Operations Platform. Fast digital passes, door scanning, and instant mobile money checkout.' }}" />
+
+<!-- OpenGraph / Facebook -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="TicketLab" />
+<meta property="og:title" content="{{ filled($title ?? null) ? $title.' - '.config('app.name', 'TicketLab') : config('app.name', 'TicketLab') }}" />
+<meta property="og:description" content="{{ $metaDescription ?? 'Universal Event Ticketing & Ground Operations Platform. Fast digital passes, door scanning, and instant mobile money checkout.' }}" />
+<meta property="og:url" content="{{ url()->current() }}" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="{{ filled($title ?? null) ? $title.' - '.config('app.name', 'TicketLab') : config('app.name', 'TicketLab') }}" />
+<meta name="twitter:description" content="{{ $metaDescription ?? 'Universal Event Ticketing & Ground Operations Platform.' }}" />
+
+<!-- Mobile Browser Theme Color -->
+<meta name="theme-color" content="#090a0f" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
 <title>
     {{ filled($title ?? null) ? $title.' - '.config('app.name', 'Laravel') : config('app.name', 'Laravel') }}

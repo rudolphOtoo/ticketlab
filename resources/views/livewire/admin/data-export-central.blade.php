@@ -11,10 +11,10 @@
                 <span class="text-[11px] font-mono text-[var(--text-tertiary)]">/admin/exports</span>
             </div>
             <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)] mt-1">
-                Data Export & Sovereignty Central
+                Data Exports
             </h1>
             <p class="text-xs text-[var(--text-secondary)] mt-0.5">
-                Download your complete attendee rosters, questionnaires, and full organization backups anytime.
+                Download attendee lists, questionnaires, and orders in Excel or CSV format.
             </p>
         </div>
 

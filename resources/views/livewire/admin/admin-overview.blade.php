@@ -1,12 +1,12 @@
 @php
     $turnout = $stats['sold'] > 0 ? (int) round(($stats['checked_in'] / $stats['sold']) * 100) : 0;
     $quickLinks = [
-        ['route' => 'admin.events', 'title' => 'Event Lifecycle', 'body' => 'Create events, upload banners, publish and set visibility.'],
-        ['route' => 'admin.tickets', 'title' => 'Tickets & Pricing', 'body' => 'Configure tiers, capacities, perks and sales windows.'],
-        ['route' => 'admin.attendees', 'title' => 'Attendee Roster', 'body' => 'Search passes, admit manually and stream CSV exports.'],
-        ['route' => 'admin.broadcasts', 'title' => 'Broadcast Hub', 'body' => 'Queue batched reminder emails to ticket holders.'],
-        ['route' => 'admin.sessions', 'title' => 'Financial Ledger', 'body' => 'Reconcile cash and online takings and lock daily sessions.'],
-        ['route' => 'admin.studio', 'title' => 'Customizer Studio', 'body' => 'Brand the landing page, speakers, schedule and FAQs.'],
+        ['route' => 'admin.events', 'title' => 'Events', 'body' => 'Create events, upload banners, and set ticket visibility.'],
+        ['route' => 'admin.tickets', 'title' => 'Tickets & Pricing', 'body' => 'Set up ticket tiers, capacities, and prices.'],
+        ['route' => 'admin.attendees', 'title' => 'Attendees', 'body' => 'Search passes, check in attendees, and export rosters.'],
+        ['route' => 'admin.broadcasts', 'title' => 'Broadcasts', 'body' => 'Send email announcements to ticket holders.'],
+        ['route' => 'admin.sessions', 'title' => 'Financial Ledger', 'body' => 'Review cash and mobile money collections.'],
+        ['route' => 'admin.studio', 'title' => 'Event Page Settings', 'body' => 'Update event branding, speakers, and schedule.'],
     ];
 @endphp
 

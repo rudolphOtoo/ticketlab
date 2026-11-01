@@ -125,7 +125,7 @@
             </div>
 
             <!-- Table -->
-            <div class="mt-4 overflow-x-auto">
+            <div class="mt-4 overflow-x-auto table-scrollbar">
                 <table class="w-full text-left text-xs">
                     <thead>
                         <tr class="border-b border-[var(--border-hairline)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-wider">

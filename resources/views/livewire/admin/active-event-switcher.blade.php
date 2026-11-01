@@ -8,7 +8,7 @@
         <select
             id="active-event"
             wire:model.live="eventId"
-            class="max-w-[11rem] cursor-pointer truncate rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] shadow-xs focus:outline-hidden [color-scheme:light] dark:[color-scheme:dark] sm:max-w-[16rem]"
+            class="max-w-[8.5rem] sm:max-w-[14rem] md:max-w-[16rem] cursor-pointer truncate rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] shadow-xs focus:outline-hidden [color-scheme:light] dark:[color-scheme:dark]"
         >
             @foreach ($events as $event)
                 <option value="{{ $event->id }}">{{ $event->title }}{{ $event->status === 'draft' ? ' (draft)' : '' }}</option>

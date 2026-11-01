@@ -33,6 +33,7 @@
 <head>
     @include('partials.head')
     <title>{{ $title ?? 'Admin' }} — TicketLab Admin</title>
+    @livewireStyles
 </head>
 <body class="min-h-screen antialiased bg-[var(--bg-canvas)] text-[var(--text-primary)]" x-data="{
     navOpen: false,
@@ -75,6 +76,17 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
                         </svg>
                     </button>
+
+                    <button
+                        type="button"
+                        x-on:click="navOpen = false"
+                        class="flex lg:hidden size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition press-scale"
+                        aria-label="Close navigation"
+                    >
+                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
                 <nav class="flex flex-col gap-4 text-xs">
@@ -104,6 +116,16 @@
             </div>
 
             <div class="flex flex-col gap-2.5 border-t border-[var(--border-hairline)] pt-4">
+                <a href="{{ route('home') }}" class="flex items-center justify-between rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-2 text-[11px] font-semibold text-[var(--text-primary)] transition hover:border-[var(--border-focused)]" :title="sidebarCollapsed ? 'Go to Public Homepage' : ''">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <svg class="size-4 shrink-0 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955a1.126 1.126 0 0 1 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        </svg>
+                        <span x-show="!sidebarCollapsed" x-transition class="truncate">Public Homepage</span>
+                    </div>
+                    <span aria-hidden="true" class="text-[10px] text-[var(--text-tertiary)]" :class="{ 'hidden': sidebarCollapsed }">↗</span>
+                </a>
+
                 <a href="{{ route('ops.scanner') }}" class="flex items-center justify-between rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-2 text-[11px] font-semibold transition hover:border-[var(--border-focused)]" :title="sidebarCollapsed ? 'Open Gate Terminal' : ''">
                     <span x-show="!sidebarCollapsed" x-transition class="truncate">Open Gate Terminal</span>
                     <span aria-hidden="true" :class="{ 'mx-auto': sidebarCollapsed }">→</span>
@@ -148,7 +170,23 @@
                     <span class="truncate text-xs font-medium text-[var(--text-primary)]">{{ $title ?? 'Admin' }}</span>
                 </div>
 
-                <livewire:admin.active-event-switcher />
+                <div class="flex items-center gap-2">
+                    <a
+                        href="{{ route('home') }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2 sm:px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-focused)] transition press-scale"
+                        title="View Public Event Portal"
+                    >
+                        <svg class="size-3.5 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955a1.126 1.126 0 0 1 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        </svg>
+                        <span class="hidden sm:inline">View Portal</span>
+                        <span aria-hidden="true" class="hidden sm:inline text-[9px] text-[var(--text-tertiary)]">↗</span>
+                    </a>
+
+                    <livewire:admin.active-event-switcher />
+                </div>
             </header>
 
             <main class="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-5 md:p-6">
@@ -156,5 +194,6 @@
             </main>
         </div>
     </div>
+    @livewireScripts
 </body>
 </html>

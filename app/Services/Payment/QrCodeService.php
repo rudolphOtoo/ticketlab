@@ -48,9 +48,14 @@ class QrCodeService
         ]))->render($content);
     }
 
-    public function pngDataUri(string $content, int $scale = 10, int $margin = 2): string
-    {
-        return 'data:image/png;base64,' . base64_encode($this->png($content, $scale, $margin));
+    public function pngDataUri(
+        string $content,
+        int $scale = 10,
+        int $margin = 2,
+        string $foreground = '#000000',
+        string $background = '#ffffff',
+    ): string {
+        return 'data:image/png;base64,' . base64_encode($this->png($content, $scale, $margin, $foreground, $background));
     }
 
     /**

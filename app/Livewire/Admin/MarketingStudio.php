@@ -112,9 +112,12 @@ class MarketingStudio extends Component
 
     public function removeBackground(): void
     {
-        MediaUrl::deleteStored($this->backgroundPath);
+        if ($this->backgroundPath !== null && $this->backgroundPath !== '') {
+            MediaUrl::deleteStored($this->backgroundPath);
+        }
         $this->backgroundPath = null;
         $this->backgroundUrl = null;
+        $this->backgroundImage = null;
     }
 
     public function setAspectRatio(string $ratio): void
@@ -224,6 +227,15 @@ class MarketingStudio extends Component
             ? route('public.event.show', ['org_slug' => $event->organization->slug, 'event_slug' => $event->slug])
             : url('/');
 
+        $qrService = app(\App\Services\Payment\QrCodeService::class);
+        $initialQrPngDataUri = $qrService->pngDataUri(
+            $publicUrl,
+            12,
+            $this->qrMargin,
+            $this->qrFgColor,
+            $this->qrBgColor
+        );
+
         $featuredSpeaker = $this->featuredSpeakerId !== null
             ? $speakers->firstWhere('id', $this->featuredSpeakerId)
             : null;
@@ -236,6 +248,7 @@ class MarketingStudio extends Component
             'ticketTypes' => $ticketTypes,
             'lowestTicketPrice' => $lowestTicketPrice,
             'publicUrl' => $publicUrl,
+            'initialQrPngDataUri' => $initialQrPngDataUri,
             'featuredSpeaker' => $featuredSpeaker,
         ]);
     }

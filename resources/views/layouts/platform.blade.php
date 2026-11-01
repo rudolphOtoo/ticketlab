@@ -3,6 +3,7 @@
 <head>
     @include('partials.head')
     <title>{{ $title ?? 'Platform' }} — TicketLab Platform</title>
+    @livewireStyles
 </head>
 <body class="min-h-screen antialiased bg-[var(--bg-canvas)] text-[var(--text-primary)]">
     {{-- Super admin shell: cross-tenant oversight only, no tenant event tooling. --}}
@@ -38,5 +39,6 @@
             {{ $slot }}
         </main>
     </div>
+    @livewireScripts
 </body>
 </html>

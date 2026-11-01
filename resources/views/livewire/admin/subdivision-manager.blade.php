@@ -31,7 +31,7 @@
         class="w-full max-w-sm rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs shadow-xs placeholder-[var(--text-tertiary)] focus:border-[var(--text-primary)] focus:outline-hidden"
     />
 
-    <div class="overflow-x-auto rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-xs">
+    <div class="overflow-x-auto table-scrollbar rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-xs">
         <table class="w-full min-w-[640px] text-left text-xs">
             <thead class="border-b border-[var(--border-hairline)] text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
                 <tr>

@@ -184,6 +184,36 @@
 }
 /* No separate dark override needed — shadow tokens already flip in html.dark */
 
+/* Sleek Admin Data Table Scrollbar */
+.table-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-hairline) transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-scrollbar::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+.table-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--border-hairline);
+    border-radius: 9999px;
+    transition: background-color 200ms ease;
+}
+
+.table-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: var(--text-tertiary);
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-primary);
+}
+
 @media (prefers-reduced-motion: reduce) {
     .animate-physical-modal,
     .press-scale {

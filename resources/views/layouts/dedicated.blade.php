@@ -55,6 +55,7 @@
                 },
             });
         </script>
+        @livewireStyles
     </head>
     <body class="relative flex min-h-screen flex-col overflow-x-hidden bg-[var(--bg-canvas)] text-[var(--text-primary)] antialiased selection:bg-[var(--dedicated-accent)] selection:text-white">
         <x-bespoke-navbar :organization="$organization" :event="$event" />
@@ -73,5 +74,6 @@
                 </div>
             </div>
         </footer>
+        @livewireScripts
     </body>
 </html>
