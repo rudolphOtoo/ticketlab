@@ -6,7 +6,9 @@ use App\Livewire\Admin\BespokeStudio;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 test('admin can add gallery images via direct link and save gallery settings', function () {
@@ -78,10 +80,35 @@ test('public gallery sub-page renders configured images and category tags', func
     ]);
 
     // Multi-tenant bespoke sub-page: /{org_slug}/page/gallery
-    $this->get(route('public.tenant.page', ['org_slug' => $org->slug, 'page' => 'gallery']))
+    $this
+        ->get(route('public.tenant.page', ['org_slug' => $org->slug, 'page' => 'gallery']))
         ->assertOk()
         ->assertSee('Custom Gallery Title')
         ->assertSee('Stage Light Experience')
         ->assertSee('Atmosphere');
 });
 
+test('uploaded gallery images render from public storage and are deleted on removal', function () {
+    Storage::fake('public');
+    $org = Organization::factory()->create();
+    $admin = User::factory()->create()->assignMembership('admin', $org->id);
+
+    $studio = Livewire::actingAs($admin)
+        ->test(BespokeStudio::class)
+        ->set('activeTab', 'gallery')
+        ->set('new_image_source_mode', 'upload')
+        ->set('new_image_file', UploadedFile::fake()->image('stage.jpg'))
+        ->set('new_image_tag', 'Stage')
+        ->call('addGalleryImage')
+        ->assertHasNoErrors();
+
+    $image = $studio->get('gallery_images')[0];
+    $path = $image['url'];
+
+    Storage::disk('public')->assertExists($path);
+    $studio->assertSeeHtml('src="/storage/' . $path . '"');
+
+    $studio->call('removeGalleryImage', $image['id']);
+
+    Storage::disk('public')->assertMissing($path);
+});

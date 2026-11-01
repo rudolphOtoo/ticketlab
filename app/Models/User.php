@@ -73,8 +73,11 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 
     public function isAdmin(): bool
     {
-        return $this->isSuperAdmin()
-            || ($this->organization_id !== null && in_array($this->role, self::ADMIN_ROLES, true));
+        return (
+            $this->isSuperAdmin()
+            || $this->organization_id !== null
+            && in_array($this->role, self::ADMIN_ROLES, true)
+        );
     }
 
     public function isStaff(): bool

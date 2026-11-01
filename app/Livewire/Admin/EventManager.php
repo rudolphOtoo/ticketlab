@@ -6,8 +6,10 @@ namespace App\Livewire\Admin;
 
 use App\Models\Attendee;
 use App\Models\Event;
+use App\Models\Organization;
 use App\Models\User;
 use App\Support\ActiveEvent;
+use App\Support\DedicatedSite;
 use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -174,16 +176,20 @@ class EventManager extends Component
             'is_public' => $this->is_public,
         ];
 
+        $event->fill($attributes)->save();
+
+        // Stored after saving so a new event's banner is filed under its own id.
         if ($this->banner !== null) {
             $previousBanner = $event->banner_path;
-            $attributes['banner_path'] = MediaUrl::store($this->banner, "events/{$organizationId}/banners");
+            $event->update(['banner_path' => MediaUrl::store(
+                $this->banner,
+                MediaUrl::eventDirectory($event->id, 'banners'),
+            )]);
             MediaUrl::deleteStored($previousBanner);
         }
 
-        $event->fill($attributes)->save();
-
-        // A brand new organisation has nothing to scope to yet, so its first event becomes the working event.
-        if ($this->editingEventId === null && ActiveEvent::id($organizationId) === $event->id) {
+        // Only an organisation's first event becomes the working event; later ones never switch the admin away.
+        if ($this->editingEventId === null && $this->events()->count() === 1) {
             ActiveEvent::set($event);
         }
 
@@ -205,6 +211,25 @@ class EventManager extends Component
         ActiveEvent::set($event);
 
         $this->redirectRoute('admin.events', navigate: true);
+    }
+
+    /**
+     * Pick the headline event on the organisation's public site; every other published event stays listed.
+     */
+    public function featureEvent(int $eventId): void
+    {
+        $event = $this->events()->whereKey($eventId)->where('status', 'published')->first();
+
+        if ($event === null) {
+            $this->flashMessage = 'Only published events can be featured on the public site.';
+
+            return;
+        }
+
+        $organization = Organization::query()->findOrFail($event->organization_id);
+        $organization->update(['settings' => [...($organization->settings ?? []), 'featured_event_id' => $event->id]]);
+
+        $this->flashMessage = "'{$event->title}' is now the featured event on your public site.";
     }
 
     public function togglePublished(int $eventId): void
@@ -276,6 +301,7 @@ class EventManager extends Component
         return view('livewire.admin.event-manager', [
             'events' => $events,
             'activeEventId' => ActiveEvent::id($organizationId),
+            'featuredEventId' => DedicatedSite::featuredEventId(Organization::query()->findOrFail($organizationId)),
         ]);
     }
 }

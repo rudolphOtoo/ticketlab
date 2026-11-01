@@ -29,6 +29,12 @@ return [
      |
      */
 
+    /*
+     | Disk for admin uploads (banners, speaker photos, gallery, flyers). Keep "public" locally; point it at a
+     | cloud disk such as "s3" on hosts whose filesystem is not persistent (e.g. serverless platforms).
+     */
+    'media_disk' => env('MEDIA_DISK', 'public'),
+
     'disks' => [
         'local' => [
             'driver' => 'local',

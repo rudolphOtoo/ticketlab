@@ -98,19 +98,20 @@ class UserManagement extends Component
         $this->generatedInviteLink = null;
     }
 
-    public function save(): void
+    private function isInviteMode(): bool
     {
-        $actor = $this->actor();
-        $organizationId = (int) $actor->organization_id;
-        $editingSelf = $this->editingUserId === $actor->id;
-        $isInviteMode = $this->editingUserId === null && $this->provisionMode === 'invite';
+        return $this->editingUserId === null && $this->provisionMode === 'invite';
+    }
 
-        // Admins can never change their own role, so a stray request cannot lock them out or escalate them.
-        if ($editingSelf) {
+    /**
+     * Admins never change their own role, and subdivision-bound admins only provision inside their subdivision.
+     */
+    private function pinScopeTo(User $actor): void
+    {
+        if ($this->editingUserId === $actor->id) {
             $this->role = (string) $actor->role;
         }
 
-        // Subdivision-bound admins can only provision staff inside their own subdivision.
         if ($actor->subdivision_id !== null) {
             $this->subdivisionId = (string) $actor->subdivision_id;
         }
@@ -118,12 +119,49 @@ class UserManagement extends Component
         if ($this->subdivisionId === '') {
             $this->subdivisionId = null;
         }
+    }
 
-        $passwordRules = match (true) {
-            $isInviteMode => ['nullable'],
+    /**
+     * @return list<mixed>
+     */
+    private function passwordRules(): array
+    {
+        return match (true) {
+            $this->isInviteMode() => ['nullable'],
             $this->editingUserId === null => ['required', 'string', Password::default()],
             default => ['nullable', 'string', Password::default()],
         };
+    }
+
+    /**
+     * Invited members get an unusable password until they set their own; a typed password is trusted as verified.
+     */
+    private function applyCredentials(User $member): void
+    {
+        if ($this->isInviteMode()) {
+            $member->password = Str::random(32);
+            $member->forceFill(['email_verified_at' => null]);
+
+            return;
+        }
+
+        if ($this->password === '') {
+            return;
+        }
+
+        $member->password = $this->password;
+
+        if (!$member->exists) {
+            $member->forceFill(['email_verified_at' => now()]);
+        }
+    }
+
+    public function save(): void
+    {
+        $actor = $this->actor();
+        $organizationId = (int) $actor->organization_id;
+        $editingSelf = $this->editingUserId === $actor->id;
+        $this->pinScopeTo($actor);
 
         $this->validate(
             [
@@ -136,7 +174,7 @@ class UserManagement extends Component
                     'max:255',
                     Rule::unique(User::class, 'email')->ignore($this->editingUserId),
                 ],
-                'password' => $passwordRules,
+                'password' => $this->passwordRules(),
                 'role' => $editingSelf ? ['required', 'string'] : ['required', Rule::in(User::ASSIGNABLE_ROLES)],
                 'subdivisionId' => [
                     'nullable',
@@ -148,7 +186,7 @@ class UserManagement extends Component
             ['subdivisionId' => 'subdivision'],
         );
 
-        $member = DB::transaction(function () use ($actor, $organizationId, $isInviteMode): ?User {
+        $member = DB::transaction(function () use ($actor, $organizationId): ?User {
             $member = $this->editingUserId === null
                 ? new User()
                 : $this->members($actor)->whereKey($this->editingUserId)->lockForUpdate()->first();
@@ -158,16 +196,7 @@ class UserManagement extends Component
             }
 
             $member->fill(['name' => $this->name, 'email' => $this->email]);
-
-            if ($isInviteMode) {
-                $member->password = Str::random(32);
-                $member->forceFill(['email_verified_at' => null]);
-            } elseif ($this->password !== '') {
-                $member->password = $this->password;
-                if (!$member->exists) {
-                    $member->forceFill(['email_verified_at' => now()]);
-                }
-            }
+            $this->applyCredentials($member);
 
             // Privilege fields are never mass-assigned: membership goes through the sanctioned method.
             return $member->assignMembership(
@@ -178,7 +207,7 @@ class UserManagement extends Component
         });
 
         if ($member !== null) {
-            if ($isInviteMode) {
+            if ($this->isInviteMode()) {
                 $token = PasswordBroker::broker()->createToken($member);
                 $this->generatedInviteLink = route('password.reset', ['token' => $token, 'email' => $member->email]);
                 $this->flashMessage = "{$member->name} was invited. Copy the activation link below if email is offline.";

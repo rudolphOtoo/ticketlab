@@ -126,13 +126,14 @@ test('activating an event scopes the customizer, ticket manager and roster to it
 
 test('header switcher stores the chosen event and ignores foreign ids', function (): void {
     $mine = Event::factory()->create(['organization_id' => $this->org->id]);
-    Event::factory()->create(['organization_id' => $this->org->id]);
+    $latest = Event::factory()->create(['organization_id' => $this->org->id]);
     $foreign = Event::factory()->create();
 
     $switcher = Livewire::actingAs($this->admin)->test(ActiveEventSwitcher::class);
 
-    $switcher->set('eventId', $foreign->id);
-    expect(session(ActiveEvent::SESSION_KEY))->toBeNull();
+    // The default (latest) event is pinned on first resolve; a foreign id never replaces it.
+    $switcher->set('eventId', $foreign->id)->assertSet('eventId', $latest->id);
+    expect(session(ActiveEvent::SESSION_KEY))->toBe($latest->id);
 
     $switcher->set('eventId', $mine->id)->assertRedirect();
     expect(session(ActiveEvent::SESSION_KEY))->toBe($mine->id);

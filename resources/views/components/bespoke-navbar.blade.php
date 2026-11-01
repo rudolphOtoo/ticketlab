@@ -12,7 +12,7 @@
     $staffHome = $navUser?->staffHomeUrl();
     $isMultiTenant = !App\Models\PlatformSetting::isDedicatedMode();
     $homeUrl = $isMultiTenant ? url('/' . $organization->slug) : url('/');
-    $siteLinks = $organization->bespokeNavLinks($isMultiTenant);
+    $siteLinks = $organization->bespokeNavLinks();
 
     $checkoutUrl = null;
     if ($isEventPage) {

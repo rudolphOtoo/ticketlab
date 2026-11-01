@@ -31,13 +31,14 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
-        return DB::transaction(function () use ($input): User {
-            $orgName = trim((string) ($input['organization_name'] ?? ''));
+        return DB::transaction(static function () use ($input): User {
+            $orgName = trim($input['organization_name'] ?? '');
             if ($orgName === '') {
                 $orgName = $input['name'] . "'s Organization";
             }
 
-            $baseSlug = Str::slug($orgName) ?: 'org';
+            $baseSlug = Str::slug($orgName);
+            $baseSlug = $baseSlug !== '' ? $baseSlug : 'org';
             $slug = $baseSlug;
             $counter = 1;
             while (Organization::query()->where('slug', $slug)->exists()) {

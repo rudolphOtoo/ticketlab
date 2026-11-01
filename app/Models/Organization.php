@@ -165,8 +165,9 @@ class Organization extends Model
      *
      * @return list<array{key: string, label: string, url: string, active: bool}>
      */
-    public function bespokeNavLinks(bool $isMultiTenant = true): array
+    public function bespokeNavLinks(): array
     {
+        $isDedicated = PlatformSetting::isDedicatedMode();
         $settings = $this->bespokeSettings();
         $navConfig = (array) ($settings['nav'] ?? []);
         $links = [];
@@ -177,9 +178,11 @@ class Organization extends Model
             }
 
             $label = (string) ($item['label'] ?? ucfirst($key));
-            $url = $isMultiTenant
-                ? route('public.tenant.page', ['org_slug' => $this->slug, 'page' => $key])
-                : (Route::has('dedicated.' . $key) ? route('dedicated.' . $key) : url('/' . $key));
+            $url = match (true) {
+                !$isDedicated => route('public.tenant.page', ['org_slug' => $this->slug, 'page' => $key]),
+                Route::has('dedicated.' . $key) => route('dedicated.' . $key),
+                default => url('/' . $key),
+            };
 
             $links[] = [
                 'key' => $key,

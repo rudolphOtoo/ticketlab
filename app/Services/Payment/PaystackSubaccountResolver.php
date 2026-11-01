@@ -93,6 +93,24 @@ class PaystackSubaccountResolver
         return $result;
     }
 
+    /**
+     * Why an inspected code cannot be used, in words an organisation admin can act on; null when it can.
+     *
+     * @param array{recognised: bool|null, message: string|null, details: array<array-key, mixed>} $inspection
+     */
+    public function rejectionReason(array $inspection): ?string
+    {
+        return match (true) {
+            $inspection['recognised'] === true => null,
+            // Known to Paystack but unusable (deactivated, wrong currency): the message already says why.
+            $inspection['details'] !== [] => $inspection['message'],
+            $inspection['recognised'] === false => 'Paystack does not recognise this subaccount for the '
+                . $this->mode()
+                . ' keys.',
+            default => $inspection['message'] ?? 'Paystack could not be reached. Try again.',
+        };
+    }
+
     public function mode(): string
     {
         return match (true) {

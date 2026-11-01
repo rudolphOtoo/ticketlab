@@ -11,7 +11,9 @@ use App\Services\Sms\Contracts\SmsGatewayInterface;
  */
 final class NullSmsGateway implements SmsGatewayInterface
 {
-    public function __construct(private readonly bool $enabled = false) {}
+    public function __construct(
+        private readonly bool $enabled = false,
+    ) {}
 
     public function send(string $to, string $message, array $context = []): bool
     {
@@ -24,4 +26,3 @@ final class NullSmsGateway implements SmsGatewayInterface
         return $this->enabled;
     }
 }
-

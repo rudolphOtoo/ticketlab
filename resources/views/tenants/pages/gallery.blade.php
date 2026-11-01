@@ -4,8 +4,9 @@
     $galleryHeading = (string) ($galleryConfig['heading'] ?? 'Moments & Gallery');
     $galleryLead = (string) ($galleryConfig['lead'] ?? 'Capturing the vibrant energy, keynote sessions, and electric connections.');
 
-    $configuredImages = array_values(array_filter((array) ($galleryConfig['images'] ?? [])));
-    $galleryImages = !empty($configuredImages)
+    // The featured event's photos plus organisation-wide ones, each with a display-ready src.
+    $configuredImages = \App\Support\EventGallery::forEvent($organization, $event ?? null);
+    $galleryImages = $configuredImages !== []
         ? $configuredImages
         : [
             [
@@ -103,7 +104,7 @@
                 >
                     <!-- Image -->
                     <img
-                        src="{{ $item['url'] }}"
+                        src="{{ $item['src'] ?? $item['url'] }}"
                         alt="{{ $item['title'] }}"
                         loading="lazy"
                         class="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-108"
@@ -169,7 +170,7 @@
                     <!-- Image Display -->
                     <div class="relative flex-1 overflow-hidden bg-black/30 flex items-center justify-center">
                         <img
-                            :src="activeImage.url"
+                            :src="activeImage.src || activeImage.url"
                             :alt="activeImage.title"
                             class="max-h-[70vh] w-full object-contain select-none"
                         />
