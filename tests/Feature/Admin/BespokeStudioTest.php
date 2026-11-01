@@ -30,7 +30,8 @@ class BespokeStudioTest extends TestCase
             'role' => 'admin',
         ]);
 
-        $this->actingAs($admin)
+        $this
+            ->actingAs($admin)
             ->get(route('admin.studio.bespoke'))
             ->assertOk()
             ->assertSee('Bespoke Portal CMS')
@@ -66,7 +67,7 @@ class BespokeStudioTest extends TestCase
         $this->assertSame('Sponsors', $nav['partnership']['label']);
 
         // Check bespokeNavLinks output
-        $links = $org->bespokeNavLinks(true);
+        $links = $org->bespokeNavLinks();
         $labels = array_column($links, 'label');
         $this->assertContains('Our Story', $labels);
         $this->assertContains('Sponsors', $labels);
@@ -185,4 +186,3 @@ class BespokeStudioTest extends TestCase
         $response->assertSee('toggleCollapse()', false);
     }
 }
-

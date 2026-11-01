@@ -33,17 +33,17 @@ class DatabaseSeeder extends Seeder
         // 2. Create Subdivisions
         $accra = Subdivision::firstOrCreate(['organization_id' => $org->id, 'slug' => 'accra-central'], [
             'name' => 'Accra Central',
-            'paystack_subaccount_code' => 'ACCT_accra_001',
+            'paystack_subaccount_code' => null,
         ]);
 
         $kumasi = Subdivision::firstOrCreate(['organization_id' => $org->id, 'slug' => 'kumasi-south'], [
             'name' => 'Kumasi South',
-            'paystack_subaccount_code' => 'ACCT_kumasi_002',
+            'paystack_subaccount_code' => null,
         ]);
 
         $cape = Subdivision::firstOrCreate(['organization_id' => $org->id, 'slug' => 'cape-coast-north'], [
             'name' => 'Cape Coast North',
-            'paystack_subaccount_code' => 'ACCT_cape_003',
+            'paystack_subaccount_code' => null,
         ]);
 
         // 3. Create Users

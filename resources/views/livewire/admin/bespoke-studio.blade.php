@@ -489,24 +489,41 @@
 
                 <!-- Configured Images Grid Preview -->
                 <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                            Curated Gallery Items ({{ count($gallery_images) }})
-                        </h3>
-                        <span class="text-[10px] text-[var(--text-tertiary)]">Images display in responsive masonry layout</span>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                Curated Gallery Items ({{ count($visibleGallery) }})
+                            </h3>
+                            <p class="mt-0.5 text-[10px] text-[var(--text-tertiary)]">
+                                New photos are filed under {{ $activeEventTitle ? '“' . $activeEventTitle . '”' : 'the whole organisation' }}. Switch events in the header to curate another event.
+                            </p>
+                        </div>
+                        <div class="inline-flex rounded-lg border border-[var(--border-hairline)] p-0.5 text-[10px] font-semibold">
+                            @foreach (['event' => 'This event', 'all' => 'All events'] as $filterKey => $filterLabel)
+                                <button
+                                    type="button"
+                                    wire:click="$set('galleryFilter', '{{ $filterKey }}')"
+                                    @class([
+                                        'cursor-pointer rounded-md px-2.5 py-1 transition',
+                                        'bg-[var(--bg-subtle)] text-[var(--text-primary)]' => $galleryFilter === $filterKey,
+                                        'text-[var(--text-secondary)]' => $galleryFilter !== $filterKey,
+                                    ])
+                                >{{ $filterLabel }}</button>
+                            @endforeach
+                        </div>
                     </div>
 
-                    @if (empty($gallery_images))
+                    @if ($visibleGallery === [])
                         <div class="rounded-2xl border border-dashed border-[var(--border-hairline)] p-8 text-center text-xs text-[var(--text-secondary)]">
-                            No images added to the gallery yet. Paste a link or upload photos above.
+                            No images for {{ $galleryFilter === 'all' ? 'any event' : 'this event' }} yet. Paste a link or upload photos above.
                         </div>
                     @else
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-                            @foreach ($gallery_images as $index => $img)
-                                <div class="group relative rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] overflow-hidden shadow-2xs transition-all duration-200 hover:translate-y-[-2px] hover:shadow-md">
+                            @foreach ($visibleGallery as $img)
+                                <div wire:key="gallery-{{ $img['id'] }}" class="group relative rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] overflow-hidden shadow-2xs transition-all duration-200 hover:translate-y-[-2px] hover:shadow-md">
                                     <div class="aspect-4/3 w-full overflow-hidden bg-black/10">
                                         <img
-                                            src="{{ $img['url'] }}"
+                                            src="{{ \App\Support\MediaUrl::resolve($img['url']) }}"
                                             alt="{{ $img['title'] }}"
                                             class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                             loading="lazy"
@@ -520,7 +537,7 @@
                                             </span>
                                             <button
                                                 type="button"
-                                                wire:click="removeGalleryImage({{ $index }})"
+                                                wire:click="removeGalleryImage('{{ $img['id'] }}')"
                                                 class="text-[var(--text-tertiary)] hover:text-rose-500 transition cursor-pointer p-0.5"
                                                 title="Remove Photo"
                                             >
@@ -530,6 +547,7 @@
                                             </button>
                                         </div>
                                         <h4 class="text-xs font-bold text-[var(--text-primary)] truncate">{{ $img['title'] }}</h4>
+                                        <p class="text-[9px] font-medium text-[var(--text-tertiary)] truncate">{{ $img['event_id'] === null ? 'All events' : ($eventTitles[$img['event_id']] ?? 'Removed event') }}</p>
                                         @if (!empty($img['caption']))
                                             <p class="text-[10px] text-[var(--text-secondary)] line-clamp-1">{{ $img['caption'] }}</p>
                                         @endif

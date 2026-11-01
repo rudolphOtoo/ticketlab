@@ -104,7 +104,6 @@ test('admin can edit attendee details and update tags', function () {
         'customer_phone' => '123456',
         'gross_amount' => 50.00,
         'net_amount' => 50.00,
-        'ticket_quantity' => 1,
         'payment_status' => \App\Enums\OrderStatus::Paid,
         'payment_method' => \App\Enums\PaymentMethod::Card,
     ]);

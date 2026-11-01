@@ -96,10 +96,13 @@ trait ManagesEventSpeakers
 
         $previousPhoto = null;
 
-        // A fresh upload wins over a pasted URL; uploads live on the public disk under speakers/.
+        // A fresh upload wins over a pasted URL; uploads are filed under the event the speaker belongs to.
         if ($this->speaker_photo !== null) {
             $previousPhoto = $this->speaker_photo_path;
-            $this->speaker_photo_path = MediaUrl::store($this->speaker_photo, "speakers/{$this->organizationId}");
+            $this->speaker_photo_path = MediaUrl::store(
+                $this->speaker_photo,
+                MediaUrl::eventDirectory($event->id, 'speakers'),
+            );
         }
 
         $this->flashMessage = $this->persistSpeaker($event->id, $previousPhoto) ?? $this->flashMessage;

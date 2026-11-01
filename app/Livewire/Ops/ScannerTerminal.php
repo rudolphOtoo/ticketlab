@@ -71,7 +71,7 @@ class ScannerTerminal extends Component
             }
 
             if ($effectiveEventId !== null) {
-                $query->whereHas('ticketType', fn($q) => $q->where('event_id', $effectiveEventId));
+                $query->whereHas('ticketType', static fn($q) => $q->where('event_id', $effectiveEventId));
             }
 
             $attendee = $query->first();

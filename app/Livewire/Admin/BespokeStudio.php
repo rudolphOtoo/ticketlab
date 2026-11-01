@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
+use App\Models\Event;
 use App\Models\Organization;
 use App\Models\PlatformSetting;
+use App\Support\ActiveEvent;
+use App\Support\EventGallery;
 use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -95,9 +99,18 @@ class BespokeStudio extends Component
     public string $gallery_lead = '';
 
     /**
-     * @var list<array{id: string, url: string, title: string, caption: string, tag: string}>
+     * Every gallery image across the organisation's events; the admin view filters it to the active event.
+     *
+     * @var list<array{id: string, event_id: int|null, url: string, title: string, caption: string, tag: string}>
      */
+    #[Locked]
     public array $gallery_images = [];
+
+    /** The event new gallery images are filed under: the admin's working event. */
+    #[Locked]
+    public ?int $activeEventId = null;
+
+    public string $galleryFilter = 'event'; // 'event' or 'all'
 
     public string $new_image_source_mode = 'link'; // 'link' or 'upload'
     public string $new_image_url = '';
@@ -111,6 +124,7 @@ class BespokeStudio extends Component
     {
         $user = auth()->user();
         $this->organizationId = $user?->organization_id;
+        $this->activeEventId = ActiveEvent::id($this->organizationId);
 
         $org = $this->organization();
         if ($org !== null) {
@@ -131,8 +145,17 @@ class BespokeStudio extends Component
     {
         $settings = $org->bespokeSettings();
 
-        // Nav
-        $nav = (array) ($settings['nav'] ?? []);
+        $this->loadNavigation((array) ($settings['nav'] ?? []));
+        $this->loadStorySections($org, $settings);
+        $this->loadOutreachSections($settings);
+        $this->loadGallery((array) ($settings['gallery'] ?? []));
+    }
+
+    /**
+     * @param array<array-key, mixed> $nav
+     */
+    private function loadNavigation(array $nav): void
+    {
         $this->nav_about_enabled = (bool) ($nav['about']['enabled'] ?? true);
         $this->nav_about_label = (string) ($nav['about']['label'] ?? 'About');
 
@@ -156,8 +179,13 @@ class BespokeStudio extends Component
 
         $this->nav_contact_enabled = (bool) ($nav['contact']['enabled'] ?? true);
         $this->nav_contact_label = (string) ($nav['contact']['label'] ?? 'Contact');
+    }
 
-        // About
+    /**
+     * @param array<array-key, mixed> $settings
+     */
+    private function loadStorySections(Organization $org, array $settings): void
+    {
         $about = (array) ($settings['about'] ?? []);
         $this->about_heading = (string) ($about['heading'] ?? 'About ' . $org->name);
         $this->about_lead = (string) ($about['lead'] ?? 'A Purposefully Curated Experience');
@@ -166,7 +194,9 @@ class BespokeStudio extends Component
         // Highlights
         $highlights = (array) ($settings['highlights'] ?? []);
         $this->highlights_heading = (string) ($highlights['heading'] ?? 'Highlights');
-        $this->highlights_lead = (string) ($highlights['lead'] ?? 'The program at a glance: the people, the sessions and the moments.');
+        $this->highlights_lead = (string) (
+            $highlights['lead'] ?? 'The program at a glance: the people, the sessions and the moments.'
+        );
         $stats = (array) ($highlights['stats'] ?? []);
         $this->stat1_value = (string) ($stats[0]['value'] ?? '');
         $this->stat1_label = (string) ($stats[0]['label'] ?? '');
@@ -176,12 +206,19 @@ class BespokeStudio extends Component
         $this->stat3_label = (string) ($stats[2]['label'] ?? '');
         $this->stat4_value = (string) ($stats[3]['value'] ?? '');
         $this->stat4_label = (string) ($stats[3]['label'] ?? '');
+    }
 
-        // Partnership
+    /**
+     * @param array<array-key, mixed> $settings
+     */
+    private function loadOutreachSections(array $settings): void
+    {
         $partnership = (array) ($settings['partnership'] ?? []);
         $this->partnership_enabled = (bool) ($partnership['enabled'] ?? false);
         $this->partnership_heading = (string) ($partnership['heading'] ?? 'Partner With Us');
-        $this->partnership_lead = (string) ($partnership['lead'] ?? 'Put your brand in front of a purposeful, engaged audience.');
+        $this->partnership_lead = (string) (
+            $partnership['lead'] ?? 'Put your brand in front of a purposeful, engaged audience.'
+        );
         $tiers = (array) ($partnership['tiers'] ?? []);
         $this->partner1_name = (string) ($tiers[0]['name'] ?? 'Community Partner');
         $this->partner1_body = (string) ($tiers[0]['body'] ?? 'Logo on the event site and complimentary passes.');
@@ -197,13 +234,19 @@ class BespokeStudio extends Component
         $this->contact_email = (string) ($contact['email'] ?? '');
         $this->contact_phone = (string) ($contact['phone'] ?? '');
         $this->contact_address = (string) ($contact['address'] ?? '');
+    }
 
-        // Gallery
-        $gallery = (array) ($settings['gallery'] ?? []);
+    /**
+     * @param array<array-key, mixed> $gallery
+     */
+    private function loadGallery(array $gallery): void
+    {
         $this->gallery_enabled = (bool) ($gallery['enabled'] ?? true);
         $this->gallery_heading = (string) ($gallery['heading'] ?? 'Moments & Gallery');
-        $this->gallery_lead = (string) ($gallery['lead'] ?? 'Capturing the vibrant energy, keynote sessions, and electric connections.');
-        $this->gallery_images = (array) ($gallery['images'] ?? []);
+        $this->gallery_lead = (string) (
+            $gallery['lead'] ?? 'Capturing the vibrant energy, keynote sessions, and electric connections.'
+        );
+        $this->gallery_images = EventGallery::normalize((array) ($gallery['images'] ?? []));
     }
 
     public function saveNavigation(): void
@@ -319,31 +362,11 @@ class BespokeStudio extends Component
 
     public function addGalleryImage(): void
     {
-        $imageUrl = '';
-
-        if ($this->new_image_source_mode === 'upload') {
-            $this->validate([
-                'new_image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
-                'new_image_title' => ['nullable', 'string', 'max:100'],
-                'new_image_caption' => ['nullable', 'string', 'max:255'],
-                'new_image_tag' => ['required', 'string', 'max:50'],
-            ]);
-
-            $imageUrl = MediaUrl::store($this->new_image_file, "gallery/{$this->organizationId}");
-            $this->new_image_file = null;
-        } else {
-            $this->validate([
-                'new_image_url' => ['required', 'url', 'max:2048'],
-                'new_image_title' => ['nullable', 'string', 'max:100'],
-                'new_image_caption' => ['nullable', 'string', 'max:255'],
-                'new_image_tag' => ['required', 'string', 'max:50'],
-            ]);
-
-            $imageUrl = trim($this->new_image_url);
-        }
+        $imageUrl = $this->new_image_source_mode === 'upload' ? $this->storeUploadedImage() : $this->linkedImageUrl();
 
         $this->gallery_images[] = [
-            'id' => (string) str()->uuid(),
+            'id' => Str::uuid()->toString(),
+            'event_id' => $this->activeEventId,
             'url' => $imageUrl,
             'title' => trim($this->new_image_title) !== '' ? trim($this->new_image_title) : 'Event Moment',
             'caption' => trim($this->new_image_caption),
@@ -358,22 +381,66 @@ class BespokeStudio extends Component
         $this->flashMessage = 'Image added to gallery. Click "Save Gallery" to publish changes.';
     }
 
-    public function removeGalleryImage(int $index): void
+    private function storeUploadedImage(): string
     {
-        if (array_key_exists($index, $this->gallery_images)) {
-            $removed = $this->gallery_images[$index];
-            if (isset($removed['url']) && str_starts_with((string) $removed['url'], 'storage/')) {
-                MediaUrl::deleteStored((string) $removed['url']);
+        $this->validate([
+            'new_image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            ...$this->imageDetailRules(),
+        ]);
+
+        $file = $this->new_image_file ?? throw ValidationException::withMessages([
+            'new_image_file' => 'Choose an image to upload.',
+        ]);
+        $this->new_image_file = null;
+
+        $directory = $this->activeEventId !== null
+            ? MediaUrl::eventDirectory($this->activeEventId, 'gallery')
+            : "gallery/{$this->organizationId}";
+
+        return MediaUrl::store($file, $directory);
+    }
+
+    private function linkedImageUrl(): string
+    {
+        $this->validate(['new_image_url' => ['required', 'url', 'max:2048'], ...$this->imageDetailRules()]);
+
+        return trim($this->new_image_url);
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function imageDetailRules(): array
+    {
+        return [
+            'new_image_title' => ['nullable', 'string', 'max:100'],
+            'new_image_caption' => ['nullable', 'string', 'max:255'],
+            'new_image_tag' => ['required', 'string', 'max:50'],
+        ];
+    }
+
+    public function removeGalleryImage(string $imageId): void
+    {
+        $remaining = array_values(array_filter(
+            $this->gallery_images,
+            static fn(array $image): bool => $image['id'] !== $imageId,
+        ));
+
+        if (count($remaining) === count($this->gallery_images)) {
+            return;
+        }
+
+        foreach ($this->gallery_images as $image) {
+            if ($image['id'] !== $imageId) {
+                continue;
             }
 
-            $this->gallery_images = array_values(array_filter(
-                $this->gallery_images,
-                static fn(int $k): bool => $k !== $index,
-                ARRAY_FILTER_USE_KEY,
-            ));
-
-            $this->flashMessage = 'Image removed from gallery.';
+            // Uploads are stored as media-disk paths; deleteStored leaves external links alone.
+            MediaUrl::deleteStored($image['url']);
         }
+
+        $this->gallery_images = $remaining;
+        $this->flashMessage = 'Image removed from gallery.';
     }
 
     public function saveGalleryPage(): void
@@ -393,6 +460,9 @@ class BespokeStudio extends Component
         $this->flashMessage = 'Gallery sub-page and showcase saved successfully.';
     }
 
+    /**
+     * @param array<array-key, mixed> $data
+     */
     protected function persistBespokeKey(string $key, array $data): void
     {
         $org = $this->organization();
@@ -400,7 +470,7 @@ class BespokeStudio extends Component
             throw ValidationException::withMessages(['general' => 'Organization not found.']);
         }
 
-        $settings = (array) ($org->settings ?? []);
+        $settings = $org->settings ?? [];
         $bespoke = (array) ($settings['bespoke'] ?? []);
         $bespoke[$key] = $data;
         $settings['bespoke'] = $bespoke;
@@ -413,15 +483,26 @@ class BespokeStudio extends Component
     {
         $org = $this->organization();
         $isDedicated = PlatformSetting::isDedicatedMode();
-        $previewUrl = $org !== null
-            ? ($isDedicated ? url('/') : url('/' . $org->slug))
-            : url('/');
+        $previewUrl = $org === null || $isDedicated ? url('/') : url('/' . $org->slug);
+
+        $visibleGallery = $this->galleryFilter === 'all'
+            ? $this->gallery_images
+            : array_values(array_filter($this->gallery_images, fn(array $image): bool => EventGallery::belongsTo(
+                $image,
+                $this->activeEventId,
+            )));
 
         return view('livewire.admin.bespoke-studio', [
+            'visibleGallery' => $visibleGallery,
+            'eventTitles' => $org === null
+                ? []
+                : Event::query()->where('organization_id', $org->id)->pluck('title', 'id')->all(),
+            'activeEventTitle' => $this->activeEventId === null
+                ? null
+                : Event::query()->whereKey($this->activeEventId)->value('title'),
             'organization' => $org,
             'isDedicated' => $isDedicated,
             'previewUrl' => $previewUrl,
         ]);
     }
 }
-

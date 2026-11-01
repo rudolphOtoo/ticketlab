@@ -27,8 +27,7 @@ test('sms module is disabled by default', function (): void {
 
     $sms = app(SmsGatewayInterface::class);
 
-    expect($sms->isEnabled())->toBeFalse()
-        ->and($sms->send('0244123456', 'Test SMS'))->toBeFalse();
+    expect($sms->isEnabled())->toBeFalse()->and($sms->send('0244123456', 'Test SMS'))->toBeFalse();
 });
 
 test('null driver accepts dispatch silently when enabled', function (): void {
@@ -37,24 +36,25 @@ test('null driver accepts dispatch silently when enabled', function (): void {
 
     $manager = app(SmsManager::class);
 
-    expect($manager->driver())->toBeInstanceOf(NullSmsGateway::class)
-        ->and($manager->send('0244123456', 'Hello null'))->toBeTrue();
+    expect($manager->driver())
+        ->toBeInstanceOf(NullSmsGateway::class)
+        ->and($manager->send('0244123456', 'Hello null'))
+        ->toBeTrue();
 });
 
 test('log driver writes dispatch to laravel log', function (): void {
     config()->set('sms.enabled', true);
     config()->set('sms.default', 'log');
 
-    Log::shouldReceive('channel')
-        ->with('single')
-        ->once()
-        ->andReturnSelf();
+    Log::shouldReceive('channel')->with('single')->once()->andReturnSelf();
 
     Log::shouldReceive('info')
         ->once()
-        ->withArgs(function (string $message, array $context): bool {
-            return str_contains($message, '0244123456') && str_contains($message, 'Order #123');
-        });
+        ->withArgs(
+            static fn(string $message, array $context): bool => (
+                str_contains($message, '0244123456') && str_contains($message, 'Order #123')
+            ),
+        );
 
     $manager = app(SmsManager::class);
     expect($manager->driver())->toBeInstanceOf(LogSmsGateway::class);
@@ -126,9 +126,7 @@ test('fulfilling an order queues SendTicketSms when sms is enabled', function ()
 
     app(OrderFulfillmentService::class)->fulfill($order, $payment);
 
-    Queue::assertPushed(SendTicketSms::class, static function (SendTicketSms $job) use ($order): bool {
-        return $job->orderId === $order->id;
-    });
+    Queue::assertPushed(SendTicketSms::class, static fn(SendTicketSms $job): bool => $job->orderId === $order->id);
 });
 
 test('SendTicketSms job dispatches formatted message with pass URL to gateway', function (): void {
@@ -139,26 +137,31 @@ test('SendTicketSms job dispatches formatted message with pass URL to gateway', 
         'customer_phone' => '0244998877',
         'reference' => 'TL-TEST-9988',
     ]);
-    Attendee::factory()->count(2)->create([
-        'organization_id' => $this->org->id,
-        'order_id' => $order->id,
-        'ticket_type_id' => $this->tier->id,
-    ]);
+    Attendee::factory()
+        ->count(2)
+        ->create([
+            'organization_id' => $this->org->id,
+            'order_id' => $order->id,
+            'ticket_type_id' => $this->tier->id,
+        ]);
 
     $mockGateway = Mockery::mock(SmsGatewayInterface::class);
     $mockGateway->shouldReceive('isEnabled')->andReturn(true);
-    $mockGateway->shouldReceive('send')
+    $mockGateway
+        ->shouldReceive('send')
         ->once()
-        ->withArgs(function (string $phone, string $body, array $context): bool {
-            return $phone === '0244998877'
+        ->withArgs(
+            static fn(string $phone, string $body, array $context): bool => (
+                $phone === '0244998877'
                 && str_contains($body, 'TL-TEST-9988')
                 && str_contains($body, 'Charis Ministries')
                 && str_contains($body, '2 pass(es)')
-                && str_contains($body, 'tickets/TL-TEST-9988');
-        })
+                && str_contains($body, 'tickets/TL-TEST-9988')
+            ),
+        )
         ->andReturn(true);
 
     app()->instance(SmsGatewayInterface::class, $mockGateway);
 
-    (new SendTicketSms($order->id))->handle($mockGateway);
+    new SendTicketSms($order->id)->handle($mockGateway);
 });

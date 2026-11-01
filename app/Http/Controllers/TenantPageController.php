@@ -33,4 +33,3 @@ class TenantPageController extends Controller
         return view($view, $site->viewData());
     }
 }
-

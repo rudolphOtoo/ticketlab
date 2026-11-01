@@ -166,9 +166,12 @@ test('admin can onboard staff via activation link without manual password', func
         ->assertHasNoErrors();
 
     $member = User::query()->where('email', 'invited@example.com')->firstOrFail();
-    expect($member->role)->toBe('staff')
-        ->and($member->organization_id)->toBe($this->org->id)
-        ->and($member->email_verified_at)->toBeNull();
+    expect($member->role)
+        ->toBe('staff')
+        ->and($member->organization_id)
+        ->toBe($this->org->id)
+        ->and($member->email_verified_at)
+        ->toBeNull();
 
     expect($component->get('generatedInviteLink'))->not->toBeNull()->toContain('reset-password');
 });

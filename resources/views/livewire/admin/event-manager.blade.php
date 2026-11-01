@@ -97,6 +97,11 @@
                                 <button type="button" wire:click="activate({{ $event->id }})" class="cursor-pointer rounded-lg border border-[var(--border-hairline)] px-2.5 py-1 hover:bg-[var(--bg-subtle)] text-[var(--text-primary)] transition">Set Active</button>
                             @endif
                             <button type="button" wire:click="editEvent({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Edit</button>
+                            @if ($event->id === $featuredEventId)
+                                <span class="rounded-lg bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-400">Featured on site</span>
+                            @elseif ($event->status === 'published')
+                                <button type="button" wire:click="featureEvent({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Feature on site</button>
+                            @endif
                             <button type="button" wire:click="togglePublished({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">
                                 {{ $event->status === 'published' ? 'Unpublish' : 'Publish' }}
                             </button>

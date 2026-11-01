@@ -62,9 +62,9 @@ test('marketing studio stores an uploaded flyer background on the public disk', 
     $path = $component->get('backgroundPath');
 
     expect($path)
-        ->toStartWith("flyers/{$this->org->id}/")
+        ->toStartWith('events/' . $component->get('selectedEventId') . '/flyers/')
         ->and($component->get('backgroundUrl'))
-        ->toStartWith('/storage/flyers/');
+        ->toStartWith('/storage/events/');
     Storage::disk('public')->assertExists($path);
 
     $component->call('removeBackground')->assertSet('backgroundUrl', null);
@@ -103,9 +103,9 @@ test('speaker photos upload to the public speakers directory', function (): void
     $speaker = EventSpeaker::query()->where('name', 'Dr. Abena Owusu')->firstOrFail();
 
     expect($speaker->photo_path)
-        ->toStartWith("speakers/{$this->org->id}/")
+        ->toStartWith("events/{$speaker->event_id}/speakers/")
         ->and($speaker->photoUrl())
-        ->toContain('/storage/speakers/');
+        ->toBe('/storage/' . $speaker->photo_path);
     Storage::disk('public')->assertExists((string) $speaker->photo_path);
 });
 

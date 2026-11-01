@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -131,7 +132,7 @@ class AttendeeRoster extends Component
         $user = auth()->user();
         $eventId = ActiveEvent::id($user?->organization_id);
         $firstTier = TicketType::query()
-            ->when($eventId, fn($q) => $q->where('event_id', $eventId))
+            ->when($eventId, static fn($q) => $q->where('event_id', $eventId))
             ->first();
 
         $this->manual_ticket_type_id = $firstTier?->id;
@@ -174,12 +175,15 @@ class AttendeeRoster extends Component
             'manual_email' => ['required', 'email', 'max:150'],
             'manual_phone' => ['nullable', 'string', 'max:30'],
             'manual_ticket_type_id' => ['required', 'exists:ticket_types,id'],
-            'manual_subdivision_id' => ['nullable', 'exists:subdivisions,id'],
+            'manual_subdivision_id' => [
+                'nullable',
+                Rule::exists(Subdivision::class, 'id')->where('organization_id', $orgId),
+            ],
             'manual_tags' => ['array'],
         ]);
 
         $ticketType = TicketType::query()
-            ->whereHas('event', fn($q) => $q->where('organization_id', $orgId))
+            ->whereHas('event', static fn($q) => $q->where('organization_id', $orgId))
             ->whereKey($this->manual_ticket_type_id)
             ->first();
 
@@ -197,15 +201,15 @@ class AttendeeRoster extends Component
                 'reference' => $ref,
                 'customer_name' => $this->manual_name,
                 'customer_email' => $this->manual_email,
-                'customer_phone' => $this->manual_phone ?: '0000000000',
+                'customer_phone' => $this->manualPhone(),
                 'gross_amount' => 0.00,
-                'platform_fee' => 0.00,
                 'net_amount' => 0.00,
-                'ticket_quantity' => 1,
+                'fee_amount' => 0.00,
                 'payment_status' => OrderStatus::Paid,
                 'payment_method' => PaymentMethod::Complimentary,
                 'metadata' => [
                     'source' => 'admin_manual_issue',
+                    'quantity' => 1,
                     'issued_by_user_id' => $user?->id,
                     'tags' => $this->manual_tags,
                 ],
@@ -226,7 +230,7 @@ class AttendeeRoster extends Component
                 'ticket_type_id' => $ticketType->id,
                 'name' => $this->manual_name,
                 'email' => $this->manual_email,
-                'phone' => $this->manual_phone ?: '0000000000',
+                'phone' => $this->manualPhone(),
                 'qr_code_hash' => $qrHash,
                 'checked_in_at' => null,
                 'checked_in_by' => null,
@@ -236,9 +240,11 @@ class AttendeeRoster extends Component
                 ],
             ]);
 
-            if ($ticketType->available_quantity > 0) {
-                $ticketType->decrement('available_quantity');
-            }
+            // Comps may exceed capacity, but take a seat while one is left; the guard makes it atomic.
+            TicketType::query()
+                ->whereKey($ticketType->id)
+                ->where('available_quantity', '>', 0)
+                ->decrement('available_quantity');
         });
 
         $this->isManualPassModalOpen = false;
@@ -260,8 +266,8 @@ class AttendeeRoster extends Component
         $this->edit_email = $attendee->email;
         $this->edit_phone = $attendee->phone;
 
-        $custom = (array) ($attendee->custom_fields ?? []);
-        $this->edit_tags = (array) ($custom['tags'] ?? []);
+        $custom = $attendee->custom_fields ?? [];
+        $this->edit_tags = array_values(array_filter((array) ($custom['tags'] ?? []), is_string(...)));
         $this->newEditTagInput = '';
         $this->isEditModalOpen = true;
     }
@@ -313,13 +319,13 @@ class AttendeeRoster extends Component
             'edit_tags' => ['array'],
         ]);
 
-        $custom = (array) ($attendee->custom_fields ?? []);
+        $custom = $attendee->custom_fields ?? [];
         $custom['tags'] = $this->edit_tags;
 
         $attendee->update([
             'name' => $this->edit_name,
             'email' => $this->edit_email,
-            'phone' => $this->edit_phone ?: $attendee->phone,
+            'phone' => $this->edit_phone !== '' ? $this->edit_phone : $attendee->phone,
             'custom_fields' => $custom,
         ]);
 
@@ -340,7 +346,10 @@ class AttendeeRoster extends Component
         $limiterKey = "resend_pass:{$attendee->id}";
 
         if (RateLimiter::tooManyAttempts($limiterKey, 3)) {
-            $this->flashMessage = "Email throttle active. Please wait " . RateLimiter::availableIn($limiterKey) . " seconds before sending again.";
+            $this->flashMessage =
+                'Email throttle active. Please wait '
+                . RateLimiter::availableIn($limiterKey)
+                . ' seconds before sending again.';
             return;
         }
 
@@ -361,12 +370,26 @@ class AttendeeRoster extends Component
 
         $name = $attendee->name;
 
-        DB::transaction(function () use ($attendee): void {
-            if ($attendee->ticketType) {
-                $attendee->ticketType->increment('available_quantity');
+        $voided = DB::transaction(function () use ($user, $attendeeId): bool {
+            // Locked re-read: a double-clicked void must restore one seat, not two.
+            $locked = $this->scopedAttendees($user)->whereKey($attendeeId)->lockForUpdate()->first();
+
+            if ($locked === null) {
+                return false;
             }
-            $attendee->delete();
+
+            // Capped at capacity, so voiding comps issued after sell-out never inflates stock.
+            TicketType::query()
+                ->whereKey($locked->ticket_type_id)
+                ->whereColumn('available_quantity', '<', 'total_capacity')
+                ->increment('available_quantity');
+
+            return (bool) $locked->delete();
         });
+
+        if (!$voided) {
+            return;
+        }
 
         $this->selectedAttendeeId = null;
         $this->flashMessage = "Pass for '{$name}' has been voided and seat restored.";
@@ -460,6 +483,16 @@ class AttendeeRoster extends Component
         }
 
         return $query->latest();
+    }
+
+    /**
+     * Door sales may skip the phone; orders and passes still need a placeholder value.
+     */
+    private function manualPhone(): string
+    {
+        $phone = trim($this->manual_phone);
+
+        return $phone !== '' ? $phone : '0000000000';
     }
 
     public function render(): View

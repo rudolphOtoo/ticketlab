@@ -57,7 +57,7 @@ test('dynamic event page renders countdown, speakers, schedule, and faqs', funct
         'title' => 'Opening Plenary: Divine Encounter',
         'speaker_name' => 'Bishop Charles Agyinasare',
         'location' => 'Main Auditorium',
-        'starts_at' => now()->addDays(5)->setHour(18)->setMinute(0),
+        'start_time' => '18:00',
         'sort_order' => 1,
     ]);
 
@@ -75,6 +75,7 @@ test('dynamic event page renders countdown, speakers, schedule, and faqs', funct
         ->assertSee('Bishop Charles Agyinasare')
         ->assertSee('Faith for Greater Works')
         ->assertSee('Opening Plenary: Divine Encounter')
+        ->assertSee('18:00')
         ->assertSee('Main Auditorium')
         ->assertSee('Is there bus transportation available?')
         ->assertSee('free pickup shuttles operate');

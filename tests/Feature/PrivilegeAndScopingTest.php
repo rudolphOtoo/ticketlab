@@ -9,6 +9,8 @@ use App\Models\Event;
 use App\Models\Organization;
 use App\Models\TicketType;
 use App\Models\User;
+use Illuminate\Database\Eloquent\MassAssignmentException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Fortify\Features;
@@ -16,7 +18,19 @@ use Livewire\Livewire;
 
 test('privilege fields are ignored by mass assignment', function () {
     $org = Organization::factory()->create();
+    $smuggled = [
+        'name' => 'Escalation Attempt',
+        'email' => 'escalate@example.com',
+        'password' => 'password',
+        'role' => 'superadmin',
+        'organization_id' => $org->id,
+        'subdivision_id' => null,
+    ];
 
+    // Outside production the attempt is loud; production behaviour (silently ignored) is checked below.
+    expect(static fn() => User::query()->create($smuggled))->toThrow(MassAssignmentException::class);
+
+    Model::preventSilentlyDiscardingAttributes(false);
     $user = User::query()->create([
         'name' => 'Escalation Attempt',
         'email' => 'escalate@example.com',
@@ -27,6 +41,7 @@ test('privilege fields are ignored by mass assignment', function () {
     ]);
 
     $user->refresh();
+    Model::preventSilentlyDiscardingAttributes();
 
     expect($user->role)->toBe('attendee')->and($user->organization_id)->toBeNull();
 });
@@ -49,9 +64,13 @@ test('registration cannot smuggle a role or organization through the request', f
 
     $user = User::query()->where('email', 'sneaky@example.com')->firstOrFail();
 
-    expect($user->role)->toBe('admin')
-        ->and($user->organization_id)->not->toBe($org->id)
-        ->and($user->isSuperAdmin())->toBeFalse();
+    expect($user->role)
+        ->toBe('admin')
+        ->and($user->organization_id)
+        ->not
+        ->toBe($org->id)
+        ->and($user->isSuperAdmin())
+        ->toBeFalse();
 });
 
 test('membership is granted only through the explicit model method', function () {

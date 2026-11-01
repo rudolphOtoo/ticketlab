@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $net_amount
  * @property string $fee_amount
  * @property string $currency
+ * @property string|null $payout_subaccount_code
  * @property PaymentMethod $payment_method
  * @property OrderStatus $payment_status
  * @property CarbonImmutable|null $paid_at
@@ -91,6 +92,26 @@ class Order extends Model
     protected function grossPesewas(): Attribute
     {
         return Attribute::get(fn(): int => (int) round((float) $this->gross_amount * 100));
+    }
+
+    /**
+     * Paystack references never repeat, so re-initialised checkouts pay against "{reference}.{attempt}".
+     */
+    public static function findByGatewayReference(string $reference): ?self
+    {
+        return self::query()
+            ->where('reference', (string) preg_replace('/\.\d+$/', '', $reference))
+            ->first();
+    }
+
+    /**
+     * The Paystack reference this order currently expects payment under.
+     */
+    public function gatewayReference(): string
+    {
+        $reference = $this->metadata['paystack']['reference'] ?? null;
+
+        return is_string($reference) && $reference !== '' ? $reference : $this->reference;
     }
 
     /**

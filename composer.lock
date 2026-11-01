@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5115d075d643dec3c91b8a0864d30750",
+    "content-hash": "b30c3d33bfa4923c36e18ff7be0d44ee",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -1611,107 +1611,6 @@
                 }
             ],
             "time": "2026-08-24T17:13:02+00:00"
-        },
-        {
-            "name": "kendenigerian/payzephyr",
-            "version": "v5.1.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/ken-de-nigerian/payzephyr.git",
-                "reference": "8fe4c2e17e754b6ccab363064fecd788ab92e308"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/ken-de-nigerian/payzephyr/zipball/8fe4c2e17e754b6ccab363064fecd788ab92e308",
-                "reference": "8fe4c2e17e754b6ccab363064fecd788ab92e308",
-                "shasum": ""
-            },
-            "require": {
-                "ext-ctype": "*",
-                "ext-filter": "*",
-                "ext-mbstring": "*",
-                "guzzlehttp/guzzle": "^7.8",
-                "illuminate/bus": "^12.0|^13.0",
-                "illuminate/console": "^12.0|^13.0",
-                "illuminate/contracts": "^12.0|^13.0",
-                "illuminate/database": "^12.0|^13.0",
-                "illuminate/http": "^12.0|^13.0",
-                "illuminate/queue": "^12.0|^13.0",
-                "illuminate/routing": "^12.0|^13.0",
-                "illuminate/support": "^12.0|^13.0",
-                "laravel/prompts": "^0.3",
-                "nesbot/carbon": "^3.0",
-                "php": "^8.2",
-                "psr/http-message": "^1.1|^2.0",
-                "stripe/stripe-php": "^21.0",
-                "symfony/http-foundation": "^7.0|^8.0"
-            },
-            "require-dev": {
-                "ext-pdo": "*",
-                "laravel/pint": "1.26.0",
-                "mockery/mockery": "^1.6",
-                "orchestra/testbench": "^10.0|^11.0",
-                "pestphp/pest": "^3.0|^5.0",
-                "pestphp/pest-plugin-laravel": "^3.0|^5.0",
-                "phpstan/phpstan": "^2.2",
-                "rector/rector": "^2.6"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "aliases": {
-                        "Payment": "KenDeNigerian\\PayZephyr\\Facades\\Payment"
-                    },
-                    "providers": [
-                        "KenDeNigerian\\PayZephyr\\PaymentServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "files": [
-                    "src/helpers.php"
-                ],
-                "psr-4": {
-                    "KenDeNigerian\\PayZephyr\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Nwaneri Chukwunyere Kenneth",
-                    "email": "ken.de.nigerian@gmail.com",
-                    "role": "Developer"
-                }
-            ],
-            "description": "A unified payment abstraction layer for Laravel supporting multiple providers (Paystack, Flutterwave, Monnify, Stripe, PayPal, Square, OPay, Mollie, Paddle, Razorpay) with automatic fallback and webhooks.",
-            "homepage": "https://github.com/ken-de-nigerian/payzephyr",
-            "keywords": [
-                "fintech",
-                "flutterwave",
-                "laravel",
-                "laravel-package",
-                "mollie",
-                "monnify",
-                "opay",
-                "paddle",
-                "payment",
-                "payment-gateway",
-                "payments",
-                "paypal",
-                "paystack",
-                "razorpay",
-                "square",
-                "stripe",
-                "webhook"
-            ],
-            "support": {
-                "issues": "https://github.com/ken-de-nigerian/payzephyr/issues",
-                "source": "https://github.com/ken-de-nigerian/payzephyr"
-            },
-            "time": "2026-10-08T11:27:35+00:00"
         },
         {
             "name": "laravel/chisel",
@@ -5070,68 +4969,6 @@
                 }
             ],
             "time": "2026-09-12T19:02:49+00:00"
-        },
-        {
-            "name": "stripe/stripe-php",
-            "version": "v21.3.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/stripe/stripe-php.git",
-                "reference": "0d8b075e1a97d15c5324353a5277d0ea686ea525"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/stripe/stripe-php/zipball/0d8b075e1a97d15c5324353a5277d0ea686ea525",
-                "reference": "0d8b075e1a97d15c5324353a5277d0ea686ea525",
-                "shasum": ""
-            },
-            "require": {
-                "ext-curl": "*",
-                "ext-json": "*",
-                "ext-mbstring": "*",
-                "php": ">=7.2.0"
-            },
-            "require-dev": {
-                "friendsofphp/php-cs-fixer": "3.94.0",
-                "phpstan/phpstan": "^1.2",
-                "phpunit/phpunit": "^8.0 || ^9.0"
-            },
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "2.0-dev"
-                }
-            },
-            "autoload": {
-                "files": [
-                    "lib/version_check.php"
-                ],
-                "psr-4": {
-                    "Stripe\\": "lib/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Stripe and contributors",
-                    "homepage": "https://github.com/stripe/stripe-php/contributors"
-                }
-            ],
-            "description": "Stripe PHP Library",
-            "homepage": "https://stripe.com/",
-            "keywords": [
-                "api",
-                "payment processing",
-                "stripe"
-            ],
-            "support": {
-                "issues": "https://github.com/stripe/stripe-php/issues",
-                "source": "https://github.com/stripe/stripe-php/tree/v21.3.2"
-            },
-            "time": "2026-09-09T20:40:43+00:00"
         },
         {
             "name": "symfony/clock",
@@ -10706,78 +10543,6 @@
                 {
                     "url": "https://www.paypal.com/paypalme/enunomaduro",
                     "type": "custom"
-                },
-                {
-                    "url": "https://github.com/nunomaduro",
-                    "type": "github"
-                }
-            ],
-            "time": "2026-07-21T07:48:55+00:00"
-        },
-        {
-            "name": "pestphp/pest-plugin-drift",
-            "version": "v5.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/pestphp/pest-plugin-drift.git",
-                "reference": "1b544c770710f6fefe98446a7048a28e65b2ddd5"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/pestphp/pest-plugin-drift/zipball/1b544c770710f6fefe98446a7048a28e65b2ddd5",
-                "reference": "1b544c770710f6fefe98446a7048a28e65b2ddd5",
-                "shasum": ""
-            },
-            "require": {
-                "nikic/php-parser": "^5.8.0",
-                "pestphp/pest": "^5.0.0",
-                "php": "^8.4",
-                "symfony/finder": "^8.1.1"
-            },
-            "conflict": {
-                "pestphp/pest": "<5.0.0"
-            },
-            "require-dev": {
-                "pestphp/pest-dev-tools": "^5.0.0"
-            },
-            "type": "library",
-            "extra": {
-                "pest": {
-                    "plugins": [
-                        "Pest\\Drift\\Plugin"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Pest\\Drift\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "description": "The Pest Drift Plugin",
-            "keywords": [
-                "framework",
-                "laravel",
-                "pest",
-                "php",
-                "test",
-                "testing",
-                "unit"
-            ],
-            "support": {
-                "source": "https://github.com/pestphp/pest-plugin-drift/tree/v5.0.0"
-            },
-            "funding": [
-                {
-                    "url": "https://www.paypal.com/paypalme/enunomaduro",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/mandisma",
-                    "type": "github"
                 },
                 {
                     "url": "https://github.com/nunomaduro",

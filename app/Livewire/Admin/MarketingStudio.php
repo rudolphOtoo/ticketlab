@@ -102,11 +102,15 @@ class MarketingStudio extends Component
             return;
         }
 
+        $event = $this->event();
+        $directory = $event !== null
+            ? MediaUrl::eventDirectory($event->id, 'flyers')
+            : 'flyers/' . ($user->organization_id ?? 'platform');
+
         $this->removeBackground();
-        $this->backgroundPath = MediaUrl::store($upload, 'flyers/' . ($user->organization_id ?? 'platform'));
-        // Root-relative so the canvas loads it same-origin even when APP_URL differs from the browsing host.
-        $relativeUrl = parse_url((string) MediaUrl::resolve($this->backgroundPath), PHP_URL_PATH);
-        $this->backgroundUrl = is_string($relativeUrl) ? $relativeUrl : null;
+        $this->backgroundPath = MediaUrl::store($upload, $directory);
+        // Local uploads resolve root-relative, so the canvas loads them same-origin whatever APP_URL says.
+        $this->backgroundUrl = MediaUrl::resolve($this->backgroundPath);
         $this->backgroundImage = null;
     }
 

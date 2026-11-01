@@ -129,7 +129,7 @@
                     <div class="grid gap-3 sm:grid-cols-2">
                         @foreach ($ticketTypes as $ticketType)
                             @php
-                                $isSoldOut = (int) ($ticketType->available_quantity ?? 0) <= 0;
+                                $isSoldOut = (int) ($ticketType->available_quantity ?? 0) <= 0 || ! $ticketType->isOnSale();
                                 $isSelected = $ticketTypeId === $ticketType->id;
                             @endphp
                             <div
@@ -311,7 +311,7 @@
                                             <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                                 <div class="flex items-start gap-3">
                                                     <div class="min-w-20 font-mono text-xs font-bold text-[var(--text-tertiary)] pt-0.5">
-                                                        {{ $session->start_time ?? ($session->starts_at?->format('H:i') ?? 'TBA') }}
+                                                        {{ $session->start_time ?? 'TBA' }}
                                                     </div>
                                                     <div>
                                                         <h4 class="text-xs sm:text-sm font-bold text-[var(--text-primary)]">
@@ -695,36 +695,22 @@
         </div>
     @endif
 
-    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <script src="https://js.paystack.co/v2/inline.js"></script>
     <script>
         document.addEventListener('livewire:init', () => {
+            // The transaction (amount, zone payout split) is opened on the server; the popup only resumes it.
             Livewire.on('open-paystack', (event) => {
-                const payload = event?.payload ?? event?.detail?.payload ?? event;
+                const accessCode = event?.accessCode ?? event?.detail?.accessCode;
 
-                if (! payload || typeof PaystackPop === 'undefined') {
+                if (! accessCode || typeof PaystackPop === 'undefined') {
                     return;
                 }
 
-                const parameters = {
-                    key: payload.key,
-                    email: payload.email,
-                    amount: payload.amount,
-                    currency: payload.currency,
-                    ref: payload.reference,
-                    metadata: payload.metadata || {},
-                    callback: function (response) {
-                        Livewire.dispatch('payment-completed', { reference: response.reference });
-                    },
-                    onClose: function () {
-                        Livewire.dispatch('payment-cancelled');
-                    },
-                };
-
-                if (payload.subaccount) {
-                    parameters.subaccount = payload.subaccount;
-                }
-
-                PaystackPop.setup(parameters).openIframe();
+                new PaystackPop().resumeTransaction(accessCode, {
+                    onSuccess: (transaction) => Livewire.dispatch('payment-completed', { reference: transaction.reference }),
+                    onCancel: () => Livewire.dispatch('payment-cancelled'),
+                    onError: () => Livewire.dispatch('payment-cancelled'),
+                });
             });
         });
     </script>

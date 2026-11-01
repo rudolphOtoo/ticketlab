@@ -22,20 +22,22 @@ class PlatformSetting extends Model
         'value',
     ];
 
+    /** Cached for absent settings: the cache never stores null, which made every missing setting a query. */
+    private const string MISSING = '__platform_setting_missing__';
+
     /**
      * Retrieve a setting value from cache or database with config/default fallback.
+     *
+     * The stored value is cached (memoised for the rest of the request); defaults are applied per caller.
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        return Cache::rememberForever("platform_setting:{$key}", static function () use ($key, $default) {
-            $setting = static::query()->find($key);
+        $value = Cache::memo()->rememberForever(
+            "platform_setting:{$key}",
+            static fn(): mixed => static::query()->find($key)->value ?? self::MISSING,
+        );
 
-            if ($setting !== null && $setting->value !== null) {
-                return $setting->value;
-            }
-
-            return config("app.{$key}", $default);
-        });
+        return $value === self::MISSING ? config("app.{$key}", $default) : $value;
     }
 
     /**
@@ -51,7 +53,7 @@ class PlatformSetting extends Model
 
         static::query()->updateOrCreate(['key' => $key], ['value' => $stringValue]);
 
-        Cache::forget("platform_setting:{$key}");
+        Cache::memo()->forget("platform_setting:{$key}");
     }
 
     /**
@@ -60,7 +62,7 @@ class PlatformSetting extends Model
     public static function forgetSetting(string $key): void
     {
         static::query()->where('key', $key)->delete();
-        Cache::forget("platform_setting:{$key}");
+        Cache::memo()->forget("platform_setting:{$key}");
     }
 
     /**

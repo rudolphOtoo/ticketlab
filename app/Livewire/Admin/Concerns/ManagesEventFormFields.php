@@ -89,7 +89,7 @@ trait ManagesEventFormFields
             'field_input_type' => $field->input_type,
             'field_placeholder' => $field->placeholder ?? '',
             'field_options_raw' => is_array($field->options) ? implode(', ', $field->options) : '',
-            'field_options' => is_array($field->options) ? array_values($field->options) : [],
+            'field_options' => is_array($field->options) ? $field->options : [],
             'newOptionInput' => '',
             'field_is_required' => $field->is_required,
             'field_sort_order' => $field->sort_order,
@@ -128,7 +128,7 @@ trait ManagesEventFormFields
         $options = null;
 
         if (in_array($this->field_input_type, ['select', 'radio', 'checkbox'], true)) {
-            $options = !empty($this->field_options)
+            $options = $this->field_options !== []
                 ? $this->field_options
                 : array_values(array_filter(array_map('trim', explode(',', $this->field_options_raw))));
         }

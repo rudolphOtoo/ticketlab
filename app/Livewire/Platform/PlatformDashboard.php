@@ -167,8 +167,14 @@ class PlatformDashboard extends Component
                 $tenantEvents = $selectedTenant->events()->with('ticketTypes')->latest('id')->get();
                 $selectedTenantStats = [
                     'usersCount' => $selectedTenant->users()->count(),
-                    'ordersCount' => Order::query()->where('organization_id', $selectedTenant->id)->where('payment_status', OrderStatus::Paid->value)->count(),
-                    'revenue' => (float) Order::query()->where('organization_id', $selectedTenant->id)->where('payment_status', OrderStatus::Paid->value)->sum('gross_amount'),
+                    'ordersCount' => Order::query()
+                        ->where('organization_id', $selectedTenant->id)
+                        ->where('payment_status', OrderStatus::Paid->value)
+                        ->count(),
+                    'revenue' => (float) Order::query()
+                        ->where('organization_id', $selectedTenant->id)
+                        ->where('payment_status', OrderStatus::Paid->value)
+                        ->sum('gross_amount'),
                     'attendeesCount' => Attendee::query()->where('organization_id', $selectedTenant->id)->count(),
                 ];
             }
