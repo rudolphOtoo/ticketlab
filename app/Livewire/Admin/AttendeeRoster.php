@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -174,7 +175,10 @@ class AttendeeRoster extends Component
             'manual_email' => ['required', 'email', 'max:150'],
             'manual_phone' => ['nullable', 'string', 'max:30'],
             'manual_ticket_type_id' => ['required', 'exists:ticket_types,id'],
-            'manual_subdivision_id' => ['nullable', 'exists:subdivisions,id'],
+            'manual_subdivision_id' => [
+                'nullable',
+                Rule::exists(Subdivision::class, 'id')->where('organization_id', $orgId),
+            ],
             'manual_tags' => ['array'],
         ]);
 
@@ -199,13 +203,13 @@ class AttendeeRoster extends Component
                 'customer_email' => $this->manual_email,
                 'customer_phone' => $this->manualPhone(),
                 'gross_amount' => 0.00,
-                'platform_fee' => 0.00,
                 'net_amount' => 0.00,
-                'ticket_quantity' => 1,
+                'fee_amount' => 0.00,
                 'payment_status' => OrderStatus::Paid,
                 'payment_method' => PaymentMethod::Complimentary,
                 'metadata' => [
                     'source' => 'admin_manual_issue',
+                    'quantity' => 1,
                     'issued_by_user_id' => $user?->id,
                     'tags' => $this->manual_tags,
                 ],
@@ -236,9 +240,11 @@ class AttendeeRoster extends Component
                 ],
             ]);
 
-            if ($ticketType->available_quantity > 0) {
-                $ticketType->decrement('available_quantity');
-            }
+            // Comps may exceed capacity, but take a seat while one is left; the guard makes it atomic.
+            TicketType::query()
+                ->whereKey($ticketType->id)
+                ->where('available_quantity', '>', 0)
+                ->decrement('available_quantity');
         });
 
         $this->isManualPassModalOpen = false;
@@ -364,10 +370,26 @@ class AttendeeRoster extends Component
 
         $name = $attendee->name;
 
-        DB::transaction(static function () use ($attendee): void {
-            $attendee->ticketType()->increment('available_quantity');
-            $attendee->delete();
+        $voided = DB::transaction(function () use ($user, $attendeeId): bool {
+            // Locked re-read: a double-clicked void must restore one seat, not two.
+            $locked = $this->scopedAttendees($user)->whereKey($attendeeId)->lockForUpdate()->first();
+
+            if ($locked === null) {
+                return false;
+            }
+
+            // Capped at capacity, so voiding comps issued after sell-out never inflates stock.
+            TicketType::query()
+                ->whereKey($locked->ticket_type_id)
+                ->whereColumn('available_quantity', '<', 'total_capacity')
+                ->increment('available_quantity');
+
+            return (bool) $locked->delete();
         });
+
+        if (!$voided) {
+            return;
+        }
 
         $this->selectedAttendeeId = null;
         $this->flashMessage = "Pass for '{$name}' has been voided and seat restored.";

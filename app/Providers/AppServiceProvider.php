@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\EnsureSubdivisionAccess;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -44,6 +45,11 @@ class AppServiceProvider extends ServiceProvider
         Date::use(CarbonImmutable::class);
 
         DB::prohibitDestructiveCommands(app()->isProduction());
+
+        // Outside production, lazy-loaded relations (N+1 queries) and silently discarded mass-assignment keys
+        // throw, so the test suite catches them before they reach a request path.
+        Model::preventLazyLoading(!app()->isProduction());
+        Model::preventSilentlyDiscardingAttributes(!app()->isProduction());
 
         Password::defaults(static fn(): ?Password => app()->isProduction()
             ? Password::min(12)

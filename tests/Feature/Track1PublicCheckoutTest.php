@@ -245,7 +245,7 @@ test('the checkout flow holds stock and dispatches the paystack payload', functi
 
 /*
  |--------------------------------------------------------------------------
- | 5. PayZephyr webhook verification & QR issuance
+ | 5. Paystack webhook verification & QR issuance
  |--------------------------------------------------------------------------
  */
 

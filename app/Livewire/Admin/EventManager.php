@@ -263,7 +263,13 @@ class EventManager extends Component
 
         MediaUrl::deleteStored($event->banner_path);
         $title = $event->title;
+        $wasActive = ActiveEvent::id($event->organization_id) === $event->id;
         $event->delete();
+
+        // The next resolve falls back to (and pins) another event instead of the one just deleted.
+        if ($wasActive) {
+            ActiveEvent::forget();
+        }
 
         $this->flashMessage = "'{$title}' was deleted.";
     }

@@ -30,7 +30,7 @@ class PaystackCheckout
     private const int RESUMABLE_SECONDS = 3_600;
 
     public function __construct(
-        private readonly PayZephyrService $paystack,
+        private readonly PaystackGateway $paystack,
         private readonly PaystackSubaccountResolver $subaccounts,
     ) {}
 
