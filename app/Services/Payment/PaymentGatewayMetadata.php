@@ -17,6 +17,7 @@ class PaymentGatewayMetadata
         $amount = $payment['amount'] ?? null;
         $currency = $payment['currency'] ?? null;
         $fees = $payment['fees'] ?? null;
+        $split = is_array($payment['fees_split'] ?? null) ? $payment['fees_split'] : [];
 
         $metadata = [
             'payment_reference' => $payment['reference'] ?? null,
@@ -24,6 +25,8 @@ class PaymentGatewayMetadata
             'gateway_currency' => is_string($currency) ? strtoupper($currency) : null,
             'payment_channel' => $payment['channel'] ?? null,
             'gateway_fee_pesewas' => is_numeric($fees) ? (int) $fees : null,
+            'payout_share_pesewas' => is_numeric($split['subaccount'] ?? null) ? (int) $split['subaccount'] : null,
+            'platform_share_pesewas' => is_numeric($split['integration'] ?? null) ? (int) $split['integration'] : null,
             'gateway_response' => $payment['gateway_response'] ?? null,
             'gateway_payload' => $payment,
         ];

@@ -15,6 +15,7 @@ use Throwable;
 final class MnotifySmsGateway implements SmsGatewayInterface
 {
     public function __construct(
+        #[\SensitiveParameter]
         private readonly string $apiKey,
         private readonly string $senderId,
         private readonly string $endpoint = 'https://api.mnotify.com/api/sms/quick',
@@ -23,7 +24,7 @@ final class MnotifySmsGateway implements SmsGatewayInterface
 
     public function send(string $to, string $message, array $context = []): bool
     {
-        if (! $this->isEnabled() || blank($this->apiKey)) {
+        if (!$this->isEnabled() || blank($this->apiKey)) {
             return false;
         }
 
@@ -75,4 +76,3 @@ final class MnotifySmsGateway implements SmsGatewayInterface
         return $cleaned;
     }
 }
-

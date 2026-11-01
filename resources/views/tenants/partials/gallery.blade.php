@@ -8,8 +8,9 @@
         ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'gallery'])
         : route('dedicated.gallery');
 
-    $configuredImages = array_values(array_filter((array) ($galleryConfig['images'] ?? [])));
-    $galleryItems = !empty($configuredImages)
+    // The featured event's photos plus organisation-wide ones, each with a display-ready src.
+    $configuredImages = \App\Support\EventGallery::forEvent($organization, $event ?? null);
+    $galleryItems = $configuredImages !== []
         ? array_slice($configuredImages, 0, 6)
         : [
             [
@@ -66,7 +67,7 @@
                 class="group relative aspect-4/3 overflow-hidden rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xs transition-all duration-300 hover:shadow-lg hover:translate-y-[-2px]"
             >
                 <img
-                    src="{{ $item['url'] }}"
+                    src="{{ $item['src'] ?? $item['url'] }}"
                     alt="{{ $item['title'] }}"
                     loading="lazy"
                     class="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-108"

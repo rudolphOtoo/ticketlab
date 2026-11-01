@@ -29,4 +29,3 @@ final class LogSmsGateway implements SmsGatewayInterface
         return $this->enabled;
     }
 }
-

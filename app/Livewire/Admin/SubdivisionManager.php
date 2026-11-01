@@ -6,10 +6,12 @@ namespace App\Livewire\Admin;
 
 use App\Models\Subdivision;
 use App\Models\User;
+use App\Services\Payment\PaystackSubaccountResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -85,7 +87,7 @@ class SubdivisionManager extends Component
         $this->reset(['name', 'slug', 'paystackSubaccountCode']);
     }
 
-    public function save(): void
+    public function save(PaystackSubaccountResolver $subaccounts): void
     {
         $actor = $this->actor();
         $orgId = (int) $actor->organization_id;
@@ -100,32 +102,56 @@ class SubdivisionManager extends Component
                     ->where('organization_id', $orgId)
                     ->ignore($this->editingSubdivisionId),
             ],
-            'paystackSubaccountCode' => ['nullable', 'string', 'max:255'],
+            'paystackSubaccountCode' => ['nullable', 'string', 'max:64', 'regex:/^ACCT_[a-z0-9]+$/i'],
+        ], [
+            'paystackSubaccountCode.regex' => 'Paystack subaccount codes look like ACCT_xxxxxxxxxxxx.',
         ]);
 
-        if ($this->editingSubdivisionId === null) {
-            Subdivision::create([
-                'organization_id' => $orgId,
-                'name' => $this->name,
-                'slug' => Str::slug($this->slug),
-                'paystack_subaccount_code' => filled($this->paystackSubaccountCode) ? trim($this->paystackSubaccountCode) : null,
-            ]);
+        $sub = $this->editingSubdivisionId === null
+            ? new Subdivision(['organization_id' => $orgId])
+            : Subdivision::query()->where('organization_id', $orgId)->whereKey($this->editingSubdivisionId)->first();
 
-            $this->flashMessage = "Subdivision '{$this->name}' was created successfully.";
-        } else {
-            $sub = Subdivision::query()->where('organization_id', $orgId)->whereKey($this->editingSubdivisionId)->first();
-            if ($sub !== null) {
-                $sub->update([
-                    'name' => $this->name,
-                    'slug' => Str::slug($this->slug),
-                    'paystack_subaccount_code' => filled($this->paystackSubaccountCode) ? trim($this->paystackSubaccountCode) : null,
-                ]);
+        if ($sub === null) {
+            $this->closeModal();
 
-                $this->flashMessage = "Subdivision '{$this->name}' was updated.";
-            }
+            return;
         }
 
+        $code = filled($this->paystackSubaccountCode) ? trim($this->paystackSubaccountCode) : null;
+
+        if ($code !== $sub->paystack_subaccount_code) {
+            $this->authorizePayoutChange($actor, $code, $subaccounts);
+        }
+
+        $sub->fill([
+            'name' => $this->name,
+            'slug' => Str::slug($this->slug),
+            'paystack_subaccount_code' => $code,
+        ])->save();
+
+        $this->flashMessage = $sub->wasRecentlyCreated
+            ? "Subdivision '{$this->name}' was created successfully."
+            : "Subdivision '{$this->name}' was updated.";
+
         $this->closeModal();
+    }
+
+    /**
+     * Where a zone's revenue settles is an owner decision, and a code Paystack rejects would fail every checkout.
+     */
+    private function authorizePayoutChange(User $actor, ?string $code, PaystackSubaccountResolver $subaccounts): void
+    {
+        if ($actor->subdivision_id !== null) {
+            throw ValidationException::withMessages([
+                'paystackSubaccountCode' => 'Only organisation-wide admins can change payout accounts.',
+            ]);
+        }
+
+        $reason = $code === null ? null : $subaccounts->rejectionReason($subaccounts->inspect($code));
+
+        if ($reason !== null) {
+            throw ValidationException::withMessages(['paystackSubaccountCode' => $reason]);
+        }
     }
 
     public function deleteSubdivision(int $id): void
@@ -176,4 +202,3 @@ class SubdivisionManager extends Component
         ]);
     }
 }
-

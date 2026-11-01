@@ -15,6 +15,7 @@ use App\Livewire\Admin\QueueMonitor;
 use App\Livewire\Admin\SubdivisionManager;
 use App\Livewire\Admin\TicketManager;
 use App\Livewire\Admin\UserManagement;
+use App\Livewire\Admin\ZonePayouts;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
 use App\Livewire\Platform\PlatformDashboard;
@@ -82,4 +83,7 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Anti-vendor-lock-in data export & sovereignty central
         Route::get('exports', DataExportCentral::class)->name('exports');
+
+        // Zone payout accounts (Paystack subaccounts) & per-zone settlement ledger
+        Route::get('payouts', ZonePayouts::class)->name('payouts');
     });

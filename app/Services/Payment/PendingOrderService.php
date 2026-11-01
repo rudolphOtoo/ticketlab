@@ -51,6 +51,13 @@ class PendingOrderService
                 );
             }
 
+            // The open Paystack transaction belongs to the order, not to this form submission.
+            $paystack = $order->metadata['paystack'] ?? null;
+
+            if ($paystack !== null && is_array($attributes['metadata'] ?? null)) {
+                $attributes['metadata']['paystack'] = $paystack;
+            }
+
             $order->forceFill($attributes)->save();
 
             return $order->refresh();

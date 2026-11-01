@@ -29,9 +29,14 @@ class OrderFulfillmentService
      */
     public function fulfillReference(string $reference, array $payment = []): ?Order
     {
-        $order = Order::query()->where('reference', $reference)->first();
+        $order = Order::findByGatewayReference($reference);
 
         if ($order === null) {
+            Log::warning('A successful payment arrived for an unknown order reference.', [
+                'payment_reference' => $reference,
+                'payment_amount' => $payment['amount'] ?? null,
+            ]);
+
             return null;
         }
 
@@ -50,6 +55,8 @@ class OrderFulfillmentService
                 $order = Order::query()->whereKey($order->getKey())->lockForUpdate()->firstOrFail();
 
                 if (in_array($order->payment_status, [OrderStatus::Paid, OrderStatus::RequiresReview], true)) {
+                    $this->flagSecondPayment($order, $payment);
+
                     return $order->load('attendees');
                 }
 
@@ -104,5 +111,31 @@ class OrderFulfillmentService
         }
 
         return $fulfilled;
+    }
+
+    /**
+     * Webhook retries repeat the settled reference; a different successful reference means the buyer paid twice.
+     *
+     * @param array<string, mixed> $payment
+     */
+    private function flagSecondPayment(Order $order, array $payment): void
+    {
+        $settled = $order->metadata['payment_reference'] ?? null;
+        $incoming = $payment['reference'] ?? null;
+
+        if (
+            is_string($settled)
+            && is_string($incoming)
+            && $incoming !== $settled
+            && ($payment['status'] ?? null) === 'success'
+        ) {
+            Log::critical('A second successful payment arrived for a settled order and must be refunded.', [
+                'order_id' => $order->getKey(),
+                'order_reference' => $order->reference,
+                'settled_reference' => $settled,
+                'duplicate_reference' => $incoming,
+                'payment_amount' => $payment['amount'] ?? null,
+            ]);
+        }
     }
 }

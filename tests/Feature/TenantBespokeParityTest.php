@@ -51,7 +51,10 @@ class TenantBespokeParityTest extends TestCase
         $overrideFile = "{$overrideDir}/home.blade.php";
 
         File::ensureDirectoryExists($overrideDir);
-        File::put($overrideFile, '<div id="custom-override-container">Custom Dedicated Override for {{ $organization->name }}</div>');
+        File::put(
+            $overrideFile,
+            '<div id="custom-override-container">Custom Dedicated Override for {{ $organization->name }}</div>',
+        );
 
         try {
             $response = $this->get('/custom-override-org');

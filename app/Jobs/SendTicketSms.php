@@ -21,17 +21,17 @@ class SendTicketSms implements ShouldQueue
 
     public int $backoff = 30;
 
-    public function __construct(public int $orderId) {}
+    public function __construct(
+        public int $orderId,
+    ) {}
 
     public function handle(SmsGatewayInterface $sms): void
     {
-        if (! $sms->isEnabled()) {
+        if (!$sms->isEnabled()) {
             return;
         }
 
-        $order = Order::query()
-            ->with(['attendees.ticketType', 'organization'])
-            ->find($this->orderId);
+        $order = Order::query()->with(['attendees.ticketType', 'organization'])->find($this->orderId);
 
         if ($order === null || blank($order->customer_phone)) {
             return;
@@ -42,7 +42,7 @@ class SendTicketSms implements ShouldQueue
             return;
         }
 
-        $orgName = $order->organization?->name ?? 'TicketLab';
+        $orgName = $order->organization->name;
         $passUrl = route('public.tickets.show', ['order' => $order->reference]);
 
         $message = "Your {$orgName} ticket order #{$order->reference} ({$attendeeCount} pass(es)) is confirmed! View digital passes: {$passUrl}";
@@ -52,7 +52,7 @@ class SendTicketSms implements ShouldQueue
             'order_reference' => $order->reference,
         ]);
 
-        if (! $sent) {
+        if (!$sent) {
             Log::warning('SendTicketSms dispatch was skipped or failed.', [
                 'order_id' => $order->id,
                 'phone' => $order->customer_phone,
@@ -60,4 +60,3 @@ class SendTicketSms implements ShouldQueue
         }
     }
 }
-
