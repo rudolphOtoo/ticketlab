@@ -76,8 +76,12 @@ final class MediaUrl
         }
     }
 
-    private static function isExternal(string $path): bool
+    public static function isExternal(?string $path): bool
     {
+        if ($path === null || trim($path) === '') {
+            return false;
+        }
+
         return Str::startsWith($path, ['http://', 'https://', '//', '/', 'data:']);
     }
 }
