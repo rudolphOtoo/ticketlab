@@ -28,6 +28,8 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
+<style>[x-cloak] { display: none !important; }</style>
+
 @fonts
 
 <script>
