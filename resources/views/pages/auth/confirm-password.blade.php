@@ -15,22 +15,33 @@
             :separator="__('Or confirm with password')"
         />
 
-        <form method="POST" action="{{ route('password.confirm.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('password.confirm.store') }}" class="flex flex-col gap-5">
             @csrf
 
-            <flux:input
-                name="password"
-                :label="__('Password')"
-                type="password"
-                required
-                autocomplete="current-password"
-                :placeholder="__('Password')"
-                viewable
-            />
+            <div class="flex flex-col gap-2">
+                <label for="password" class="text-xs font-medium text-[var(--text-secondary)]">{{ __('Password') }}</label>
+                <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    autofocus
+                    autocomplete="current-password"
+                    placeholder="••••••••"
+                    class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-hidden transition focus:border-[var(--border-focused)] focus:bg-[var(--bg-surface)] focus:ring-1 focus:ring-[var(--border-focused)]"
+                />
+                @error('password')
+                    <p class="text-xs text-[var(--status-danger)]">{{ $message }}</p>
+                @enderror
+            </div>
 
-            <flux:button variant="primary" type="submit" class="w-full" data-test="confirm-password-button">
+            <button
+                type="submit"
+                class="w-full cursor-pointer rounded-lg bg-[var(--accent-brand)] py-2.5 px-4 text-sm font-medium text-[var(--accent-brand-fg)] shadow-xs transition hover:opacity-90 active:scale-[0.98]"
+                data-test="confirm-password-button"
+            >
                 {{ __('Confirm') }}
-            </flux:button>
+            </button>
         </form>
     </div>
 </x-layouts::auth>

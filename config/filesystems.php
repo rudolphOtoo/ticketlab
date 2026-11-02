@@ -1,39 +1,45 @@
 <?php
 
-return [
+declare(strict_types=1);
 
+return [
     /*
-    |--------------------------------------------------------------------------
-    | Default Filesystem Disk
-    |--------------------------------------------------------------------------
-    |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
-    |
-    */
+     |--------------------------------------------------------------------------
+     | Default Filesystem Disk
+     |--------------------------------------------------------------------------
+     |
+     | Here you may specify the default filesystem disk that should be used
+     | by the framework. The "local" disk, as well as a variety of cloud
+     | based disks are available to your application for file storage.
+     |
+     */
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
     /*
-    |--------------------------------------------------------------------------
-    | Filesystem Disks
-    |--------------------------------------------------------------------------
-    |
-    | Below you may configure as many filesystem disks as necessary, and you
-    | may even configure multiple disks for the same driver. Examples for
-    | most supported storage drivers are configured here for reference.
-    |
-    | Supported drivers: "local", "ftp", "sftp", "s3"
-    |
-    */
+     |--------------------------------------------------------------------------
+     | Filesystem Disks
+     |--------------------------------------------------------------------------
+     |
+     | Below you may configure as many filesystem disks as necessary, and you
+     | may even configure multiple disks for the same driver. Examples for
+     | most supported storage drivers are configured here for reference.
+     |
+     | Supported drivers: "local", "ftp", "sftp", "s3"
+     |
+     */
+
+    /*
+     | Disk for admin uploads (banners, speaker photos, gallery, flyers). Keep "public" locally; point it at a
+     | cloud disk such as "s3" on hosts whose filesystem is not persistent (e.g. serverless platforms).
+     */
+    'media_disk' => env('MEDIA_DISK', 'public'),
 
     'disks' => [
-
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
@@ -41,8 +47,9 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim((string) env('APP_URL', 'http://localhost'), '/').'/storage',
+            'url' => rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/storage',
             'visibility' => 'public',
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],
@@ -60,21 +67,24 @@ return [
             'report' => false,
         ],
 
+        'vercel_temp' => [
+            'driver' => 'local',
+            'root' => '/tmp',
+        ],
     ],
 
     /*
-    |--------------------------------------------------------------------------
-    | Symbolic Links
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
-    |
-    */
+     |--------------------------------------------------------------------------
+     | Symbolic Links
+     |--------------------------------------------------------------------------
+     |
+     | Here you may configure the symbolic links that will be created when the
+     | `storage:link` Artisan command is executed. The array keys should be
+     | the locations of the links and the values should be their targets.
+     |
+     */
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
-
 ];

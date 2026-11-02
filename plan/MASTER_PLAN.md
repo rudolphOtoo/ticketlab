@@ -19,7 +19,8 @@ The system transitions organizations from manual on-ground cash handling and pap
 
 ### 2.1 Multi-Tenancy Engine: Single-Database (`stancl/tenancy` v3)
 *Decision*: Path-based scoping paired with **`stancl/tenancy`** configured for **Single-Database Tenancy** (`tenancyforlaravel.com/docs/v3/single-database-tenancy`).
-- **Isolation Mechanism**: Models use `Stancl\Tenancy\Database\Concerns\BelongsToTenant` trait for automatic `organization_id` global query scoping.
+- **Isolation Mechanism**: Models use `Stancl\Tenancy\Database\Concerns\BelongsToTenant` trait with explicit `getTenantIdColumn(): string { return 'organization_id'; }` for automatic `organization_id` global query scoping.
+- **User Scoping**: `users` table includes nullable `organization_id` and nullable `subdivision_id` for hierarchical RBAC.
 - **Bootstrapper Setup**: `DatabaseTenancyBootstrapper` is disabled (all tenants share the primary connection); cache, filesystem, and queue bootstrappers remain isolated.
 - **Routing Structure (Option 2A: Path-Based)**:
   - Public Event: `https://platform.com/{org-slug}/{event-slug}`
@@ -216,12 +217,13 @@ Phase 1: Foundation (W1-2) ──▶ Phase 2: Paystack Engine (W3) ──▶ Pha
 ```sql
 organizations (id, name, slug, logo_url, subdivision_label, settings, created_at)
 subdivisions (id, organization_id, name, slug, paystack_subaccount_code, created_at)
+users (id, organization_id, subdivision_id, name, email, password, role, created_at)
 events (id, organization_id, title, slug, banner_path, start_at, end_at, status)
 ticket_types (id, event_id, name, price, total_capacity, available_quantity)
-reservations (id, ticket_type_id, subdivision_id, quantity, expires_at, status)
+reservations (id, organization_id, ticket_type_id, subdivision_id, session_id, quantity, expires_at, status)
 orders (id, organization_id, subdivision_id, reference, gross_amount, net_amount, fee_amount, payment_method, payment_status, paid_at)
-attendees (id, order_id, subdivision_id, name, email, phone, qr_code_hash, checked_in_at)
-session_ledgers (id, organization_id, session_name, locked_at, total_online_momo, total_cash, total_attendees, snapshot_pdf_path)
+attendees (id, order_id, organization_id, subdivision_id, ticket_type_id, name, email, phone, qr_code_hash, checked_in_at)
+session_ledgers (id, organization_id, session_name, locked_at, locked_by, total_online_momo, total_cash, total_attendees, snapshot_pdf_path)
 ```
 *Note*: `subdivision_label` defaults to `"Zone"`, but is customizable to `"Branch"`, `"Region"`, `"Campus"`, or `"District"` per organization. If an organization has no subdivisions, `subdivision_id` is nullable.
 
@@ -229,4 +231,26 @@ session_ledgers (id, organization_id, session_name, locked_at, total_online_momo
 
 ## 8. Document Authority & Cross-References
 This document is the **Single Source of Truth** for engineering, design, and product decisions. 
-- All future specs and task tickets in [.conscience/memory/KANBAN.md](file:///c:/Users/Fafa/Documents/code_workspace/conference_system/.conscience/memory/KANBAN.md) derive directly from this file.
+- All future specs and task tickets in [.conscience/memory/KANBAN.md](file:///c:/Users/Fafa/Desktop/CodeSpace/ticketlab/.conscience/memory/KANBAN.md) derive directly from this file.
+
+---
+
+## 9. Two-Track Decoupled Execution Model (Independent Development)
+
+To ensure Developer A and Developer B work in parallel with zero merge conflicts or divergent assumptions, implementation is partitioned into two autonomous tracks branching off `dev`:
+
+```
+                 [ PHASE 0: SHARED FOUNDATION (Branch: dev) ]
+             (Migrations, Tenancy Scope, Models, Auth, Enums)
+                             │
+            ┌────────────────┴────────────────┐
+            ▼                                 ▼
+   [ TRACK 1: PUBLIC & PAYMENT ]    [ TRACK 2: GROUND OPS & ADMIN ]
+   • Branch: feat/track-1-checkout  • Branch: feat/track-2-ground-ops
+   • Route: routes/public.php       • Route: routes/ops.php
+   • Developer A                    • Developer B
+```
+
+- 👉 **[Track 1 Implementation Spec](file:///c:/Users/Fafa/Desktop/CodeSpace/ticketlab/plan/TRACK_1_PUBLIC_CHECKOUT_SPEC.md)**: Public event landing, 15-minute atomic reservation hold, Paystack InlineJS checkout modal, PayZephyr webhook verification, and digital pass delivery.
+- 👉 **[Track 2 Implementation Spec](file:///c:/Users/Fafa/Desktop/CodeSpace/ticketlab/plan/TRACK_2_GROUND_OPS_ADMIN_SPEC.md)**: 3-Tier Multi-Zone RBAC, mobile camera door scanner terminal, walk-in cash desk, 24-hour daily session ledger, and immutable DomPDF audit reports.
+

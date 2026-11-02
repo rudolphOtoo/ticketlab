@@ -1,0 +1,8 @@
+.env*
+.neon
+/vendor
+public/hot
+hot
+!public/build/**
+!public/images/**
+

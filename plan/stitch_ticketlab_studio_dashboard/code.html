@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TicketLab Studio — Financial Closeout &amp; Attendance</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Plus Jakarta Sans Font -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "tertiary-fixed": "#ffdf9f",
+            "surface-container-low": "#1b1b1f",
+            "secondary-container": "#00bd85",
+            "error-container": "#93000a",
+            "primary-fixed": "#e2e2e3",
+            "on-secondary-container": "#00452e",
+            "secondary-fixed": "#68fcbf",
+            "on-error-container": "#ffdad6",
+            "tertiary-fixed-dim": "#f9bd22",
+            "on-error": "#690005",
+            "on-primary-fixed-variant": "#454748",
+            "primary": "#ffffff",
+            "tertiary-container": "#ffdf9f",
+            "on-secondary-fixed-variant": "#005137",
+            "surface-container-high": "#292a2d",
+            "inverse-surface": "#e3e2e6",
+            "surface-bright": "#38393c",
+            "on-primary-fixed": "#1a1c1d",
+            "on-secondary": "#003825",
+            "secondary": "#45dfa4",
+            "tertiary": "#ffffff",
+            "surface-dim": "#121316",
+            "surface-variant": "#343538",
+            "on-tertiary-fixed-variant": "#5c4300",
+            "on-background": "#e3e2e6",
+            "on-surface-variant": "#c4c7c9",
+            "on-primary": "#2f3132",
+            "on-tertiary-fixed": "#261a00",
+            "surface-container-highest": "#343538",
+            "on-secondary-fixed": "#002114",
+            "outline": "#8e9193",
+            "inverse-primary": "#5d5e60",
+            "on-surface": "#e3e2e6",
+            "background": "#121316",
+            "error": "#ffb4ab",
+            "inverse-on-surface": "#2f3034",
+            "surface-container-lowest": "#0d0e11",
+            "primary-fixed-dim": "#c6c6c7",
+            "surface": "#121316",
+            "surface-tint": "#c6c6c7",
+            "surface-container": "#1f1f23",
+            "on-tertiary-container": "#815f00",
+            "outline-variant": "#444749",
+            "primary-container": "#e2e2e3",
+            "secondary-fixed-dim": "#45dfa4",
+            "on-primary-container": "#636466",
+            "on-tertiary": "#402d00"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin-tablet": "2rem",
+            "space-xl": "2.5rem",
+            "space-xs": "0.25rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem",
+            "gutter": "1.25rem",
+            "margin": "1rem",
+            "space-lg": "1.5rem",
+            "margin-desktop": "3rem",
+            "gutter-desktop": "1.75rem"
+          },
+          "fontFamily": {
+            "body-md": ["Plus Jakarta Sans"],
+            "label-md": ["Plus Jakarta Sans"],
+            "headline-sm": ["Plus Jakarta Sans"],
+            "headline-xl": ["Plus Jakarta Sans"],
+            "headline-md": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "headline-xl-mobile": ["Plus Jakarta Sans"],
+            "body-sm": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "label-caps": ["Plus Jakarta Sans"],
+            "label-sm": ["Plus Jakarta Sans"],
+            "data-tabular": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "label-md": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+            "headline-sm": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.015em", "fontWeight": "500" }],
+            "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "-0.005em", "fontWeight": "400" }],
+            "headline-xl-mobile": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "body-sm": ["13px", { "lineHeight": "20px", "letterSpacing": "0.005em", "fontWeight": "400" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600" }],
+            "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "data-tabular": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 350, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .num-tabular {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex selection:bg-surface-variant selection:text-primary">
+<!-- Side Navigation Anchor: Docked left 64 (w-64) -->
+<aside class="fixed left-0 top-0 h-screen w-64 flex flex-col justify-between p-space-md border-r border-outline-variant/30 bg-surface-container-lowest z-40">
+<div class="flex flex-col gap-space-lg">
+<!-- SideNav Brand / Workspace Header -->
+<div class="flex items-center gap-space-sm px-space-xs py-space-xs">
+<div class="w-8 h-8 rounded-lg bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-primary font-headline-sm text-headline-sm font-semibold">
+<span class="material-symbols-outlined text-secondary">confirmation_number</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm font-semibold text-primary truncate leading-tight">Summit 2026</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider text-[10px]">Production Operational</span>
+</div>
+</div>
+<!-- Navigation Tabs (Shared Components JSON execution) -->
+<nav class="flex flex-col gap-1">
+<!-- Overview -->
+<a class="flex items-center gap-space-sm px-space-md py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Overview</span>
+</a>
+<!-- Ticketing & Tiers -->
+<a class="flex items-center gap-space-sm px-space-md py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">confirmation_number</span>
+<span>Ticketing &amp; Tiers</span>
+</a>
+<!-- Access & RFID -->
+<a class="flex items-center gap-space-sm px-space-md py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">contactless</span>
+<span>Access &amp; RFID</span>
+</a>
+<!-- Financial Settlement (Active item mapped to Closeout) -->
+<a class="flex items-center gap-space-sm px-space-md py-2.5 text-primary bg-surface-container font-medium rounded-lg font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span>Financial Settlement</span>
+</a>
+<!-- Studio Settings -->
+<a class="flex items-center gap-space-sm px-space-md py-2.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Studio Settings</span>
+</a>
+</nav>
+</div>
+<!-- Bottom Actions & Footer Navigation -->
+<div class="flex flex-col gap-space-md pt-space-md border-t border-outline-variant/30">
+<button class="w-full h-9 flex items-center justify-center gap-space-xs rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface border border-outline-variant/30 font-label-md text-label-md transition-colors duration-150">
+<span class="material-symbols-outlined text-outline">download</span>
+<span>Export Summary</span>
+</button>
+<div class="flex flex-col gap-0.5">
+<a class="flex items-center gap-space-sm px-space-md py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span>Documentation</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-md py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span>Terminal Support</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas Shell (Left margin 64 to clear SideNav) -->
+<div class="ml-64 flex-1 flex flex-col min-h-screen bg-surface">
+<!-- Top Navigation Bar (Shared Components JSON Anchor) -->
+<header class="w-full h-14 px-margin-desktop flex items-center justify-between border-b border-outline-variant/30 bg-surface-container-low sticky top-0 z-30">
+<div class="flex items-center gap-space-md">
+<!-- Brand Wordmark -->
+<span class="font-headline-sm text-headline-sm font-semibold tracking-tight text-primary">TicketLab Studio</span>
+<span class="text-outline-variant/60 font-body-sm text-body-sm">/</span>
+<!-- Nav Breadcrumbs from JSON -->
+<nav class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer">Events</span>
+<span class="text-outline-variant/50 text-xs">/</span>
+<span class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer">Summit 2026</span>
+<span class="text-outline-variant/50 text-xs">/</span>
+<span class="font-label-md text-label-md text-primary font-medium tracking-normal">Financial Closeout &amp; Attendance</span>
+</nav>
+</div>
+<!-- Trailing Cluster -->
+<div class="flex items-center gap-space-md">
+<!-- Live Status Chip -->
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container border border-outline-variant/30">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-60"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+</span>
+<span class="font-label-caps text-label-caps text-on-surface tracking-wide">Live</span>
+</div>
+<!-- Search Bar / Command Palette Trigger (Raycast/Linear inspired) -->
+<button class="flex items-center gap-space-sm h-8 px-3 rounded-lg bg-surface border border-outline-variant/30 text-outline hover:text-on-surface hover:border-outline-variant transition-colors">
+<span class="material-symbols-outlined text-[16px]">search</span>
+<span class="font-label-sm text-label-sm text-outline-variant pr-2">Search records...</span>
+<kbd class="font-label-caps text-label-caps bg-surface-container-high text-on-surface-variant px-1.5 py-0.5 rounded border border-outline-variant/30">⌘K</kbd>
+</button>
+<!-- Notification Icon -->
+<button class="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<!-- Studio Administrator Avatar Portrait -->
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/40 bg-surface-container-high flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A refined black and white portrait photograph of a confident event operations director with neat styling and natural warm ambient studio lighting, set against a quiet minimalist slate background, reflecting composure, craft, and architectural executive presence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCm2i6xor_aqvV0zyw805nd5ZH-8Y1my-FLJtZ6FjdxodoDWMaGfklcSAwxV0euE3BcDHDp8UyLs6KedcFzJc9AbUxj6RcMNXQfpv_34yWo2oRPXmFYOchCKqltDj44pp7VKiLzBXINNzbFoiaIKvwE-krolhHcW81nfn7gQ7Xi-qpazpwAxGLjuMZJrPfor6okwtRc_bOMNSW6qb8M4PB6VtTEGc6yqtJntmInR-pB2XnDX3jyxqmfg"/>
+</div>
+</div>
+</header>
+<!-- Main Workspace Content (1440px desktop bounding spread) -->
+<main class="w-full max-w-[1440px] mx-auto p-space-md lg:p-space-xl flex flex-col gap-space-lg">
+<!-- Screen Header with Subtle Controls -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pb-space-xs border-b border-outline-variant/20">
+<div>
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-widest">Operations Ledger</span>
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight mt-0.5">Financial Closeout &amp; Attendance</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Live reconciliation of omni-channel gate collections, Mobile Money routing, and terminal turnout.</p>
+</div>
+<!-- Utility Trigger Cluster -->
+<div class="flex items-center gap-space-sm">
+<span class="font-label-sm text-label-sm text-outline">Refreshed 28s ago</span>
+<button class="h-8 px-3 rounded-xl bg-surface-container border border-outline-variant/30 text-on-surface hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[15px]">refresh</span>
+<span>Sync Gate Feed</span>
+</button>
+</div>
+</div>
+<!-- KPI Metric Row: 4 Cards Bento Architecture -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter-desktop">
+<!-- Card 1: Gross Revenue Today -->
+<div class="p-space-lg rounded-xl bg-surface-container-low border border-outline-variant/30 hover:border-outline-variant/50 transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-space-sm">
+<span class="font-label-md text-label-md">Gross Revenue Today</span>
+<span class="material-symbols-outlined text-outline">account_balance_wallet</span>
+</div>
+<div>
+<div class="font-headline-lg text-headline-lg text-primary font-data-tabular num-tabular tracking-tight">
+              GHS 60,650.00
+            </div>
+<div class="flex items-center gap-1.5 mt-space-sm">
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-surface-container border border-outline-variant/30 text-secondary font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[12px]">trending_up</span>
+                +12% vs Day 1
+              </span>
+<span class="font-body-sm text-body-sm text-outline">from all gates</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Gate Turnout -->
+<div class="p-space-lg rounded-xl bg-surface-container-low border border-outline-variant/30 hover:border-outline-variant/50 transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-space-sm">
+<span class="font-label-md text-label-md">Gate Turnout</span>
+<span class="font-label-caps text-label-caps text-secondary font-medium px-2 py-0.5 rounded bg-surface-container border border-outline-variant/30">83% admitted</span>
+</div>
+<div>
+<div class="font-headline-lg text-headline-lg text-primary font-data-tabular num-tabular tracking-tight">
+              1,120 <span class="text-outline text-headline-sm font-normal">/ 1,350</span>
+</div>
+<!-- Progress Line -->
+<div class="w-full bg-surface-container h-1 rounded-full mt-space-sm overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 83%;"></div>
+</div>
+<div class="flex items-center justify-between mt-2 text-outline font-label-sm text-label-sm">
+<span>Verified Check-ins</span>
+<span>230 remaining</span>
+</div>
+</div>
+</div>
+<!-- Card 3: Online Paystack -->
+<div class="p-space-lg rounded-xl bg-surface-container-low border border-outline-variant/30 hover:border-outline-variant/50 transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-space-sm">
+<span class="font-label-md text-label-md">Online Paystack</span>
+<span class="material-symbols-outlined text-outline">credit_card</span>
+</div>
+<div>
+<div class="font-headline-lg text-headline-lg text-primary font-data-tabular num-tabular tracking-tight">
+              GHS 48,250.00
+            </div>
+<div class="mt-space-sm font-body-sm text-body-sm text-on-surface-variant">
+              (82% Mobile Money, 18% Card)
+            </div>
+<div class="text-outline font-label-sm text-label-sm mt-1">
+              Automated settlement cleared
+            </div>
+</div>
+</div>
+<!-- Card 4: Cash Desk Tender -->
+<div class="p-space-lg rounded-xl bg-surface-container-low border border-outline-variant/30 hover:border-outline-variant/50 transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-space-sm">
+<span class="font-label-md text-label-md">Cash Desk Tender</span>
+<span class="material-symbols-outlined text-tertiary-fixed-dim">point_of_sale</span>
+</div>
+<div>
+<div class="font-headline-lg text-headline-lg text-primary font-data-tabular num-tabular tracking-tight">
+              GHS 12,400.00
+            </div>
+<div class="mt-space-sm font-body-sm text-body-sm text-on-surface-variant">
+              (184 walk-in cash orders)
+            </div>
+<div class="text-outline font-label-sm text-label-sm mt-1">
+              Physical vault drawer locked
+            </div>
+</div>
+</div>
+</section>
+<!-- Main Content Grid (Two Columns: ~65% / 35%) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
+<!-- Left Column: Zone Revenue & Throughput Table (8 Cols = ~66%) -->
+<div class="lg:col-span-8 rounded-xl bg-surface-container-low border border-outline-variant/30 overflow-hidden flex flex-col">
+<!-- Table Header Controls Bar -->
+<div class="p-space-md border-b border-outline-variant/30 flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-lowest/40">
+<div>
+<h2 class="font-headline-sm text-headline-sm font-semibold text-primary">Zone Financials &amp; Gate Throughput</h2>
+<p class="font-body-sm text-body-sm text-outline">Real-time terminal collections segmented by regional entry perimeter</p>
+</div>
+<!-- Filter Pills & Export Action -->
+<div class="flex items-center gap-space-sm">
+<div class="inline-flex p-0.5 rounded-lg bg-surface-container border border-outline-variant/30">
+<button class="px-2.5 py-1 rounded bg-surface-container-high text-primary font-label-sm text-label-sm border border-outline-variant/20">All Zones</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">Main Arena</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm">North Grounds</button>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-container border border-outline-variant/30 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+</button>
+</div>
+</div>
+<!-- Structured Telemetry Data Sheet -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/20 text-on-surface-variant font-label-caps text-label-caps uppercase tracking-wider bg-surface-container-lowest/20">
+<th class="py-3 px-space-md font-semibold">Zone</th>
+<th class="py-3 px-space-md text-right font-semibold">Online MoMo</th>
+<th class="py-3 px-space-md text-right font-semibold">Cash Collected</th>
+<th class="py-3 px-space-md font-semibold text-center">Turnout Rate</th>
+<th class="py-3 px-space-md text-right font-semibold">Net Total</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10 font-body-sm text-body-sm">
+<!-- Row 1: Accra Central -->
+<tr class="hover:bg-surface-container/50 transition-colors group">
+<td class="py-3.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-medium text-primary">Accra Central</span>
+</div>
+<span class="text-[11px] text-outline pl-3.5">Gates 1, 2 &amp; Main Concourse</span>
+</td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-on-surface">
+                    GHS 29,400.00
+                  </td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-on-surface-variant">
+                    GHS 7,100.00
+                  </td>
+<td class="py-3.5 px-space-md">
+<div class="flex flex-col items-center gap-1">
+<div class="flex items-center justify-between w-28 text-label-sm font-data-tabular">
+<span class="text-secondary font-medium">92%</span>
+<span class="text-outline">552 / 600</span>
+</div>
+<div class="w-28 bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 92%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-primary font-semibold">
+                    GHS 36,500.00
+                  </td>
+</tr>
+<!-- Row 2: Kumasi South -->
+<tr class="hover:bg-surface-container/50 transition-colors group">
+<td class="py-3.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-medium text-primary">Kumasi South</span>
+</div>
+<span class="text-[11px] text-outline pl-3.5">Terminal B &amp; VIP Entry</span>
+</td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-on-surface">
+                    GHS 12,650.00
+                  </td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-on-surface-variant">
+                    GHS 3,450.00
+                  </td>
+<td class="py-3.5 px-space-md">
+<div class="flex flex-col items-center gap-1">
+<div class="flex items-center justify-between w-28 text-label-sm font-data-tabular">
+<span class="text-secondary font-medium">78%</span>
+<span class="text-outline">312 / 400</span>
+</div>
+<div class="w-28 bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 78%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-primary font-semibold">
+                    GHS 16,100.00
+                  </td>
+</tr>
+<!-- Row 3: Cape Coast North -->
+<tr class="hover:bg-surface-container/50 transition-colors group">
+<td class="py-3.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-fixed-dim"></span>
+<span class="font-medium text-primary">Cape Coast North</span>
+</div>
+<span class="text-[11px] text-outline pl-3.5">Gate C &amp; Staff Accreditation</span>
+</td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-on-surface">
+                    GHS 6,200.00
+                  </td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-on-surface-variant">
+                    GHS 1,850.00
+                  </td>
+<td class="py-3.5 px-space-md">
+<div class="flex flex-col items-center gap-1">
+<div class="flex items-center justify-between w-28 text-label-sm font-data-tabular">
+<span class="text-tertiary-fixed-dim font-medium">73%</span>
+<span class="text-outline">256 / 350</span>
+</div>
+<div class="w-28 bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-tertiary-fixed-dim h-full rounded-full" style="width: 73%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-space-md text-right font-data-tabular num-tabular text-primary font-semibold">
+                    GHS 8,050.00
+                  </td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Ledger Footer / Audited Seal -->
+<div class="p-space-md border-t border-outline-variant/20 flex flex-col sm:flex-row items-center justify-between gap-space-sm text-outline font-label-sm text-label-sm bg-surface-container-lowest/20">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px]">verified</span>
+<span>Encrypted with ISO-20022 settlement token</span>
+</div>
+<div class="flex items-center gap-space-md">
+<span>Combined Reconciled Total:</span>
+<span class="font-headline-sm text-headline-sm font-semibold text-primary font-data-tabular num-tabular">GHS 60,650.00</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Live Gate Feed & Terminal Commands (4 Cols = ~34%) -->
+<div class="lg:col-span-4 flex flex-col gap-space-md">
+<!-- Live Gate Feed Panel -->
+<div class="p-space-md rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col">
+<div class="flex items-center justify-between pb-space-sm border-b border-outline-variant/30 mb-space-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">stream</span>
+<h3 class="font-label-md text-label-md font-semibold text-primary">Live Gate Feed</h3>
+</div>
+<div class="flex items-center gap-1.5 text-outline font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>Real-time sync</span>
+</div>
+</div>
+<!-- Feed Admission Entries (Chronological 4 records) -->
+<div class="flex flex-col divide-y divide-outline-variant/15">
+<!-- Record 1: Ama Serwah -->
+<div class="py-2.5 flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-xs font-semibold text-primary">
+                    AS
+                  </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-primary">Ama Serwah</span>
+<span class="font-body-sm text-body-sm text-outline text-[12px]">VIP Gold · Gate A</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="px-1.5 py-0.5 rounded bg-tertiary-fixed/10 text-tertiary-fixed-dim text-[10px] font-label-caps uppercase border border-tertiary-fixed/20 font-semibold">VIP Gold</span>
+<span class="text-outline text-[11px] font-data-tabular mt-0.5">2m ago</span>
+</div>
+</div>
+<!-- Record 2: Kofi Mensah -->
+<div class="py-2.5 flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-xs font-semibold text-primary">
+                    KM
+                  </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-primary">Kofi Mensah</span>
+<span class="font-body-sm text-body-sm text-outline text-[12px]">Regular Pass · Gate B</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant text-[10px] font-label-caps uppercase border border-outline-variant/30 font-semibold">Regular</span>
+<span class="text-outline text-[11px] font-data-tabular mt-0.5">4m ago</span>
+</div>
+</div>
+<!-- Record 3: Nana Kwame -->
+<div class="py-2.5 flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-xs font-semibold text-primary">
+                    NK
+                  </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-primary">Nana Kwame</span>
+<span class="font-body-sm text-body-sm text-outline text-[12px]">VIP Diamond · Gate A</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-label-caps uppercase border border-secondary/20 font-semibold">VIP Diamond</span>
+<span class="text-outline text-[11px] font-data-tabular mt-0.5">7m ago</span>
+</div>
+</div>
+<!-- Record 4: Abena Osei -->
+<div class="py-2.5 flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-xs font-semibold text-primary">
+                    AO
+                  </div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-primary">Abena Osei</span>
+<span class="font-body-sm text-body-sm text-outline text-[12px]">Early Bird · Gate C</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant text-[10px] font-label-caps uppercase border border-outline-variant/30 font-semibold">Early Bird</span>
+<span class="text-outline text-[11px] font-data-tabular mt-0.5">11m ago</span>
+</div>
+</div>
+</div>
+<!-- View Audit Logs Link -->
+<a class="mt-space-sm pt-space-xs text-center font-label-sm text-label-sm text-outline hover:text-primary transition-colors flex items-center justify-center gap-1 border-t border-outline-variant/15" href="#">
+<span>Review all 1,120 admissions</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+<!-- Quick Terminal Actions Panel -->
+<div class="p-space-md rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-space-sm">
+<span class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Fast Lane Operations</span>
+<!-- Primary Action: Open Gate Scanner -->
+<button class="w-full h-11 px-4 rounded-xl bg-primary text-on-primary font-semibold flex items-center justify-center gap-2 hover:bg-primary-fixed transition-all duration-150 active:scale-[0.99] shadow-sm">
+<span class="material-symbols-outlined text-[20px]">qr_code_scanner</span>
+<span class="font-label-md text-label-md font-semibold">[ Open Gate Scanner ]</span>
+</button>
+<!-- Secondary Refined Dark Action: Cash Desk Register -->
+<button class="w-full h-11 px-4 rounded-xl bg-surface-container border border-outline-variant/40 text-primary hover:bg-surface-container-high hover:border-outline-variant transition-all duration-150 active:scale-[0.99] flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-outline text-[20px]">point_of_sale</span>
+<span class="font-label-md text-label-md font-medium">[ Cash Desk Register ]</span>
+</button>
+</div>
+<!-- Hardware Device Integrity Diagnostic Pill -->
+<div class="p-space-md rounded-xl bg-surface-container-lowest border border-outline-variant/20 flex items-center justify-between text-outline font-label-sm text-label-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span>4 RFID Turnstiles Online</span>
+</div>
+<span class="font-data-tabular num-tabular text-[12px]">Latency: 14ms</span>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
