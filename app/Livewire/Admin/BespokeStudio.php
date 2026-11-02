@@ -383,10 +383,17 @@ class BespokeStudio extends Component
 
     private function storeUploadedImage(): string
     {
-        $this->validate([
-            'new_image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
-            ...$this->imageDetailRules(),
-        ]);
+        try {
+            $this->validate([
+                'new_image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+                ...$this->imageDetailRules(),
+            ]);
+        } catch (\League\Flysystem\UnableToRetrieveMetadata $e) {
+            $this->new_image_file = null;
+            throw ValidationException::withMessages([
+                'new_image_file' => 'The uploaded temporary file was lost between serverless instances. Please re-select the image or paste an image URL.',
+            ]);
+        }
 
         $file = $this->new_image_file ?? throw ValidationException::withMessages([
             'new_image_file' => 'Choose an image to upload.',

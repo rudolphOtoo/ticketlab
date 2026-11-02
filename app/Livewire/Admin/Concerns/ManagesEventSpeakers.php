@@ -77,16 +77,23 @@ trait ManagesEventSpeakers
 
     public function saveSpeaker(): void
     {
-        $this->validate([
-            'speaker_name' => ['required', 'string', 'max:100'],
-            'speaker_title_role' => ['nullable', 'string', 'max:100'],
-            'speaker_topic' => ['nullable', 'string', 'max:150'],
-            'speaker_bio' => ['nullable', 'string', 'max:1000'],
-            'speaker_photo_path' => ['nullable', 'string', 'max:2048'],
-            'speaker_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'speaker_is_featured' => ['boolean'],
-            'speaker_sort_order' => ['required', 'integer', 'min:0'],
-        ]);
+        try {
+            $this->validate([
+                'speaker_name' => ['required', 'string', 'max:100'],
+                'speaker_title_role' => ['nullable', 'string', 'max:100'],
+                'speaker_topic' => ['nullable', 'string', 'max:150'],
+                'speaker_bio' => ['nullable', 'string', 'max:1000'],
+                'speaker_photo_path' => ['nullable', 'string', 'max:2048'],
+                'speaker_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+                'speaker_is_featured' => ['boolean'],
+                'speaker_sort_order' => ['required', 'integer', 'min:0'],
+            ]);
+        } catch (\League\Flysystem\UnableToRetrieveMetadata $e) {
+            $this->speaker_photo = null;
+            $this->addError('speaker_photo', 'The uploaded photo was lost between serverless instances. Please re-select the image or paste a photo URL.');
+
+            return;
+        }
 
         $event = $this->getCurrentEvent();
 

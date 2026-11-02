@@ -171,14 +171,23 @@
                             <div class="aspect-[16/7] w-40 shrink-0 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)]">
                                 @if ($banner && in_array($banner->getMimeType(), ['image/jpeg', 'image/png', 'image/webp'], true))
                                     <img src="{{ $banner->temporaryUrl() }}" alt="" class="size-full object-cover" />
+                                @elseif ($bannerUrlInput)
+                                    <img src="{{ $bannerUrlInput }}" alt="" class="size-full object-cover" />
                                 @elseif ($existingBannerUrl)
                                     <img src="{{ $existingBannerUrl }}" alt="" class="size-full object-cover" />
                                 @endif
                             </div>
-                            <input id="event-banner" type="file" accept="image/jpeg,image/png,image/webp" wire:model="banner" class="text-xs text-[var(--text-secondary)] file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--text-primary)]" />
+                            <div class="flex-1 space-y-2">
+                                <input id="event-banner" type="file" accept="image/jpeg,image/png,image/webp" wire:model="banner" class="text-xs text-[var(--text-secondary)] file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--text-primary)]" />
+                                <div class="flex items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
+                                    <span>or</span>
+                                    <input type="url" wire:model.live.debounce.300ms="bannerUrlInput" placeholder="…paste image URL (e.g. Unsplash, S3)" class="flex-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-none" />
+                                </div>
+                            </div>
                         </div>
                         <div wire:loading wire:target="banner" class="mt-1 text-[11px] text-[var(--text-tertiary)]">Uploading…</div>
                         @error('banner') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                        @error('bannerUrlInput') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
