@@ -66,7 +66,7 @@
                     <!-- Expandable Banner Preview -->
                     @if ($event->bannerUrl())
                         <div x-show="showBanner" x-collapse x-cloak class="mt-3 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)]">
-                            <img src="{{ $event->bannerUrl() }}" alt="{{ $event->title }}" class="aspect-[16/7] w-full object-cover" loading="lazy" />
+                            <img src="{{ $event->bannerUrl() }}" alt="{{ $event->title }}" class="aspect-[16/7] w-full object-cover" loading="lazy" onerror="this.onerror=null; this.parentElement.style.display='none';" />
                         </div>
                     @endif
 
@@ -168,13 +168,15 @@
                     <div>
                         <label for="event-banner" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Banner Image <span class="font-normal text-[var(--text-tertiary)]">(JPG, PNG or WebP · max 4 MB)</span></label>
                         <div class="flex items-center gap-3">
-                            <div class="aspect-[16/7] w-40 shrink-0 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)]">
+                            <div class="aspect-[16/7] w-40 shrink-0 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] flex items-center justify-center">
                                 @if ($banner && in_array($banner->getMimeType(), ['image/jpeg', 'image/png', 'image/webp'], true))
                                     <img src="{{ $banner->temporaryUrl() }}" alt="" class="size-full object-cover" />
                                 @elseif ($bannerUrlInput)
-                                    <img src="{{ $bannerUrlInput }}" alt="" class="size-full object-cover" />
+                                    <img src="{{ $bannerUrlInput }}" alt="" class="size-full object-cover" onerror="this.style.display='none';" />
                                 @elseif ($existingBannerUrl)
-                                    <img src="{{ $existingBannerUrl }}" alt="" class="size-full object-cover" />
+                                    <img src="{{ $existingBannerUrl }}" alt="" class="size-full object-cover" onerror="this.style.display='none';" />
+                                @else
+                                    <span class="text-[10px] text-[var(--text-tertiary)] font-medium">No banner</span>
                                 @endif
                             </div>
                             <div class="flex-1 space-y-2">
