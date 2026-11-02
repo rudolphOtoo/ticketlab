@@ -14,12 +14,29 @@
         <x-floating-nav :showBack="false" />
 
         @php
-            $featuredEvents = \App\Models\Event::with(['organization', 'ticketTypes'])
+            $featuredIds = \App\Models\Organization::query()
+                ->pluck('settings')
+                ->map(static fn($s) => is_array($s) && isset($s['featured_event_id']) ? (int) $s['featured_event_id'] : null)
+                ->filter()
+                ->values()
+                ->all();
+
+            $allEvents = \App\Models\Event::with(['organization', 'ticketTypes'])
                 ->where('status', 'published')
                 ->where('is_public', true)
-                ->latest('id')
-                ->take(3)
                 ->get();
+
+            $featuredEvents = $allEvents->sort(static function (\App\Models\Event $a, \App\Models\Event $b) use ($featuredIds): int {
+                $aFeatured = in_array($a->id, $featuredIds, true);
+                $bFeatured = in_array($b->id, $featuredIds, true);
+
+                if ($aFeatured !== $bFeatured) {
+                    return $aFeatured ? -1 : 1;
+                }
+
+                return $a->start_at <=> $b->start_at;
+            })->values();
+
             $spotlightEvent = $featuredEvents->first();
         @endphp
 
@@ -87,107 +104,92 @@
                     </form>
                 </div>
 
-                <!-- Right Spotlight Card Column with Micro-Switcher -->
-                <div class="lg:col-span-5" x-data="{ activeIndex: 0 }">
-                    @if ($featuredEvents->isNotEmpty())
-                        @if ($featuredEvents->count() > 1)
-                            <div class="flex items-center gap-1.5 pb-3 overflow-x-auto">
-                                @foreach ($featuredEvents->take(3) as $idx => $eventOption)
-                                    <button
-                                        type="button"
-                                        @click="activeIndex = {{ $idx }}"
-                                        class="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition cursor-pointer"
-                                        :class="activeIndex === {{ $idx }} ? 'bg-[var(--text-primary)] text-[var(--bg-canvas)] shadow-xs' : 'bg-[var(--bg-surface)] border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'"
-                                    >
-                                        {{ $idx + 1 }} · {{ \Illuminate\Support\Str::limit($eventOption->title, 16) }}
-                                    </button>
-                                @endforeach
-                            </div>
-                        @endif
+                <!-- Right Spotlight Card Column -->
+                <div class="lg:col-span-5">
+                    @if ($spotlightEvent !== null)
+                        @php
+                            $spotlightCustom = is_array($spotlightEvent->customization) ? $spotlightEvent->customization : [];
+                            $spotlightHeadline = $spotlightCustom['headline'] ?? $spotlightEvent->title;
+                            $minPrice = $spotlightEvent->ticketTypes->min('price');
+                            $isExplicitlyFeatured = in_array($spotlightEvent->id, $featuredIds, true);
+                        @endphp
+                        <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-7 shadow-sm relative overflow-hidden group">
+                            @if ($spotlightEvent->bannerUrl())
+                                <div class="h-40 -mx-6 sm:-mx-7 -mt-6 sm:-mt-7 mb-5 overflow-hidden relative bg-[var(--bg-subtle)]">
+                                    <img
+                                        src="{{ $spotlightEvent->bannerUrl() }}"
+                                        alt=""
+                                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        onerror="this.closest('div').style.display='none';"
+                                    />
+                                    <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-surface)] to-transparent"></div>
+                                </div>
+                            @endif
 
-                        @foreach ($featuredEvents->take(3) as $idx => $spotlightEvent)
-                            @php
-                                $spotlightCustom = is_array($spotlightEvent->customization) ? $spotlightEvent->customization : [];
-                                $spotlightHeadline = $spotlightCustom['headline'] ?? $spotlightEvent->title;
-                                $minPrice = $spotlightEvent->ticketTypes->min('price');
-                            @endphp
-                            <div x-show="activeIndex === {{ $idx }}" x-cloak class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 sm:p-7 shadow-sm relative overflow-hidden group">
-                                @if ($spotlightEvent->bannerUrl())
-                                    <div class="h-40 -mx-6 sm:-mx-7 -mt-6 sm:-mt-7 mb-5 overflow-hidden relative bg-[var(--bg-subtle)]">
-                                        <img
-                                            src="{{ $spotlightEvent->bannerUrl() }}"
-                                            alt="{{ $spotlightEvent->title }}"
-                                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                        />
-                                        <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-surface)] to-transparent"></div>
-                                    </div>
-                                @endif
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                                        {{ $isExplicitlyFeatured ? 'Featured Spotlight' : 'Spotlight Event' }}
+                                    </span>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                                        Open for Passes
+                                    </span>
+                                </div>
 
-                                <div class="space-y-4">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                                            Spotlight Event
+                                <div>
+                                    <h2 class="font-serif text-2xl font-bold text-[var(--text-primary)] leading-snug">
+                                        {{ $spotlightEvent->title }}
+                                    </h2>
+                                    @if ($spotlightHeadline && $spotlightHeadline !== $spotlightEvent->title)
+                                        <p class="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2 leading-relaxed">
+                                            {{ $spotlightHeadline }}
+                                        </p>
+                                    @endif
+                                </div>
+
+                                <!-- Metadata -->
+                                <div class="space-y-2 py-3 border-y border-[var(--border-hairline)] text-xs text-[var(--text-secondary)]">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span>
+                                            {{ $spotlightEvent->start_at ? $spotlightEvent->start_at->format('F j, Y · g:i A') : 'Date to be announced' }}
                                         </span>
-                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                                            Open for Passes
-                                        </span>
                                     </div>
-
-                                    <div>
-                                        <h2 class="font-serif text-2xl font-bold text-[var(--text-primary)] leading-snug">
-                                            {{ $spotlightEvent->title }}
-                                        </h2>
-                                        @if ($spotlightHeadline && $spotlightHeadline !== $spotlightEvent->title)
-                                            <p class="text-xs text-[var(--text-secondary)] mt-1 line-clamp-2 leading-relaxed">
-                                                {{ $spotlightHeadline }}
-                                            </p>
-                                        @endif
-                                    </div>
-
-                                    <!-- Metadata -->
-                                    <div class="space-y-2 py-3 border-y border-[var(--border-hairline)] text-xs text-[var(--text-secondary)]">
-                                        <div class="flex items-center gap-2">
-                                            <svg class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <span>
-                                                {{ $spotlightEvent->start_at ? $spotlightEvent->start_at->format('F j, Y · g:i A') : 'Date to be announced' }}
-                                            </span>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <svg class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
-                                            <span class="truncate">{{ $spotlightEvent->venue ?: 'Venue details to follow' }}</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex items-center justify-between pt-1">
-                                        <div>
-                                            <span class="block text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Admission</span>
-                                            <span class="text-sm font-bold text-[var(--text-primary)]">
-                                                @if ($spotlightEvent->ticketTypes->isEmpty())
-                                                    TBA
-                                                @elseif ($minPrice == 0)
-                                                    Free Pass
-                                                @else
-                                                    GHS {{ number_format((float) $minPrice, 2) }}
-                                                @endif
-                                            </span>
-                                        </div>
-
-                                        <a
-                                            href="{{ route('public.event.show', ['org_slug' => $spotlightEvent->organization->slug, 'event_slug' => $spotlightEvent->slug]) }}"
-                                            class="px-4 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale inline-flex items-center gap-1.5"
-                                        >
-                                            <span>Get Passes</span>
-                                            <span>→</span>
-                                        </a>
+                                    <div class="flex items-center gap-2">
+                                        <svg class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <span class="truncate">{{ $spotlightEvent->venue ?: 'Venue details to follow' }}</span>
                                     </div>
                                 </div>
+
+                                <div class="flex items-center justify-between pt-1">
+                                    <div>
+                                        <span class="block text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Admission</span>
+                                        <span class="text-sm font-bold text-[var(--text-primary)]">
+                                            @if ($spotlightEvent->ticketTypes->isEmpty())
+                                                TBA
+                                            @elseif ($minPrice == 0)
+                                                Free Pass
+                                            @else
+                                                GHS {{ number_format((float) $minPrice, 2) }}
+                                            @endif
+                                        </span>
+                                    </div>
+
+                                    <a
+                                        href="{{ route('public.event.show', ['org_slug' => $spotlightEvent->organization->slug, 'event_slug' => $spotlightEvent->slug]) }}"
+                                        class="px-4 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale inline-flex items-center gap-1.5"
+                                    >
+                                        <span>Get Passes</span>
+                                        <span>→</span>
+                                    </a>
+                                </div>
                             </div>
-                        @endforeach
+                        </div>
                     @else
                         <div class="rounded-3xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] p-8 text-center space-y-3">
                             <div class="size-12 rounded-2xl bg-[var(--bg-subtle)] text-[var(--text-tertiary)] flex items-center justify-center mx-auto">
@@ -251,40 +253,47 @@
                 <div class="flex items-center justify-between mb-8 pb-3 border-b border-[var(--border-hairline)]">
                     <div>
                         <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Discover</span>
-                        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">Featured Gatherings</h2>
+                        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">Upcoming & Featured Gatherings</h2>
                     </div>
 
                     <a
                         href="{{ route('public.events.index') }}"
                         class="text-xs font-semibold text-[var(--text-primary)] hover:underline inline-flex items-center gap-1 press-scale"
                     >
-                        <span>View All Events</span>
+                        <span>View All {{ $featuredEvents->count() > 1 ? $featuredEvents->count() . ' ' : '' }}Events</span>
                         <span>→</span>
                     </a>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    @foreach ($featuredEvents as $item)
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                    @foreach ($featuredEvents->take(6) as $item)
                         @php
                             $itemMinPrice = $item->ticketTypes->min('price');
+                            $isItemFeatured = in_array($item->id, $featuredIds, true);
                         @endphp
                         <article class="flex flex-col justify-between rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-2xs subtle-hover-glow transition group">
                             <div class="relative h-36 bg-[var(--bg-subtle)] overflow-hidden">
                                 @if ($item->bannerUrl())
                                     <img
                                         src="{{ $item->bannerUrl() }}"
-                                        alt="{{ $item->title }}"
+                                        alt=""
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        onerror="this.parentElement.style.display='none';"
                                     />
                                 @else
                                     <div class="w-full h-full bg-gradient-to-br from-amber-500/10 to-stone-500/20 flex items-center justify-center">
                                         <x-app-logo-icon class="size-6 text-[var(--text-tertiary)] opacity-60" />
                                     </div>
                                 @endif
-                                <div class="absolute top-2.5 left-2.5">
+                                <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5">
                                     <span class="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-[var(--bg-surface)]/90 backdrop-blur-md text-[var(--text-primary)] border border-[var(--border-hairline)]">
                                         {{ $item->organization->name ?? 'Community' }}
                                     </span>
+                                    @if ($isItemFeatured)
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-500 text-white shadow-2xs">
+                                            Featured
+                                        </span>
+                                    @endif
                                 </div>
                             </div>
 

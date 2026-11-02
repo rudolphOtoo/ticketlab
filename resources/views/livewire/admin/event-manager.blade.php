@@ -29,7 +29,7 @@
             <button type="button" wire:click="openCreateModal" class="mt-5 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs press-scale">+ Create First Event</button>
         </div>
     @else
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
             @foreach ($events as $event)
                 @php $isActive = $event->id === $activeEventId; @endphp
                 <article wire:key="event-{{ $event->id }}" x-data="{ showBanner: false }" @class([
@@ -66,7 +66,7 @@
                     <!-- Expandable Banner Preview -->
                     @if ($event->bannerUrl())
                         <div x-show="showBanner" x-collapse x-cloak class="mt-3 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)]">
-                            <img src="{{ $event->bannerUrl() }}" alt="{{ $event->title }}" class="aspect-[16/7] w-full object-cover" loading="lazy" onerror="this.onerror=null; this.parentElement.style.display='none';" />
+                            <img src="{{ $event->bannerUrl() }}" alt="" class="aspect-[16/7] w-full object-cover" loading="lazy" onerror="this.onerror=null; this.closest('div').style.display='none';" />
                         </div>
                     @endif
 
@@ -168,13 +168,15 @@
                     <div>
                         <label for="event-banner" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Banner Image <span class="font-normal text-[var(--text-tertiary)]">(JPG, PNG or WebP · max 4 MB)</span></label>
                         <div class="flex items-center gap-3">
-                            <div class="aspect-[16/7] w-40 shrink-0 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] flex items-center justify-center">
+                            <div class="aspect-[16/7] w-40 shrink-0 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] flex items-center justify-center relative">
                                 @if ($banner && in_array($banner->getMimeType(), ['image/jpeg', 'image/png', 'image/webp'], true))
                                     <img src="{{ $banner->temporaryUrl() }}" alt="" class="size-full object-cover" />
                                 @elseif ($bannerUrlInput)
-                                    <img src="{{ $bannerUrlInput }}" alt="" class="size-full object-cover" onerror="this.style.display='none';" />
+                                    <span class="text-[10px] text-[var(--text-tertiary)] font-medium">Previewing…</span>
+                                    <img src="{{ $bannerUrlInput }}" alt="" class="absolute inset-0 size-full object-cover" onerror="this.remove();" />
                                 @elseif ($existingBannerUrl)
-                                    <img src="{{ $existingBannerUrl }}" alt="" class="size-full object-cover" onerror="this.style.display='none';" />
+                                    <span class="text-[10px] text-[var(--text-tertiary)] font-medium">No banner</span>
+                                    <img src="{{ $existingBannerUrl }}" alt="" class="absolute inset-0 size-full object-cover" onerror="this.remove();" />
                                 @else
                                     <span class="text-[10px] text-[var(--text-tertiary)] font-medium">No banner</span>
                                 @endif
