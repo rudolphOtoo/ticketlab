@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Livewire;
@@ -43,6 +44,11 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // Never bind to a local Vite dev server in production or serverless environments.
+        if (app()->isProduction() || isset($_SERVER['VERCEL']) || isset($_ENV['VERCEL'])) {
+            Vite::useHotFile(storage_path('framework/no_hot_file'));
+        }
 
         DB::prohibitDestructiveCommands(app()->isProduction());
 
