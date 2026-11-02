@@ -8,6 +8,7 @@ use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\EventFormField;
 use App\Models\Organization;
+use App\Models\User;
 use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,6 +53,7 @@ class DataExportCentral extends Component
         }
 
         $orgId = $this->organizationId;
+        $zoneId = auth()->user()?->subdivision_id;
         $eventId = $this->selectedEventId;
 
         $event = $eventId === null
@@ -65,11 +67,12 @@ class DataExportCentral extends Component
         $fileName = 'attendees_' . ($event !== null ? $event->slug : 'all') . '_' . now()->format('Y_m_d_His') . '.csv';
 
         return response()->streamDownload(
-            static function () use ($orgId, $eventId, $customFormFields): void {
+            static function () use ($orgId, $zoneId, $eventId, $customFormFields): void {
                 $writer = SimpleExcelWriter::create('php://output', 'csv');
 
                 $query = Attendee::query()
                     ->with(['ticketType', 'order', 'subdivision'])
+                    ->when($zoneId, static fn(Builder $q, int $zone) => $q->where('subdivision_id', $zone))
                     ->whereHas('ticketType.event', static function (Builder $q) use ($orgId, $eventId): void {
                         $q->where('organization_id', $orgId);
                         if ($eventId !== null) {
@@ -116,6 +119,13 @@ class DataExportCentral extends Component
     {
         if ($this->organizationId === null) {
             abort(403, 'Unauthorized organization context.');
+        }
+
+        // The backup spans every zone's configuration, so it belongs to organisation-wide admins only.
+        $user = auth()->user();
+
+        if (!$user instanceof User || $user->subdivision_id !== null) {
+            abort(403, 'Full organization backups are restricted to organization-wide admins.');
         }
 
         $orgId = $this->organizationId;

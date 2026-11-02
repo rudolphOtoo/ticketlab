@@ -84,7 +84,8 @@
             </button>
         </div>
 
-        <!-- Card 2: Complete JSON Tenant Backup -->
+        <!-- Card 2: Complete JSON Tenant Backup (organisation-wide admins only) -->
+        @if (auth()->user()?->subdivision_id === null)
         <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-2xs flex flex-col justify-between space-y-4 subtle-hover-glow transition">
             <div class="space-y-3">
                 <div class="flex items-start justify-between">
@@ -128,6 +129,7 @@
                 <span>Download Complete JSON Backup</span>
             </button>
         </div>
+        @endif
 
     </div>
 

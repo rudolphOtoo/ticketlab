@@ -161,10 +161,11 @@ class ScannerTerminal extends Component
         $totalExpected = 0;
 
         if ($event !== null) {
-            $attendees = $this->forOrganization(
-                Attendee::query(),
-                $orgId,
-            )->whereIn('ticket_type_id', TicketType::query()->select('id')->where('event_id', $event->id));
+            // Zone-bound operators track their own zone's turnout, though the gate admits every zone's passes.
+            $attendees = $this
+                ->forOrganization(Attendee::query(), $orgId)
+                ->whereIn('ticket_type_id', TicketType::query()->select('id')->where('event_id', $event->id))
+                ->when($user?->subdivision_id, static fn($q, int $zone) => $q->where('subdivision_id', $zone));
             $totalCheckedIn = (clone $attendees)->whereNotNull('checked_in_at')->count();
             $totalExpected = $attendees->count();
         }

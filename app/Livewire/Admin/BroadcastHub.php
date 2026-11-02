@@ -159,7 +159,13 @@ class BroadcastHub extends Component
      */
     private function broadcasts(User $actor): Builder
     {
-        return Broadcast::query()->where('organization_id', $actor->organization_id);
+        // Zone admins only see broadcasts sent from their own zone; their recipients never leave it either.
+        return Broadcast::query()
+            ->where('organization_id', $actor->organization_id)
+            ->when($actor->subdivision_id, static fn(
+                Builder $query,
+                int $zoneId,
+            ) => $query->whereHas('sender', static fn(Builder $sender) => $sender->where('subdivision_id', $zoneId)));
     }
 
     public function render(): View

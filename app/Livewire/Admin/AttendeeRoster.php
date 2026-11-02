@@ -170,6 +170,11 @@ class AttendeeRoster extends Component
         $user = auth()->user();
         $orgId = (int) $user?->organization_id;
 
+        // The zone field is client-writable; a zone-bound admin can only issue passes into their own zone.
+        if ($user?->subdivision_id !== null) {
+            $this->manual_subdivision_id = $user->subdivision_id;
+        }
+
         $this->validate([
             'manual_name' => ['required', 'string', 'max:100'],
             'manual_email' => ['required', 'email', 'max:150'],

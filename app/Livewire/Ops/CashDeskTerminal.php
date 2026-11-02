@@ -66,10 +66,12 @@ class CashDeskTerminal extends Component
     public function loadRecentCashSales(): void
     {
         $orgId = auth()->user()?->organization_id;
+        $zoneId = auth()->user()?->subdivision_id;
 
         $orders = Order::with('attendees.ticketType')
             ->where('payment_method', PaymentMethod::PhysicalCash->value)
             ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->when($zoneId, static fn($q, int $zone) => $q->where('subdivision_id', $zone))
             ->latest('paid_at')
             ->take(5)
             ->get();
