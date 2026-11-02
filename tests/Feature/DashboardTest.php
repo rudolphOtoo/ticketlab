@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\User;
@@ -23,5 +25,11 @@ class DashboardTest extends TestCase
 
         $response = $this->get(route('dashboard'));
         $response->assertOk();
+        $response->assertSee('My Passes');
+        $response->assertSee('Welcome back');
+        $response->assertDontSee('Ops Hub');
+        $response->assertDontSee('Manage Event');
+        $response->assertDontSee('flux:');
+        $response->assertDontSee('@fluxScripts');
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
@@ -27,9 +29,7 @@ class AuthenticationTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+        $response->assertSessionHasNoErrors()->assertRedirect(route('dashboard', absolute: false));
 
         $this->assertAuthenticated();
     }
