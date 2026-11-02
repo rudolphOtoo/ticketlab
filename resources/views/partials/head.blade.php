@@ -84,31 +84,18 @@
         });
 
         transition.ready.then(() => {
-            if (isGoingDark) {
-                document.documentElement.animate(
-                    [
-                        { clipPath: `circle(0px at ${x}px ${y}px)` },
-                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
-                    ],
-                    {
-                        duration: 360,
-                        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-                        pseudoElement: '::view-transition-new(root)'
-                    }
-                );
-            } else {
-                document.documentElement.animate(
-                    [
-                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` },
-                        { clipPath: `circle(0px at ${x}px ${y}px)` }
-                    ],
-                    {
-                        duration: 360,
-                        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-                        pseudoElement: '::view-transition-old(root)'
-                    }
-                );
-            }
+            document.documentElement.animate(
+                [
+                    { clipPath: `circle(0px at ${x}px ${y}px)` },
+                    { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
+                ],
+                {
+                    duration: 380,
+                    easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+                    pseudoElement: '::view-transition-new(root)',
+                    fill: 'forwards'
+                }
+            );
         });
     }
 
@@ -126,32 +113,29 @@
     mix-blend-mode: normal !important;
     display: block;
 }
-html.dark::view-transition-new(root) {
-    z-index: 9999;
-}
-html.dark::view-transition-old(root) {
+::view-transition-old(root) {
     z-index: 1;
 }
-html:not(.dark)::view-transition-old(root) {
+::view-transition-new(root) {
     z-index: 9999;
-}
-html:not(.dark)::view-transition-new(root) {
-    z-index: 1;
 }
 
 /* ==========================================================================
    Theme-Switch Flash Fix
-   Forces color-scheme on the view-transition pseudo-elements so browser-native
-   controls (scrollbars, selects, inputs) don't flash OS-default styling
-   during the circular clip animation between light ↔ dark mode.
+   Prevent native controls and canvas from flashing OS-default styling
+   during view transitions.
    ========================================================================== */
-html.dark::view-transition-new(root),
-html.dark::view-transition-old(root) {
+html.dark::view-transition-new(root) {
     color-scheme: dark;
 }
-html:not(.dark)::view-transition-new(root),
-html:not(.dark)::view-transition-old(root) {
+html.dark::view-transition-old(root) {
     color-scheme: light;
+}
+html:not(.dark)::view-transition-new(root) {
+    color-scheme: light;
+}
+html:not(.dark)::view-transition-old(root) {
+    color-scheme: dark;
 }
 </style>
 
