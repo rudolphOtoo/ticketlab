@@ -91,10 +91,15 @@ class QueueMonitor extends Component
      */
     private function broadcasts(User $actor)
     {
-        return Broadcast::query()->when(!$actor->isSuperAdmin(), static fn($query) => $query->where(
-            'organization_id',
-            $actor->organization_id,
-        ));
+        return Broadcast::query()
+            ->when(!$actor->isSuperAdmin(), static fn($query) => $query->where(
+                'organization_id',
+                $actor->organization_id,
+            ))
+            ->when($actor->subdivision_id, static fn(
+                $query,
+                int $zoneId,
+            ) => $query->whereHas('sender', static fn($sender) => $sender->where('subdivision_id', $zoneId)));
     }
 
     /**

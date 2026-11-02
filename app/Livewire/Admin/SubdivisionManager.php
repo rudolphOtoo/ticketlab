@@ -8,6 +8,7 @@ use App\Models\Subdivision;
 use App\Models\User;
 use App\Services\Payment\PaystackSubaccountResolver;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -58,6 +59,7 @@ class SubdivisionManager extends Component
 
     public function openCreateModal(): void
     {
+        $this->requireOrganizationWide($this->actor());
         $this->resetValidation();
         $this->reset(['editingSubdivisionId', 'name', 'slug', 'paystackSubaccountCode']);
         $this->isModalOpen = true;
@@ -66,7 +68,7 @@ class SubdivisionManager extends Component
     public function editSubdivision(int $id): void
     {
         $actor = $this->actor();
-        $sub = Subdivision::query()->where('organization_id', $actor->organization_id)->whereKey($id)->first();
+        $sub = $this->zones($actor)->whereKey($id)->first();
 
         if ($sub === null) {
             return;
@@ -108,8 +110,8 @@ class SubdivisionManager extends Component
         ]);
 
         $sub = $this->editingSubdivisionId === null
-            ? new Subdivision(['organization_id' => $orgId])
-            : Subdivision::query()->where('organization_id', $orgId)->whereKey($this->editingSubdivisionId)->first();
+            ? $this->newZone($actor, $orgId)
+            : $this->zones($actor)->whereKey($this->editingSubdivisionId)->first();
 
         if ($sub === null) {
             $this->closeModal();
@@ -157,7 +159,8 @@ class SubdivisionManager extends Component
     public function deleteSubdivision(int $id): void
     {
         $actor = $this->actor();
-        $sub = Subdivision::query()->where('organization_id', $actor->organization_id)->whereKey($id)->first();
+        $this->requireOrganizationWide($actor);
+        $sub = $this->zones($actor)->whereKey($id)->first();
 
         if ($sub === null) {
             return;
@@ -167,6 +170,35 @@ class SubdivisionManager extends Component
         $sub->delete();
 
         $this->flashMessage = "Subdivision '{$name}' was deleted.";
+    }
+
+    /**
+     * Zones the actor may see and edit: the whole organisation, or only their own zone when zone-bound.
+     *
+     * @return Builder<Subdivision>
+     */
+    private function zones(User $actor): Builder
+    {
+        return Subdivision::query()
+            ->where('organization_id', $actor->organization_id)
+            ->when($actor->subdivision_id, static fn(Builder $query, int $zoneId) => $query->whereKey($zoneId));
+    }
+
+    private function newZone(User $actor, int $orgId): Subdivision
+    {
+        $this->requireOrganizationWide($actor);
+
+        return new Subdivision(['organization_id' => $orgId]);
+    }
+
+    /**
+     * Creating or deleting a zone reshapes every other zone's attribution, so it is an organisation-wide decision.
+     */
+    private function requireOrganizationWide(User $actor): void
+    {
+        if ($actor->subdivision_id !== null) {
+            abort(403, 'Only organization-wide admins can create or delete subdivisions.');
+        }
     }
 
     private function actor(): User
@@ -189,8 +221,8 @@ class SubdivisionManager extends Component
         $actor = $this->actor();
         $term = trim($this->search);
 
-        $subdivisions = Subdivision::query()
-            ->where('organization_id', $actor->organization_id)
+        $subdivisions = $this
+            ->zones($actor)
             ->when($term !== '', static fn($query) => $query->where('name', 'like', "%{$term}%"))
             ->withCount(['attendees', 'orders'])
             ->orderBy('name')

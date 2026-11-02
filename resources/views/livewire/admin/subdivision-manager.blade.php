@@ -11,10 +11,12 @@
             </p>
         </div>
 
+        @if ($actor->subdivision_id === null)
         <button type="button" wire:click="openCreateModal" class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs transition hover:opacity-95 press-scale">
             <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 4v16m8-8H4" /></svg>
             <span>Add Subdivision</span>
         </button>
+        @endif
     </div>
 
     @if ($flashMessage)
@@ -60,12 +62,14 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1.5">
                                 <button type="button" wire:click="editSubdivision({{ $sub->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">Edit</button>
+                                @if ($actor->subdivision_id === null)
                                 <button
                                     type="button"
                                     wire:click="deleteSubdivision({{ $sub->id }})"
                                     wire:confirm="Delete subdivision '{{ $sub->name }}'? Staff assigned to it will be unassigned."
                                     class="cursor-pointer rounded-lg px-2.5 py-1 font-semibold text-rose-600 hover:bg-rose-500/10"
                                 >Delete</button>
+                                @endif
                             </div>
                         </td>
                     </tr>

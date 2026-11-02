@@ -48,7 +48,8 @@ class DailySessionLedger extends Component
 
             $session = SessionLedger::create([
                 'organization_id' => $orgId,
-                'session_name' => 'Session Day 1 — ' . now()->format('M d, Y'),
+                'subdivision_id' => $this->zoneId(),
+                'session_name' => $this->sessionLabel() . 'Session Day 1 — ' . now()->format('M d, Y'),
                 'opened_at' => now(),
             ]);
         }
@@ -74,6 +75,7 @@ class DailySessionLedger extends Component
 
             $zoneBreakdown = Subdivision::query()
                 ->where('organization_id', $orgId)
+                ->when($session->subdivision_id, static fn($q, int $zoneId) => $q->whereKey($zoneId))
                 ->withCount(['attendees as admitted' => static fn($q) => $q->whereNotNull('checked_in_at')])
                 ->get()
                 ->map(static fn(Subdivision $sub) => [
@@ -118,18 +120,39 @@ class DailySessionLedger extends Component
         return $user instanceof User ? $user->organization_id : null;
     }
 
+    private function zoneId(): ?int
+    {
+        $user = auth()->user();
+
+        return $user instanceof User ? $user->subdivision_id : null;
+    }
+
+    private function sessionLabel(): string
+    {
+        $zoneId = $this->zoneId();
+        $zoneName = $zoneId === null ? null : Subdivision::query()->whereKey($zoneId)->value('name');
+
+        return $zoneName === null ? '' : $zoneName . ' · ';
+    }
+
     /**
      * Session ledgers visible to the current user. `activeSessionId` is client-writable,
-     * so every lookup must go through this tenant scope.
+     * so every lookup must go through this tenant scope. Zone admins keep their own zone
+     * closeout; organisation-wide admins keep the organisation-wide one.
      *
      * @return Builder<SessionLedger>
      */
     private function sessions(): Builder
     {
-        return SessionLedger::query()->when($this->orgId(), static fn($q, $orgId) => $q->where(
-            'organization_id',
-            $orgId,
-        ));
+        $zoneId = $this->zoneId();
+
+        return SessionLedger::query()
+            ->when($this->orgId(), static fn($q, $orgId) => $q->where('organization_id', $orgId))
+            ->when(
+                $zoneId,
+                static fn($q, int $zone) => $q->where('subdivision_id', $zone),
+                static fn($q) => $q->whereNull('subdivision_id'),
+            );
     }
 
     private function activeSession(): ?SessionLedger
@@ -150,9 +173,21 @@ class DailySessionLedger extends Component
         return $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
     }
 
+    /**
+     * Tier capacity is a pool shared by every zone, so a zone measures turnout against the passes issued to it.
+     */
     private function capacityTotal(?Event $event): int
     {
-        return $event ? (int) TicketType::query()->where('event_id', $event->id)->sum('total_capacity') : 0;
+        if ($event === null) {
+            return 0;
+        }
+
+        $zoneId = $this->zoneId();
+        $tierIds = TicketType::query()->select('id')->where('event_id', $event->id);
+
+        return $zoneId === null
+            ? (int) TicketType::query()->where('event_id', $event->id)->sum('total_capacity')
+            : Attendee::query()->where('subdivision_id', $zoneId)->whereIn('ticket_type_id', $tierIds)->count();
     }
 
     /**
@@ -160,9 +195,12 @@ class DailySessionLedger extends Component
      */
     private function ledgerTotals(?int $orgId): array
     {
+        $zoneId = $this->zoneId();
+
         $paidOrders = Order::query()
             ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId));
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->when($zoneId, static fn($q, int $zone) => $q->where('subdivision_id', $zone));
 
         return [
             'online' => (float) (clone $paidOrders)->where(
@@ -176,6 +214,7 @@ class DailySessionLedger extends Component
             'checked_in' => Attendee::query()
                 ->whereNotNull('checked_in_at')
                 ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+                ->when($zoneId, static fn($q, int $zone) => $q->where('subdivision_id', $zone))
                 ->count(),
         ];
     }
@@ -190,6 +229,7 @@ class DailySessionLedger extends Component
         // Gate turnout and the live feed follow the active event; cash and online totals stay per daily session.
         $eventAttendees = Attendee::query()
             ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->when($this->zoneId(), static fn($q, int $zone) => $q->where('subdivision_id', $zone))
             ->when($event, static fn($q, Event $active) => $q->whereIn('ticket_type_id', TicketType::query()
                 ->select('id')
                 ->where('event_id', $active->id)));

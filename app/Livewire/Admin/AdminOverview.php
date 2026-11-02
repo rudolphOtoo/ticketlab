@@ -24,6 +24,7 @@ class AdminOverview extends Component
     {
         $user = Auth::user();
         $event = ActiveEvent::resolve($user instanceof User ? $user->organization_id : null);
+        $zoneId = $user instanceof User ? $user->subdivision_id : null;
 
         $stats = ['sold' => 0, 'capacity' => 0, 'checked_in' => 0, 'revenue' => 0.0];
 
@@ -31,7 +32,8 @@ class AdminOverview extends Component
             $tierIds = TicketType::query()->select('id')->where('event_id', $event->id);
             $attendees = Attendee::query()
                 ->where('organization_id', $event->organization_id)
-                ->whereIn('ticket_type_id', $tierIds);
+                ->whereIn('ticket_type_id', $tierIds)
+                ->when($zoneId, static fn($query, int $zone) => $query->where('subdivision_id', $zone));
 
             $stats = [
                 'sold' => (clone $attendees)->count(),
@@ -40,6 +42,7 @@ class AdminOverview extends Component
                 'revenue' => (float) Order::query()
                     ->where('organization_id', $event->organization_id)
                     ->where('payment_status', OrderStatus::Paid->value)
+                    ->when($zoneId, static fn($query, int $zone) => $query->where('subdivision_id', $zone))
                     ->whereHas('attendees', static fn($query) => $query->whereIn('ticket_type_id', $tierIds))
                     ->sum('gross_amount'),
             ];
