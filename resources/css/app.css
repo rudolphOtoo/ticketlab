@@ -122,14 +122,20 @@
        native browser controls don't flash their OS-default colors mid-transition.
        ========================================================================== */
 
-    html.dark::view-transition-old(root),
     html.dark::view-transition-new(root) {
         color-scheme: dark;
     }
 
-    html:not(.dark)::view-transition-old(root),
+    html.dark::view-transition-old(root) {
+        color-scheme: light;
+    }
+
     html:not(.dark)::view-transition-new(root) {
         color-scheme: light;
+    }
+
+    html:not(.dark)::view-transition-old(root) {
+        color-scheme: dark;
     }
 }
 

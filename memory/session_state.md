@@ -1,44 +1,28 @@
 # Conscience OS Session State Anchor
-# Session Save: Ultimate Codebase Pruning & Production Hardening Deployed to Vercel
+# Session Save: Vite Asset Bundling Hardened & Deployed to Vercel
 
-> **Saved At**: 2026-11-01 23:48Z  
+> **Saved At**: 2026-11-02 12:51Z  
 > **Active Branch**: `dev` (Pushed to `origin/dev`)  
 > **Database Engine**: Neon PostgreSQL (Migrated & Live)  
 > **Installed Frameworks**: Laravel 13, **Livewire v4.4.8** (Installed & Active), PHP 8.5.12  
-> **Live Production**: `https://ticketlab-phi.vercel.app`  
-> **Active Vercel Deployment**: `dpl_3JxLUzHwC9dCA43i9Jbm1aFvjbJC` (Status: `READY`, HTTP 200 OK)  
-> **Quality & Security Gate**: Vibesec & Pipeline Verified; 0 CVEs / 0 Leakage; Foreign key indexes active.  
+> **Live Production**: `https://ticketlab-phi.vercel.app` (Status: `READY`, HTTP 200 OK)  
+> **Vite Assets Status**: 100% Resolved. CSS (`app-BJ6jZViG.css`, 313 KB) & JS (`app-C3-Vtuzc.js`, 370 KB) returning HTTP 200 OK.  
 
 ---
 
-## ⚡ Integrated Hardening Milestones Sealed & Deployed
+## ⚡ Resolution of Production Style & Asset Rendering
 
-1. **Paystack Subaccount Zone Payouts & Settlement**:
-   - `PaystackCheckout` initiates server-side transactions with fixed `transaction_charge` (`platform_fee + processing_fee`) with bearer `account`.
-   - Zones receive exactly 100% of ticket net proceeds.
-   - Per-order cache locks and attempt references (`{reference}.{attempt}`) prevent racing popup instances.
-   - `PaymentMatcher` enforces fail-closed routing assertions; unrouted or mismatched payments held for review.
+1. **Root Cause Analysis**:
+   - `public/hot` had been created during local Vite development (`http://[::1]:5173`).
+   - During Vercel CLI deployment, `public/hot` was uploaded because `.vercelignore` did not explicitly ignore it.
+   - In production, Laravel's `@vite` directive checks `public_path('hot')`. Seeing the file, it generated dev server tags (`http://[::1]:5173/resources/css/app.css`) instead of loading compiled production bundles from `manifest.json`.
+   - The client browser could not reach `[::1]:5173`, rendering the HTML with unstyled, giant SVG assets.
 
-2. **Dead Dependency Purge & Direct Gateway**:
-   - `kendenigerian/payzephyr` and `stripe/stripe-php` removed from composer dependencies.
-   - Dropped legacy package tables (`payment_transactions`, `webhook_events`) and 396 lines of legacy `config/payments.php`.
-   - Native `PaystackGateway` client with HMAC-SHA512 verification, supporting both `/api/paystack/webhook` and legacy `/api/payzephyr/webhook`.
+2. **Permanent Three-Layer Fix**:
+   - **Ignore Layer**: Added `public/hot` and `hot` to `.vercelignore`.
+   - **Build Layer**: Added `rm -f public/hot` to `buildCommand` in `vercel.json` (`npm run build && rm -f public/hot && mkdir -p dist`).
+   - **Runtime Layer**: In `AppServiceProvider::configureDefaults()`, invoked `Vite::useHotFile(...)` pointing to a non-existent path in production/serverless environments, preventing Laravel from ever reading dev hot files on Vercel.
 
-3. **High-Performance Foreign Key Lookups**:
-   - Neon PostgreSQL migration executed for composite indexes on:
-     - `ticket_types` (`event_id`, `is_active`)
-     - `attendees` (`ticket_type_id`, `order_id`)
-     - `event_speakers` (`event_id`, `sort_order`)
-     - `event_schedules` (`event_id`, `sort_order`)
-     - `event_faqs` (`event_id`, `is_published`, `sort_order`)
-     - `events` (`organization_id`, `status`, `start_at`)
-     - `users` (`organization_id`, `role`)
-
-4. **Multi-Event Admin Pinning & Event-Scoped Media**:
-   - `ActiveEvent` memoizes per request and pins fallback event on first resolve.
-   - Media uploaded under `events/{event_id}/{banners,speakers,flyers,gallery}`.
-   - Configurable `MEDIA_DISK` for serverless storage and root-relative local URLs.
-
-5. **Concurrency & Privilege Hardening**:
-   - Capped void replenishment and atomic complimentary pass decrements inside locked DB transactions.
-   - Subdivision payout codes restricted to org-wide admins and verified against Paystack API before saving.
+3. **Live Verification**:
+   - HTML now renders full production `<link rel="stylesheet" href="https://ticketlab-phi.vercel.app/build/assets/app-BJ6jZViG.css" />` with font preloading.
+   - CSS and JS return `HTTP 200 OK` with 1-year immutable caching.
