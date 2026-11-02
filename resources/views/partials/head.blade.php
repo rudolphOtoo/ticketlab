@@ -84,18 +84,35 @@
         });
 
         transition.ready.then(() => {
-            document.documentElement.animate(
-                [
-                    { clipPath: `circle(0px at ${x}px ${y}px)` },
-                    { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
-                ],
-                {
-                    duration: 380,
-                    easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-                    pseudoElement: '::view-transition-new(root)',
-                    fill: 'forwards'
-                }
-            );
+            if (isGoingDark) {
+                // Forward: Dark expands outwards from trigger across the viewport
+                document.documentElement.animate(
+                    [
+                        { clipPath: `circle(0px at ${x}px ${y}px)` },
+                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` }
+                    ],
+                    {
+                        duration: 360,
+                        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+                        pseudoElement: '::view-transition-new(root)',
+                        fill: 'both'
+                    }
+                );
+            } else {
+                // Reverse: Dark contracts inward into the trigger, revealing light mode beneath
+                document.documentElement.animate(
+                    [
+                        { clipPath: `circle(${endRadius}px at ${x}px ${y}px)` },
+                        { clipPath: `circle(0px at ${x}px ${y}px)` }
+                    ],
+                    {
+                        duration: 360,
+                        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+                        pseudoElement: '::view-transition-old(root)',
+                        fill: 'both'
+                    }
+                );
+            }
         });
     }
 
@@ -113,29 +130,26 @@
     mix-blend-mode: normal !important;
     display: block;
 }
-::view-transition-old(root) {
+
+/* Stacking Order & Color-Scheme Guards */
+/* Forward (Going Dark): New dark canvas expands on top */
+html.dark::view-transition-old(root) {
     z-index: 1;
+    color-scheme: light;
 }
-::view-transition-new(root) {
+html.dark::view-transition-new(root) {
     z-index: 9999;
+    color-scheme: dark;
 }
 
-/* ==========================================================================
-   Theme-Switch Flash Fix
-   Prevent native controls and canvas from flashing OS-default styling
-   during view transitions.
-   ========================================================================== */
-html.dark::view-transition-new(root) {
+/* Reverse (Going Light): Old dark canvas contracts on top, revealing light underneath */
+html:not(.dark)::view-transition-old(root) {
+    z-index: 9999;
     color-scheme: dark;
-}
-html.dark::view-transition-old(root) {
-    color-scheme: light;
 }
 html:not(.dark)::view-transition-new(root) {
+    z-index: 1;
     color-scheme: light;
-}
-html:not(.dark)::view-transition-old(root) {
-    color-scheme: dark;
 }
 </style>
 
