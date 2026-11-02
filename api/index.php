@@ -9,6 +9,30 @@ $_SERVER['SCRIPT_FILENAME'] = __DIR__ . '/../public/index.php';
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
 
+// Vercel Serverless Storage Fallback: Serve uploaded media from /tmp/storage/app/public
+if (str_starts_with($uri, '/storage/') && ! str_contains($uri, '..')) {
+    $storageFile = '/tmp/storage/app/public/' . substr($uri, 9);
+    if (file_exists($storageFile)) {
+        $extension = strtolower(pathinfo($storageFile, PATHINFO_EXTENSION));
+        $mimeTypes = [
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'svg' => 'image/svg+xml',
+            'avif' => 'image/avif',
+            'pdf' => 'application/pdf',
+        ];
+        if (isset($mimeTypes[$extension])) {
+            header('Content-Type: ' . $mimeTypes[$extension]);
+            header('Cache-Control: public, max-age=86400');
+            readfile($storageFile);
+            exit;
+        }
+    }
+}
+
 // Vercel Edge Fallback: Serve static assets generated inside the PHP Lambda
 if ($uri !== '/' && ! str_contains($uri, '..')) {
     $publicPath = __DIR__ . '/../public' . $uri;
