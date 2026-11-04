@@ -66,7 +66,7 @@ Route::middleware(['auth', 'subdivision.access'])
         // Daily session ledger declaration & lockdown
         Route::get('sessions', DailySessionLedger::class)->name('sessions');
 
-        // Scoped attendee rosters & Excel export
+        // Scoped attendee rosters & CSV export
         Route::get('attendees', AttendeeRoster::class)->name('attendees');
 
         // Self-service ticket category & pricing manager

@@ -293,3 +293,41 @@ test('requesting another zone\'s records by query string is forbidden', function
         ->get(route($route, ['subdivision_id' => $this->zoneA->id]))
         ->assertOk();
 })->with(['admin.attendees', 'admin.sessions', 'admin.index', 'admin.exports']);
+
+test('the ledger zone breakdown lists only the zone admin\'s zone with its real figures', function (): void {
+    Livewire::actingAs($this->zoneAdmin)
+        ->test(DailySessionLedger::class)
+        ->assertViewHas('scopeLabel', 'Zone Alpha')
+        ->assertViewHas(
+            'zoneRows',
+            static fn($rows): bool => (
+                $rows->count() === 1
+                && $rows->first()['name'] === 'Zone Alpha'
+                && $rows->first()['online'] === 100.0
+                && $rows->first()['cash'] === 0.0
+                && $rows->first()['net'] === 100.0
+                && $rows->first()['admitted'] === 1
+                && $rows->first()['issued'] === 1
+            ),
+        )
+        ->assertSee('GHS 100.00')
+        ->assertDontSee('Zone Bravo')
+        ->assertDontSee('GHS 250.00')
+        ->assertDontSee('GHS 290.00')
+        ->assertDontSee('29,400.00');
+
+    Livewire::actingAs($this->orgAdmin)
+        ->test(DailySessionLedger::class)
+        ->assertViewHas('scopeLabel', 'All zones')
+        ->assertViewHas(
+            'zoneRows',
+            static fn($rows): bool => (
+                $rows->pluck('net', 'name')->all() === [
+                    'Zone Alpha' => 100.0,
+                    'Zone Bravo' => 290.0,
+                ]
+            ),
+        )
+        ->assertViewHas('cashOrderCount', 1)
+        ->assertViewHas('onlineOrderCount', 2);
+});

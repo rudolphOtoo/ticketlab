@@ -8,7 +8,8 @@ paths = ["app", "bootstrap", "config", "database", "routes", "tests"]
 includes = [
     "vendor/laravel/framework/src/Illuminate/**/*.php",
     "vendor/chillerlan/php-qrcode/src/**/*.php",
-    "vendor/chillerlan/php-settings-container/src/**/*.php"
+    "vendor/chillerlan/php-settings-container/src/**/*.php",
+    "vendor/openspout/openspout/src/**/*.php"
 ]
 excludes = ["bootstrap/cache/**"]
 

@@ -10,6 +10,9 @@ use App\Models\EventFormField;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\ActiveEvent;
+use App\Support\CsvWriter;
+use App\Support\XlsxWriter;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,7 +20,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Spatie\SimpleExcel\SimpleExcelWriter;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('layouts.admin')]
@@ -48,71 +51,133 @@ class DataExportCentral extends Component
 
     public function exportAttendeeCsv(): StreamedResponse
     {
+        [$fileName, $rows] = $this->attendeeExport();
+
+        return response()->streamDownload(
+            static function () use ($rows): void {
+                $writer = CsvWriter::toOutput();
+
+                foreach ($rows as $row) {
+                    $writer->addRow($row);
+                }
+
+                $writer->close();
+            },
+            $fileName . '.csv',
+            ['Content-Type' => 'text/csv; charset=UTF-8'],
+        );
+    }
+
+    /**
+     * An XLSX file is a zip archive, so it is written to a temporary file in constant memory and then sent.
+     */
+    public function exportAttendeeXlsx(): BinaryFileResponse
+    {
+        [$fileName, $rows] = $this->attendeeExport();
+
+        $path = tempnam(sys_get_temp_dir(), 'attendees_');
+
+        if ($path === false) {
+            abort(500, 'Unable to prepare the Excel export.');
+        }
+
+        $writer = XlsxWriter::toFile($path, 'Attendees');
+
+        foreach ($rows as $row) {
+            $writer->addRow($row);
+        }
+
+        $writer->close();
+
+        return response()->download($path, $fileName . '.xlsx', [
+            'Content-Type' => XlsxWriter::CONTENT_TYPE,
+        ])->deleteFileAfterSend();
+    }
+
+    /**
+     * Authorise the export and describe it: the download name (without extension) and its rows.
+     *
+     * @return array{string, \Generator<int, array<string, string|int|float|null>>}
+     */
+    private function attendeeExport(): array
+    {
         if ($this->organizationId === null) {
             abort(403, 'Unauthorized organization context.');
         }
 
         $orgId = $this->organizationId;
         $zoneId = auth()->user()?->subdivision_id;
-        $eventId = $this->selectedEventId;
 
-        $event = $eventId === null
+        $event = $this->selectedEventId === null
             ? null
-            : Event::query()->where('organization_id', $orgId)->whereKey($eventId)->first();
+            : Event::query()->where('organization_id', $orgId)->whereKey($this->selectedEventId)->first();
 
         // An event id outside this organisation falls back to an organisation-wide export.
-        $eventId = $event?->id;
-        $customFormFields = $this->formFieldsFor($event);
+        $fileName = 'attendees_' . ($event !== null ? $event->slug : 'all') . '_' . now()->format('Y_m_d_His');
 
-        $fileName = 'attendees_' . ($event !== null ? $event->slug : 'all') . '_' . now()->format('Y_m_d_His') . '.csv';
+        return [$fileName, $this->attendeeRows($orgId, $zoneId, $event?->id, $this->formFieldsFor($event))];
+    }
 
-        return response()->streamDownload(
-            static function () use ($orgId, $zoneId, $eventId, $customFormFields): void {
-                $writer = SimpleExcelWriter::create('php://output', 'csv');
+    /**
+     * One row per attendee in the export scope, loaded 500 at a time; each questionnaire field becomes a column.
+     *
+     * @param Collection<int, EventFormField> $customFormFields
+     *
+     * @return \Generator<int, array<string, string|int|float|null>>
+     */
+    private function attendeeRows(int $orgId, ?int $zoneId, ?int $eventId, Collection $customFormFields): \Generator
+    {
+        $attendees = Attendee::query()
+            ->with(['ticketType', 'order', 'subdivision'])
+            ->when($zoneId, static fn(Builder $q, int $zone) => $q->where('subdivision_id', $zone))
+            ->whereHas('ticketType.event', static function (Builder $q) use ($orgId, $eventId): void {
+                $q->where('organization_id', $orgId);
+                if ($eventId !== null) {
+                    $q->where('id', $eventId);
+                }
+            })
+            ->lazy(500);
 
-                $query = Attendee::query()
-                    ->with(['ticketType', 'order', 'subdivision'])
-                    ->when($zoneId, static fn(Builder $q, int $zone) => $q->where('subdivision_id', $zone))
-                    ->whereHas('ticketType.event', static function (Builder $q) use ($orgId, $eventId): void {
-                        $q->where('organization_id', $orgId);
-                        if ($eventId !== null) {
-                            $q->where('id', $eventId);
-                        }
-                    });
+        foreach ($attendees as $att) {
+            $row = [
+                'Attendee ID' => $att->id,
+                'Name' => $att->name,
+                'Email' => $att->email,
+                'Phone' => $att->phone,
+                'Ticket Tier' => $att->ticketType->name,
+                'Price Paid (GHS)' => round((float) $att->ticketType->price, 2),
+                'Order Reference' => $att->order->reference,
+                'Status' => $att->checked_in_at !== null ? 'Checked-In' : 'Pending',
+                'Checked In At' => self::checkedInAt($att->checked_in_at),
+            ];
 
-                $query->chunk(500, static function ($attendees) use ($writer, $customFormFields): void {
-                    foreach ($attendees as $att) {
-                        $row = [
-                            'Attendee ID' => $att->id,
-                            'Name' => $att->name,
-                            'Email' => $att->email,
-                            'Phone' => $att->phone,
-                            'Ticket Tier' => $att->ticketType->name,
-                            'Price Paid (GHS)' => number_format((float) $att->ticketType->price, 2),
-                            'Order Reference' => $att->order->reference,
-                            'Status' => $att->checked_in_at !== null ? 'Checked-In' : 'Pending',
-                            'Checked In At' => $att->checked_in_at?->format('Y-m-d H:i:s') ?? 'N/A',
-                        ];
+            $customValues = is_array($att->custom_fields) ? $att->custom_fields : [];
 
-                        $customValues = is_array($att->custom_fields) ? $att->custom_fields : [];
+            foreach ($customFormFields as $field) {
+                $row[$field->label] = self::answer($customValues[$field->field_key] ?? null);
+            }
 
-                        foreach ($customFormFields as $field) {
-                            $val = $customValues[$field->field_key] ?? null;
-                            if (is_array($val)) {
-                                $val = implode(', ', $val);
-                            }
-                            $row[$field->label] = $val ?? 'N/A';
-                        }
+            yield $row;
+        }
+    }
 
-                        $writer->addRow($row);
-                    }
-                });
+    private static function checkedInAt(?CarbonInterface $at): string
+    {
+        return $at === null ? 'N/A' : $at->format('Y-m-d H:i:s');
+    }
 
-                $writer->close();
-            },
-            $fileName,
-            ['Content-Type' => 'text/csv'],
-        );
+    /**
+     * Questionnaire answers are stored as JSON: checkbox answers are lists, unanswered questions are missing.
+     */
+    private static function answer(mixed $value): string
+    {
+        return match (true) {
+            is_array($value) => implode(', ', array_map(static fn(mixed $option): string => is_scalar($option)
+                ? (string) $option
+                : '', $value)),
+            is_scalar($value) => (string) $value,
+            default => 'N/A',
+        };
     }
 
     public function exportJsonBackup(): StreamedResponse

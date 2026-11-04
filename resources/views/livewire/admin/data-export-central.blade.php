@@ -14,7 +14,7 @@
                 Data Exports
             </h1>
             <p class="text-xs text-[var(--text-secondary)] mt-0.5">
-                Download attendee lists, questionnaires, and orders in Excel or CSV format.
+                Download attendee lists, questionnaire answers, and orders as CSV or Excel (.xlsx).
             </p>
         </div>
 
@@ -45,7 +45,7 @@
                         📊
                     </div>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
-                        CSV / Excel Format
+                        CSV · Excel (.xlsx)
                     </span>
                 </div>
 
@@ -54,7 +54,7 @@
                         Streaming Attendee Master Roster
                     </h3>
                     <p class="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                        High-speed streaming export ($O(1)$ memory). Automatically inspects custom registration questions and unrolls them into first-class spreadsheet columns (e.g. Bus Route, T-Shirt, Dietary).
+                        Streams rows straight to your download, so large events export without slowing the server. Each custom registration question becomes its own column (e.g. Bus Route, T-Shirt, Dietary).
                     </p>
                 </div>
 
@@ -72,16 +72,28 @@
                 </div>
             </div>
 
-            <button
-                type="button"
-                wire:click="exportAttendeeCsv"
-                class="w-full py-2.5 px-4 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale cursor-pointer flex items-center justify-center gap-2"
-            >
-                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                <span>Download Attendee CSV</span>
-            </button>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                    type="button"
+                    wire:click="exportAttendeeCsv"
+                    class="py-2.5 px-4 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition shadow-2xs press-scale cursor-pointer flex items-center justify-center gap-2"
+                >
+                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Download Attendee CSV</span>
+                </button>
+                <button
+                    type="button"
+                    wire:click="exportAttendeeXlsx"
+                    class="py-2.5 px-4 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-primary)] text-xs font-semibold hover:bg-[var(--bg-subtle)] transition shadow-2xs press-scale cursor-pointer flex items-center justify-center gap-2"
+                >
+                    <svg class="size-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Download Excel (.xlsx)</span>
+                </button>
+            </div>
         </div>
 
         <!-- Card 2: Complete JSON Tenant Backup (organisation-wide admins only) -->

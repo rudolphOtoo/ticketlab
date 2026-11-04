@@ -13,6 +13,7 @@ use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
 use App\Support\ActiveEvent;
+use App\Support\CsvWriter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,6 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Spatie\SimpleExcel\SimpleExcelWriter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 #[Layout('layouts.admin')]
@@ -407,15 +407,15 @@ class AttendeeRoster extends Component
 
         return response()->streamDownload(
             function () use ($user) {
-                $writer = SimpleExcelWriter::create('php://output', 'csv');
+                $writer = CsvWriter::toOutput();
 
                 $this->buildQuery($user)->chunk(500, static function ($attendees) use ($writer) {
                     foreach ($attendees as $att) {
                         $writer->addRow([
                             'ID' => $att->id,
-                            'Name' => self::csvSafe($att->name),
-                            'Email' => self::csvSafe($att->email),
-                            'Phone' => self::csvSafe($att->phone),
+                            'Name' => self::orNa($att->name),
+                            'Email' => self::orNa($att->email),
+                            'Phone' => self::orNa($att->phone),
                             'Subdivision' => $att->subdivision ? $att->subdivision->name : 'General',
                             'Ticket Tier' => $att->ticketType->name,
                             'QR Code' => $att->qr_code_hash,
@@ -429,7 +429,7 @@ class AttendeeRoster extends Component
             },
             $fileName,
             [
-                'Content-Type' => 'text/csv',
+                'Content-Type' => 'text/csv; charset=UTF-8',
             ],
         );
     }
@@ -547,14 +547,10 @@ class AttendeeRoster extends Component
     }
 
     /**
-     * Neutralise spreadsheet formula injection in buyer-supplied CSV cells.
+     * Blank buyer details read as 'N/A' in the export; CsvWriter neutralises formula injection.
      */
-    private static function csvSafe(?string $value): string
+    private static function orNa(?string $value): string
     {
-        if ($value === null || $value === '') {
-            return 'N/A';
-        }
-
-        return preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'" . $value : $value;
+        return $value === null || $value === '' ? 'N/A' : $value;
     }
 }

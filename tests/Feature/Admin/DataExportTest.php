@@ -74,7 +74,7 @@ test('attendee csv export streams rows and expands dynamic custom form fields', 
 
     $response = $component->instance()->exportAttendeeCsv();
 
-    expect($response->headers->get('content-type'))->toBe('text/csv');
+    expect($response->headers->get('content-type'))->toBe('text/csv; charset=UTF-8');
 
     ob_start();
     $response->sendContent();
