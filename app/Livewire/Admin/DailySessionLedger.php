@@ -17,6 +17,7 @@ use App\Services\Ledger\SessionReportService;
 use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -219,6 +220,96 @@ class DailySessionLedger extends Component
         ];
     }
 
+    /**
+     * Per-zone revenue and turnout, inside the same tenant and zone scope as the headline totals so the rows
+     * always add up to them. Organisation-wide admins also get a row for sales recorded without a zone.
+     *
+     * @param Builder<Attendee> $eventAttendees
+     *
+     * @return Collection<int, array{name: string, online: float, cash: float, net: float, online_orders: int, cash_orders: int, admitted: int, issued: int, turnout: int}>
+     */
+    private function zoneRows(?int $orgId, Builder $eventAttendees): Collection
+    {
+        $zoneId = $this->zoneId();
+        $revenue = $this->zoneRevenue($orgId);
+        $turnout = (clone $eventAttendees)
+            ->toBase()
+            ->groupBy('subdivision_id')
+            ->select('subdivision_id')
+            ->selectRaw('count(*) as issued')
+            ->selectRaw('sum(case when checked_in_at is not null then 1 else 0 end) as admitted')
+            ->get()
+            ->keyBy(static fn(object $row): string => (string) ($row->subdivision_id ?? 'none'));
+
+        $zones = Subdivision::query()
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->when($zoneId, static fn($q, int $zone) => $q->whereKey($zone))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(static fn(Subdivision $zone): array => ['key' => (string) $zone->id, 'name' => $zone->name])
+            ->toBase();
+
+        if ($zoneId === null && ($revenue->has('none') || $turnout->has('none'))) {
+            $zones->push(['key' => 'none', 'name' => 'No zone']);
+        }
+
+        return $zones->map(static fn(array $zone): array => self::zoneRow(
+            $zone['name'],
+            $revenue->get($zone['key']),
+            $turnout->get($zone['key']),
+        ))->values();
+    }
+
+    /**
+     * Paid online and cash takings per zone, keyed by zone id ('none' for sales without a zone).
+     *
+     * @return Collection<string, \stdClass>
+     */
+    private function zoneRevenue(?int $orgId): Collection
+    {
+        $zoneId = $this->zoneId();
+        $cash = PaymentMethod::PhysicalCash->value;
+
+        return Order::query()
+            ->where('payment_status', OrderStatus::Paid->value)
+            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->when($zoneId, static fn($q, int $zone) => $q->where('subdivision_id', $zone))
+            ->toBase()
+            ->groupBy('subdivision_id')
+            ->select('subdivision_id')
+            ->selectRaw('coalesce(sum(case when payment_method = ? then gross_amount else 0 end), 0) as cash', [$cash])
+            ->selectRaw('coalesce(sum(case when payment_method != ? then gross_amount else 0 end), 0) as online', [
+                $cash,
+            ])
+            ->selectRaw('sum(case when payment_method = ? then 1 else 0 end) as cash_orders', [$cash])
+            ->selectRaw('sum(case when payment_method != ? then 1 else 0 end) as online_orders', [$cash])
+            ->get()
+            ->keyBy(static fn(object $row): string => (string) ($row->subdivision_id ?? 'none'));
+    }
+
+    /**
+     * @return array{name: string, online: float, cash: float, net: float, online_orders: int, cash_orders: int, admitted: int, issued: int, turnout: int}
+     */
+    private static function zoneRow(string $name, ?\stdClass $sales, ?\stdClass $gate): array
+    {
+        $online = (float) ($sales->online ?? 0);
+        $cash = (float) ($sales->cash ?? 0);
+        $issued = (int) ($gate->issued ?? 0);
+        $admitted = (int) ($gate->admitted ?? 0);
+
+        return [
+            'name' => $name,
+            'online' => $online,
+            'cash' => $cash,
+            'net' => $online + $cash,
+            'online_orders' => (int) ($sales->online_orders ?? 0),
+            'cash_orders' => (int) ($sales->cash_orders ?? 0),
+            'admitted' => $admitted,
+            'issued' => $issued,
+            'turnout' => $issued > 0 ? (int) round(($admitted / $issued) * 100) : 0,
+        ];
+    }
+
     public function render(): View
     {
         $event = $this->getActiveEvent();
@@ -242,6 +333,8 @@ class DailySessionLedger extends Component
 
         $turnoutRate = (int) round(($turnoutCount / $capacityTotal) * 100);
 
+        $zoneRows = $this->zoneRows($orgId, $eventAttendees);
+
         $liveGateFeed = (clone $eventAttendees)
             ->with(['subdivision', 'ticketType'])
             ->whereNotNull('checked_in_at')
@@ -259,6 +352,10 @@ class DailySessionLedger extends Component
             'capacityTotal' => $capacityTotal,
             'turnoutRate' => $turnoutRate,
             'liveGateFeed' => $liveGateFeed,
+            'zoneRows' => $zoneRows,
+            'onlineOrderCount' => (int) $zoneRows->sum('online_orders'),
+            'cashOrderCount' => (int) $zoneRows->sum('cash_orders'),
+            'scopeLabel' => $this->zoneId() === null ? 'All zones' : $zoneRows->first()['name'] ?? 'Your zone',
         ]);
     }
 }

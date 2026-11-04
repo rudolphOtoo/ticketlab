@@ -45,9 +45,9 @@
                 <span class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($grossRevenue, 2) }}</span>
                 <div class="flex items-center gap-1.5 text-xs">
                     <span class="inline-flex items-center rounded-md bg-[var(--status-success-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-success)]">
-                        +12% vs Day 1
+                        {{ $scopeLabel }}
                     </span>
-                    <span class="text-[11px] text-[var(--text-tertiary)]">from all gates</span>
+                    <span class="text-[11px] text-[var(--text-tertiary)]">online + cash, paid orders</span>
                 </div>
             </div>
         </div>
@@ -86,8 +86,8 @@
             </div>
             <div class="mt-3 flex flex-col gap-1">
                 <span class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($totalOnlinePaystack, 2) }}</span>
-                <span class="text-[11px] text-[var(--text-secondary)]">(82% Mobile Money, 18% Card)</span>
-                <span class="text-[10px] text-[var(--text-tertiary)]">Automated settlement cleared</span>
+                <span class="text-[11px] text-[var(--text-secondary)]">({{ number_format($onlineOrderCount) }} paid online {{ Str::plural('order', $onlineOrderCount) }})</span>
+                <span class="text-[10px] text-[var(--text-tertiary)]">Mobile Money & card via Paystack</span>
             </div>
         </div>
 
@@ -101,8 +101,8 @@
             </div>
             <div class="mt-3 flex flex-col gap-1">
                 <span class="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)] font-mono">GHS {{ number_format($totalGateCash, 2) }}</span>
-                <span class="text-[11px] text-[var(--text-secondary)]">(184 walk-in cash orders)</span>
-                <span class="text-[10px] text-[var(--text-tertiary)]">Physical vault drawer locked</span>
+                <span class="text-[11px] text-[var(--text-secondary)]">({{ number_format($cashOrderCount) }} walk-in cash {{ Str::plural('order', $cashOrderCount) }})</span>
+                <span class="text-[10px] text-[var(--text-tertiary)]">Recorded at the cash desk</span>
             </div>
         </div>
     </div>
@@ -117,11 +117,7 @@
                     <p class="text-xs text-[var(--text-secondary)]">Real-time terminal collections segmented by regional entry perimeter</p>
                 </div>
 
-                <div class="flex items-center gap-1.5 rounded-lg bg-[var(--bg-subtle)] p-1 text-xs font-medium">
-                    <button type="button" class="rounded-md bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-primary)] shadow-xs">All Subdivisions</button>
-                    <button type="button" class="rounded-md px-2.5 py-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition">Main Arena</button>
-                    <button type="button" class="rounded-md px-2.5 py-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition">North Grounds</button>
-                </div>
+                <span class="self-start sm:self-auto rounded-lg bg-[var(--bg-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)]">{{ $scopeLabel }}</span>
             </div>
 
             <!-- Table -->
@@ -137,68 +133,35 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[var(--border-hairline)]">
-                        <tr class="hover:bg-[var(--bg-subtle)] transition">
-                            <td class="py-3.5">
-                                <div class="flex items-center gap-2">
-                                    <span class="size-2 rounded-full bg-[var(--status-success)]"></span>
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-[var(--text-primary)]">Accra Central</span>
-                                        <span class="text-[10px] text-[var(--text-tertiary)]">Gates 1, 2 & Main Concourse</span>
+                        @forelse ($zoneRows as $row)
+                            @php
+                                $tone = $row['turnout'] >= 75 ? 'success' : 'warning';
+                            @endphp
+                            <tr wire:key="zone-row-{{ $loop->index }}" class="hover:bg-[var(--bg-subtle)] transition">
+                                <td class="py-3.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="size-2 rounded-full bg-[var(--status-{{ $tone }})]"></span>
+                                        <div class="flex flex-col">
+                                            <span class="font-medium text-[var(--text-primary)]">{{ $row['name'] }}</span>
+                                            <span class="text-[10px] text-[var(--text-tertiary)]">{{ number_format($row['online_orders'] + $row['cash_orders']) }} paid {{ Str::plural('order', $row['online_orders'] + $row['cash_orders']) }}</span>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                            <td class="py-3.5 text-right font-mono text-[var(--text-secondary)]">GHS 29,400.00</td>
-                            <td class="py-3.5 text-right font-mono text-[var(--text-secondary)]">GHS 7,100.00</td>
-                            <td class="py-3.5 text-center">
-                                <div class="flex items-center justify-center gap-2">
-                                    <span class="font-medium text-[var(--status-success)]">92%</span>
-                                    <span class="text-[10px] text-[var(--text-tertiary)] font-mono">552 / 600</span>
-                                </div>
-                            </td>
-                            <td class="py-3.5 text-right font-mono font-semibold text-[var(--text-primary)]">GHS 36,500.00</td>
-                        </tr>
-
-                        <tr class="hover:bg-[var(--bg-subtle)] transition">
-                            <td class="py-3.5">
-                                <div class="flex items-center gap-2">
-                                    <span class="size-2 rounded-full bg-[var(--status-success)]"></span>
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-[var(--text-primary)]">Kumasi South</span>
-                                        <span class="text-[10px] text-[var(--text-tertiary)]">Terminal B & VIP Entry</span>
+                                </td>
+                                <td class="py-3.5 text-right font-mono text-[var(--text-secondary)]">GHS {{ number_format($row['online'], 2) }}</td>
+                                <td class="py-3.5 text-right font-mono text-[var(--text-secondary)]">GHS {{ number_format($row['cash'], 2) }}</td>
+                                <td class="py-3.5 text-center">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <span class="font-medium text-[var(--status-{{ $tone }})]">{{ $row['turnout'] }}%</span>
+                                        <span class="text-[10px] text-[var(--text-tertiary)] font-mono">{{ number_format($row['admitted']) }} / {{ number_format($row['issued']) }}</span>
                                     </div>
-                                </div>
-                            </td>
-                            <td class="py-3.5 text-right font-mono text-[var(--text-secondary)]">GHS 12,650.00</td>
-                            <td class="py-3.5 text-right font-mono text-[var(--text-secondary)]">GHS 3,450.00</td>
-                            <td class="py-3.5 text-center">
-                                <div class="flex items-center justify-center gap-2">
-                                    <span class="font-medium text-[var(--status-success)]">78%</span>
-                                    <span class="text-[10px] text-[var(--text-tertiary)] font-mono">312 / 400</span>
-                                </div>
-                            </td>
-                            <td class="py-3.5 text-right font-mono font-semibold text-[var(--text-primary)]">GHS 16,100.00</td>
-                        </tr>
-
-                        <tr class="hover:bg-[var(--bg-subtle)] transition">
-                            <td class="py-3.5">
-                                <div class="flex items-center gap-2">
-                                    <span class="size-2 rounded-full bg-[var(--status-warning)]"></span>
-                                    <div class="flex flex-col">
-                                        <span class="font-medium text-[var(--text-primary)]">Cape Coast North</span>
-                                        <span class="text-[10px] text-[var(--text-tertiary)]">Gate C & Staff Accreditation</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="py-3.5 text-right font-mono text-[var(--text-secondary)]">GHS 6,200.00</td>
-                            <td class="py-3.5 text-right font-mono text-[var(--text-secondary)]">GHS 1,850.00</td>
-                            <td class="py-3.5 text-center">
-                                <div class="flex items-center justify-center gap-2">
-                                    <span class="font-medium text-[var(--status-warning)]">73%</span>
-                                    <span class="text-[10px] text-[var(--text-tertiary)] font-mono">256 / 350</span>
-                                </div>
-                            </td>
-                            <td class="py-3.5 text-right font-mono font-semibold text-[var(--text-primary)]">GHS 8,050.00</td>
-                        </tr>
+                                </td>
+                                <td class="py-3.5 text-right font-mono font-semibold text-[var(--text-primary)]">GHS {{ number_format($row['net'], 2) }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-6 text-center text-xs text-[var(--text-tertiary)]">No zones set up yet.</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -207,7 +170,7 @@
             <div class="mt-4 flex flex-col sm:flex-row items-center justify-between border-t border-[var(--border-hairline)] pt-4 text-xs">
                 <span class="text-[var(--text-tertiary)] flex items-center gap-1.5">
                     <svg class="size-4 text-[var(--status-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    Encrypted with audit settlement token
+                    Paid orders only; turnout is admitted / issued passes for the active event
                 </span>
                 <div class="flex items-baseline gap-2">
                     <span class="text-[var(--text-secondary)]">Combined Reconciled Total:</span>
@@ -238,13 +201,6 @@
                     </a>
                 </div>
 
-                <div class="mt-0.5 flex items-center justify-between text-[10px] sm:text-[11px] text-[var(--text-tertiary)] border-t border-[var(--border-hairline)] pt-2.5">
-                    <span class="flex items-center gap-1.5">
-                        <span class="size-1.5 rounded-full bg-[var(--status-success)]"></span>
-                        4 Gate Terminals Active
-                    </span>
-                    <span>Latency: 14ms</span>
-                </div>
             </div>
 
             <!-- Live Gate Feed -->
