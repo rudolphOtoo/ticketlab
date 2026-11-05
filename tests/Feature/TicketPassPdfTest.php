@@ -44,7 +44,8 @@ test('the pass pdf downloads as a valid pdf document', function () {
     $response
         ->assertOk()
         ->assertHeader('Content-Type', 'application/pdf')
-        ->assertHeader('Content-Disposition', 'attachment; filename=tickets-TKT-PDF-001.pdf');
+        ->assertHeader('Content-Disposition', 'attachment; filename=tickets-TKT-PDF-001.pdf')
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
 
     expect($response->headers->get('Cache-Control'))->toContain('no-store');
 
