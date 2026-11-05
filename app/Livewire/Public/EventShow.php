@@ -28,6 +28,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Throwable;
@@ -37,9 +38,14 @@ class EventShow extends Component
 {
     private const int CHECKOUTS_PER_WINDOW = 15;
 
+    #[Locked]
     public int $organizationId;
 
+    #[Locked]
     public int $eventId;
+
+    /** The event mount() already loaded, reused by the first render; not persisted to later requests. */
+    protected ?Event $mountedEvent = null;
 
     public ?int $ticketTypeId = null;
 
@@ -86,7 +92,7 @@ class EventShow extends Component
         $organization = Organization::query()->where('slug', $org_slug)->firstOrFail();
 
         $event = Event::query()
-            ->with(['ticketTypes', 'formFields' => static fn($q) => $q->where('is_active', true)])
+            ->with('ticketTypes')
             ->where('organization_id', $organization->id)
             ->where('slug', $event_slug)
             ->where('status', 'published')
@@ -94,6 +100,7 @@ class EventShow extends Component
 
         $this->organizationId = $organization->id;
         $this->eventId = $event->id;
+        $this->mountedEvent = $event;
 
         $defaultTicket = $event
             ->ticketTypes
@@ -291,7 +298,7 @@ class EventShow extends Component
     public function render(): View
     {
         // One query per relation, already ordered for display; nothing below re-queries them.
-        $event = $this->event()->load([
+        $event = ($this->mountedEvent ?? $this->event())->loadMissing([
             'organization',
             'ticketTypes',
             'speakers' => static fn($q) => $q->orderBy('sort_order'),

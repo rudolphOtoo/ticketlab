@@ -553,10 +553,6 @@
                                             @endif
                                         </label>
 
-                                        @if ($field->help_text)
-                                            <p class="text-[11px] text-[var(--text-tertiary)] mb-1.5">{{ $field->help_text }}</p>
-                                        @endif
-
                                         @if ($field->field_type === 'textarea')
                                             <textarea
                                                 wire:model="customFieldResponses.{{ $field->field_key }}"

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\ReservationStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\TicketTypeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -85,6 +86,30 @@ class TicketType extends Model
     public function attendees(): HasMany
     {
         return $this->hasMany(Attendee::class);
+    }
+
+    /**
+     * The most seats that may be on sale: capacity less issued passes and live checkout holds. Comps issued
+     * past sell-out push this below what a plain capacity cap allows, so restocks must never exceed it.
+     */
+    public function unclaimedCapacity(): int
+    {
+        $held = (int) $this->reservations()->where('status', ReservationStatus::Active)->sum('quantity');
+
+        return max(0, $this->total_capacity - $this->attendees()->count() - $held);
+    }
+
+    /**
+     * Return seats to sale once their claim (a pass or a hold) is gone, never above unclaimed capacity and never
+     * lowering stock already on sale. Callers hold this tier's row lock.
+     */
+    public function restock(int $seats): void
+    {
+        $restocked = min($this->available_quantity + $seats, $this->unclaimedCapacity());
+
+        if ($restocked > $this->available_quantity) {
+            $this->update(['available_quantity' => $restocked]);
+        }
     }
 
     /**

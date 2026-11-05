@@ -12,6 +12,7 @@ use App\Models\EventSchedule;
 use App\Models\EventSpeaker;
 use App\Models\Organization;
 use App\Models\TicketType;
+use App\Services\Reservation\TicketReservationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -176,7 +177,7 @@ class DynamicLandingPageTest extends TestCase
             ->set('customerEmail', 'john@example.com')
             ->set('customerPhone', '123456789')
             ->set('formResponses', ['dietary' => ''])
-            ->call('startCheckout', app(\App\Services\Reservation\TicketReservationService::class))
+            ->call('startCheckout', app(TicketReservationService::class))
             ->assertHasErrors(['formResponses.dietary']);
 
         $this->assertDatabaseCount('orders', 0);

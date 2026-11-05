@@ -2,27 +2,25 @@
 
 declare(strict_types=1);
 
-test('run scheduler endpoint executes schedule and returns output', function () {
-    $response = $this->get('api/run-scheduler');
+test('run scheduler refuses every request while no token is configured', function () {
+    config(['services.scheduler.token' => null]);
 
-    $response->assertOk();
-    $response->assertJsonStructure(['message', 'output']);
+    $this->get('api/run-scheduler')->assertUnauthorized();
+    $this->get('api/run-scheduler?token=')->assertUnauthorized();
 });
 
-test('run scheduler requires token if SCHEDULER_TOKEN is configured in env', function () {
-    putenv('SCHEDULER_TOKEN=test-secret-token');
+test('run scheduler executes the schedule only with the configured token', function () {
+    config(['services.scheduler.token' => 'test-secret-token']);
 
-    $unauthorized = $this->get('api/run-scheduler');
-    $unauthorized->assertStatus(401);
+    $this->get('api/run-scheduler')->assertUnauthorized();
+    $this->get('api/run-scheduler?token=wrong-token')->assertUnauthorized();
 
-    $authorized = $this->get('api/run-scheduler?token=test-secret-token');
-    $authorized->assertOk();
-
-    putenv('SCHEDULER_TOKEN');
+    $this->get('api/run-scheduler?token=test-secret-token')->assertOk()->assertJsonStructure(['message', 'output']);
 });
 
 test('run migrate endpoint requires secret token', function () {
-    $unauthorized = $this->get('api/run-migrate');
-    $unauthorized->assertStatus(401);
-});
+    config(['services.scheduler.token' => 'test-secret-token']);
 
+    $this->get('api/run-migrate')->assertUnauthorized();
+    $this->get('api/run-migrate?token=wrong-token')->assertUnauthorized();
+});

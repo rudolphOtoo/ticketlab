@@ -7,15 +7,22 @@ namespace App\Services\Payment;
 use App\Models\Attendee;
 use App\Models\Order;
 use App\Models\TicketType;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 
 class AttendeeIssuer
 {
     /**
+     * Issue one QR pass per ticket for every sales channel: online checkout, the cash desk, and comps.
+     *
      * @param  array<string, mixed>  $metadata
+     * @return Collection<int, Attendee>
      */
-    public function issue(Order $order, TicketType $ticketType, int $quantity, array $metadata): void
+    public function issue(Order $order, TicketType $ticketType, int $quantity, array $metadata): Collection
     {
+        /** @var list<Attendee> $passes */
+        $passes = [];
+
         $attendeeNames = $metadata['attendee_names'] ?? [];
         $attendeeEmails = $metadata['attendee_emails'] ?? [];
         $customFields = $metadata['custom_fields'] ?? $metadata['form_responses'] ?? [];
@@ -27,7 +34,7 @@ class AttendeeIssuer
 
             $email = $this->attendeeValue($attendeeEmails, $index) ?? $order->customer_email;
 
-            Attendee::query()->create([
+            $passes[] = Attendee::query()->create([
                 'order_id' => $order->getKey(),
                 'organization_id' => $order->organization_id,
                 'subdivision_id' => $order->subdivision_id,
@@ -41,6 +48,8 @@ class AttendeeIssuer
                 'custom_fields' => is_array($customFields) ? $customFields : null,
             ]);
         }
+
+        return Collection::make($passes);
     }
 
     private function generateQrHash(Order $order, int $index): string

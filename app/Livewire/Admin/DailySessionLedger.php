@@ -148,7 +148,7 @@ class DailySessionLedger extends Component
         $zoneId = $this->zoneId();
 
         return SessionLedger::query()
-            ->when($this->orgId(), static fn($q, $orgId) => $q->where('organization_id', $orgId))
+            ->where('organization_id', $this->orgId())
             ->when(
                 $zoneId,
                 static fn($q, int $zone) => $q->where('subdivision_id', $zone),
@@ -169,7 +169,7 @@ class DailySessionLedger extends Component
             return ActiveEvent::resolve($orgId);
         }
 
-        $events = Event::query()->when($orgId, static fn($q, $orgId) => $q->where('organization_id', $orgId));
+        $events = Event::query()->where('organization_id', $orgId);
 
         return $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
     }
@@ -200,7 +200,7 @@ class DailySessionLedger extends Component
 
         $paidOrders = Order::query()
             ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->where('organization_id', $orgId)
             ->when($zoneId, static fn($q, int $zone) => $q->where('subdivision_id', $zone));
 
         return [
@@ -214,7 +214,7 @@ class DailySessionLedger extends Component
             ),
             'checked_in' => Attendee::query()
                 ->whereNotNull('checked_in_at')
-                ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+                ->where('organization_id', $orgId)
                 ->when($zoneId, static fn($q, int $zone) => $q->where('subdivision_id', $zone))
                 ->count(),
         ];
@@ -242,7 +242,7 @@ class DailySessionLedger extends Component
             ->keyBy(static fn(object $row): string => (string) ($row->subdivision_id ?? 'none'));
 
         $zones = Subdivision::query()
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->where('organization_id', $orgId)
             ->when($zoneId, static fn($q, int $zone) => $q->whereKey($zone))
             ->orderBy('name')
             ->get(['id', 'name'])
@@ -272,7 +272,7 @@ class DailySessionLedger extends Component
 
         return Order::query()
             ->where('payment_status', OrderStatus::Paid->value)
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->where('organization_id', $orgId)
             ->when($zoneId, static fn($q, int $zone) => $q->where('subdivision_id', $zone))
             ->toBase()
             ->groupBy('subdivision_id')
@@ -319,7 +319,7 @@ class DailySessionLedger extends Component
 
         // Gate turnout and the live feed follow the active event; cash and online totals stay per daily session.
         $eventAttendees = Attendee::query()
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->where('organization_id', $orgId)
             ->when($this->zoneId(), static fn($q, int $zone) => $q->where('subdivision_id', $zone))
             ->when($event, static fn($q, Event $active) => $q->whereIn('ticket_type_id', TicketType::query()
                 ->select('id')

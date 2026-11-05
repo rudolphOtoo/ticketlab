@@ -211,13 +211,8 @@ class DataExportCentral extends Component
             $events = Event::query()->where('organization_id', $this->organizationId)->orderByDesc('id')->get();
         }
 
-        $selectedEvent = null;
-        if ($this->selectedEventId !== null && $this->organizationId !== null) {
-            $selectedEvent = Event::query()
-                ->where('organization_id', $this->organizationId)
-                ->whereKey($this->selectedEventId)
-                ->first();
-        }
+        // The picker already lists every event, so the selected one is taken from it rather than queried again.
+        $selectedEvent = $events->firstWhere('id', $this->selectedEventId);
 
         return view('livewire.admin.data-export-central', [
             'events' => $events,

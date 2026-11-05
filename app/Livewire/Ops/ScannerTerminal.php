@@ -54,7 +54,7 @@ class ScannerTerminal extends Component
             $effectiveEventId = $this->eventId ?? ActiveEvent::id($orgId);
 
             // Fail-closed: Cannot validate passes without resolved organization context.
-            if ($orgId === null && $effectiveEventId === null) {
+            if ($orgId === null) {
                 return [
                     'state' => 'invalid',
                     'payload' => [
@@ -64,11 +64,11 @@ class ScannerTerminal extends Component
                 ];
             }
 
-            $query = Attendee::with(['ticketType', 'subdivision'])->where('qr_code_hash', $cleanHash)->lockForUpdate();
-
-            if ($orgId !== null) {
-                $query->where('organization_id', $orgId);
-            }
+            $query = $this
+                ->forOrganization(Attendee::query(), $orgId)
+                ->with(['ticketType', 'subdivision'])
+                ->where('qr_code_hash', $cleanHash)
+                ->lockForUpdate();
 
             if ($effectiveEventId !== null) {
                 $query->whereHas('ticketType', static fn($q) => $q->where('event_id', $effectiveEventId));
@@ -190,6 +190,7 @@ class ScannerTerminal extends Component
      */
     private function forOrganization(Builder $query, ?int $orgId): Builder
     {
-        return $orgId === null ? $query : $query->where('organization_id', $orgId);
+        // Fail closed: a user without an organisation matches no tenant rows rather than all of them.
+        return $query->where('organization_id', $orgId);
     }
 }

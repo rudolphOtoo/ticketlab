@@ -10,6 +10,7 @@ includes = [
     "vendor/chillerlan/php-qrcode/src/**/*.php",
     "vendor/chillerlan/php-settings-container/src/**/*.php",
     "vendor/maatwebsite/excel/src/**/*.php",
+    "vendor/league/flysystem/src/**/*.php",
     "vendor/phpoffice/phpspreadsheet/src/PhpSpreadsheet/**/*.php"
 ]
 excludes = ["bootstrap/cache/**"]

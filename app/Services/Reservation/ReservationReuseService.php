@@ -87,14 +87,9 @@ class ReservationReuseService
                 continue;
             }
 
-            $restore = min((int) $reservation->quantity, max(0, (int) $ticket->total_capacity - $available));
-
-            if ($restore > 0) {
-                $ticket->increment('available_quantity', $restore);
-                $available += $restore;
-            }
-
             $reservation->update(['status' => ReservationStatus::Expired]);
+            $ticket->restock((int) $reservation->quantity);
+            $available = $ticket->available_quantity;
         }
 
         return ['reservation' => $reusable, 'available' => $available];

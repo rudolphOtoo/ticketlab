@@ -6,6 +6,7 @@ namespace App\Services\Payment;
 
 use App\Enums\OrderStatus;
 use App\Jobs\SendTicketEmail;
+use App\Jobs\SendTicketSms;
 use App\Models\Order;
 use App\Services\Reservation\ReservationFulfilmentService;
 use Illuminate\Support\Facades\DB;
@@ -107,7 +108,7 @@ class OrderFulfillmentService
         // Notifications happen after commit and outside the review guard: an outage must never flag a paid order.
         if ($passesIssued) {
             SendTicketEmail::dispatch($fulfilled->id)->onQueue('transactional');
-            \App\Jobs\SendTicketSms::dispatchIf((bool) config('sms.enabled', false), $fulfilled->id);
+            SendTicketSms::dispatchIf((bool) config('sms.enabled', false), $fulfilled->id);
         }
 
         return $fulfilled;

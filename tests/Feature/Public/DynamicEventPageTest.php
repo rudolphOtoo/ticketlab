@@ -377,8 +377,8 @@ test('responses submitted for inactive questionnaire fields are stripped and nev
 
     $order = Order::query()->where('reference', $component->get('orderReference'))->firstOrFail();
 
-    expect($order->metadata['custom_fields'])->toHaveKey('active_field')
-        ->and($order->metadata['custom_fields'])->not->toHaveKey('hidden_field');
+    expect($order->metadata['custom_fields'])
+        ->toHaveKey('active_field')
+        ->and($order->metadata['custom_fields'])
+        ->not->toHaveKey('hidden_field');
 });
-
-

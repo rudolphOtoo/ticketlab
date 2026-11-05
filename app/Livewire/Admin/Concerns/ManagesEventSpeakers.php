@@ -6,6 +6,7 @@ namespace App\Livewire\Admin\Concerns;
 
 use App\Models\EventSpeaker;
 use App\Support\MediaUrl;
+use League\Flysystem\UnableToRetrieveMetadata;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
@@ -88,9 +89,12 @@ trait ManagesEventSpeakers
                 'speaker_is_featured' => ['boolean'],
                 'speaker_sort_order' => ['required', 'integer', 'min:0'],
             ]);
-        } catch (\League\Flysystem\UnableToRetrieveMetadata $e) {
+        } catch (UnableToRetrieveMetadata) {
             $this->speaker_photo = null;
-            $this->addError('speaker_photo', 'The uploaded photo was lost between serverless instances. Please re-select the image or paste a photo URL.');
+            $this->addError(
+                'speaker_photo',
+                'The uploaded photo was lost between serverless instances. Please re-select the image or paste a photo URL.',
+            );
 
             return;
         }

@@ -41,7 +41,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     })
     ->create();
 
-if (isset($_SERVER['VERCEL']) || isset($_ENV['VERCEL'])) {
+if (($_SERVER['VERCEL'] ?? $_ENV['VERCEL'] ?? null) !== null) {
     $app->useStoragePath('/tmp/storage');
 
     $directories = [
@@ -52,9 +52,11 @@ if (isset($_SERVER['VERCEL']) || isset($_ENV['VERCEL'])) {
         '/tmp/storage/app/public',
     ];
     foreach ($directories as $dir) {
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
+        if (is_dir($dir)) {
+            continue;
         }
+
+        mkdir($dir, 0o755, true);
     }
 }
 

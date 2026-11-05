@@ -237,7 +237,7 @@ class MarketingStudio extends Component
             12,
             $this->qrMargin,
             $this->qrFgColor,
-            $this->qrBgColor
+            $this->qrBgColor,
         );
 
         $featuredSpeaker = $this->featuredSpeakerId !== null

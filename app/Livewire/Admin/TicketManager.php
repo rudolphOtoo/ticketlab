@@ -305,14 +305,11 @@ class TicketManager extends Component
 
     public function render(): View
     {
-        $events = Collection::empty();
-
-        if ($this->organizationId !== null) {
-            $events = Event::query()->where('organization_id', $this->organizationId)->orderByDesc('id')->get();
-        }
+        $events = Event::query()->where('organization_id', $this->organizationId)->orderByDesc('id')->get();
 
         $ticketTypes = Collection::empty();
-        $currentEvent = $this->getCurrentEvent();
+        // The switcher already lists every event, so the selected one is picked from it rather than queried again.
+        $currentEvent = $events->firstWhere('id', $this->selectedEventId);
 
         if ($currentEvent !== null) {
             $query = TicketType::query()->where('event_id', $currentEvent->id);

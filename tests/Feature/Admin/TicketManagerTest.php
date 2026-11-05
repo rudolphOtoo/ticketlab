@@ -28,6 +28,7 @@ test('authenticated admin can view ticket tier manager for their organization', 
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
+        'subdivision_id' => null,
     ]);
 
     $event = Event::create([
@@ -297,6 +298,7 @@ test('multi-tenant isolation prevents admin from seeing or mutating another orga
         'password' => Hash::make('password'),
         'organization_id' => $orgA->id,
         'role' => 'admin',
+        'subdivision_id' => null,
     ]);
 
     $eventB = Event::create([

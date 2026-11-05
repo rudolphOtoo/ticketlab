@@ -48,7 +48,7 @@ beforeEach(function () {
     ]);
 
     $this->createPendingOrder = function (int $quantity = 2): array {
-        $reservation = app(TicketReservationService::class)->hold(
+        $reservation = app(TicketReservationService::class)->holdOrReuse(
             $this->ticket,
             $quantity,
             (string) Str::uuid(),

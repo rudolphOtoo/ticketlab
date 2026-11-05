@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Services\Payment\AttendeeIssuer;
 use App\Support\ActiveEvent;
 use App\Support\CsvWriter;
 use Illuminate\Contracts\View\View;
@@ -132,6 +133,7 @@ class AttendeeRoster extends Component
         $user = auth()->user();
         $eventId = ActiveEvent::id($user?->organization_id);
         $firstTier = TicketType::query()
+            ->whereHas('event', static fn($q) => $q->where('organization_id', $user?->organization_id))
             ->when($eventId, static fn($q) => $q->where('event_id', $eventId))
             ->first();
 
@@ -165,7 +167,7 @@ class AttendeeRoster extends Component
         }
     }
 
-    public function issueManualPass(): void
+    public function issueManualPass(AttendeeIssuer $issuer): void
     {
         $user = auth()->user();
         $orgId = (int) $user?->organization_id;
@@ -197,7 +199,7 @@ class AttendeeRoster extends Component
             return;
         }
 
-        DB::transaction(function () use ($user, $orgId, $ticketType): void {
+        DB::transaction(function () use ($user, $orgId, $ticketType, $issuer): void {
             $ref = 'COMP-' . strtoupper(Str::random(10));
 
             $order = Order::create([
@@ -220,25 +222,9 @@ class AttendeeRoster extends Component
                 ],
             ]);
 
-            $qrHash = hash('sha256', implode('|', [
-                $order->reference,
-                (string) $order->id,
-                '0',
-                Str::uuid()->toString(),
-                (string) now()->getTimestampMs(),
-            ]));
-
-            Attendee::create([
-                'order_id' => $order->id,
-                'organization_id' => $orgId,
-                'subdivision_id' => $this->manual_subdivision_id,
-                'ticket_type_id' => $ticketType->id,
-                'name' => $this->manual_name,
-                'email' => $this->manual_email,
-                'phone' => $this->manualPhone(),
-                'qr_code_hash' => $qrHash,
-                'checked_in_at' => null,
-                'checked_in_by' => null,
+            $issuer->issue($order, $ticketType, 1, [
+                'attendee_names' => [$this->manual_name],
+                'attendee_emails' => [$this->manual_email],
                 'custom_fields' => [
                     'tags' => $this->manual_tags,
                     'issued_by' => $user?->name,
@@ -383,13 +369,13 @@ class AttendeeRoster extends Component
                 return false;
             }
 
-            // Capped at capacity, so voiding comps issued after sell-out never inflates stock.
-            TicketType::query()
-                ->whereKey($locked->ticket_type_id)
-                ->whereColumn('available_quantity', '<', 'total_capacity')
-                ->increment('available_quantity');
+            $tier = TicketType::query()->whereKey($locked->ticket_type_id)->lockForUpdate()->first();
+            $locked->delete();
 
-            return (bool) $locked->delete();
+            // Voiding a comp issued after sell-out frees no seat, so the restock stops at unclaimed capacity.
+            $tier?->restock(1);
+
+            return true;
         });
 
         if (!$voided) {
@@ -444,7 +430,7 @@ class AttendeeRoster extends Component
         $eventId = ActiveEvent::id($user?->organization_id);
 
         return Attendee::query()
-            ->when($user?->organization_id, static fn($q, $orgId) => $q->where('organization_id', $orgId))
+            ->where('organization_id', $user?->organization_id)
             ->when($user?->subdivision_id, static fn($q, $subId) => $q->where('subdivision_id', $subId))
             ->when($eventId, static fn($q, int $id) => $q->whereIn('ticket_type_id', TicketType::query()
                 ->select('id')
@@ -513,16 +499,10 @@ class AttendeeRoster extends Component
         $checkedInCount = (clone $baseQuery)->whereNotNull('checked_in_at')->count();
         $pendingCount = $totalCount - $checkedInCount;
 
-        $subdivisions = Subdivision::query()->when($user?->organization_id, static fn($q, $orgId) => $q->where(
-            'organization_id',
-            $orgId,
-        ))->get();
+        $subdivisions = Subdivision::query()->where('organization_id', $user?->organization_id)->get();
         $activeEventId = ActiveEvent::id($user?->organization_id);
         $ticketTypes = TicketType::query()
-            ->when($user?->organization_id, static fn($q, $orgId) => $q->whereHas('event', static fn($eq) => $eq->where(
-                'organization_id',
-                $orgId,
-            )))
+            ->whereHas('event', static fn($q) => $q->where('organization_id', $user?->organization_id))
             ->when($activeEventId, static fn($q, int $id) => $q->where('event_id', $id))
             ->get();
 

@@ -7,8 +7,6 @@
     "helpers": [],
     "internalDependencies": {
         "icon": [
-            "button",
-            "input",
             "badge"
         ],
         "button": [
