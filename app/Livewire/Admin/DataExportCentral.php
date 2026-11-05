@@ -151,10 +151,8 @@ class DataExportCentral extends Component
                 'Checked In At' => self::checkedInAt($att->checked_in_at),
             ];
 
-            $customValues = is_array($att->custom_fields) ? $att->custom_fields : [];
-
             foreach ($customFormFields as $field) {
-                $row[$field->label] = self::answer($customValues[$field->field_key] ?? null);
+                $row[$field->label] = self::answer($att->answerFor($field->field_key));
             }
 
             yield $row;
