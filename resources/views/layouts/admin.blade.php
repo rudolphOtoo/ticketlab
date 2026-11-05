@@ -1,5 +1,12 @@
 @php
     $adminUser = auth()->user();
+
+    // Branding always comes from the signed-in admin's own organisation, so each tenant only ever sees itself.
+    $tenant = $adminUser?->organization;
+    $tenantName = $tenant?->name ?? 'TicketLab';
+    $tenantInitials = $tenant?->initials() ?: 'TL';
+    $tenantLogo = is_string($tenant?->logo_url) && preg_match('#^(https?://|/(?!/))#i', $tenant->logo_url) === 1 ? $tenant->logo_url : null;
+
     $adminNav = [
         'Command' => [
             ['route' => 'admin.index', 'label' => 'Overview', 'icon' => 'm2.25 12 8.954-8.955a1.126 1.126 0 0 1 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25'],
@@ -61,11 +68,15 @@
         >
             <div class="flex min-h-0 flex-col gap-6 overflow-y-auto">
                 <div class="flex items-center justify-between gap-2 px-1">
-                    <a href="{{ route('admin.index') }}" class="flex items-center gap-2.5 overflow-hidden" wire:navigate>
-                        <span class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-xs font-bold tracking-tight">TL</span>
+                    <a href="{{ route('admin.index') }}" class="flex min-w-0 items-center gap-2.5 overflow-hidden" wire:navigate :title="sidebarCollapsed ? @js($tenantName) : ''">
+                        @if ($tenantLogo)
+                            <img src="{{ $tenantLogo }}" alt="{{ $tenantName }} logo" class="size-9 shrink-0 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] object-cover" data-tenant-logo>
+                        @else
+                            <span class="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-xs font-bold tracking-tight" data-tenant-initials>{{ $tenantInitials }}</span>
+                        @endif
                         <div class="flex min-w-0 flex-col" x-show="!sidebarCollapsed" x-transition>
-                            <span class="truncate text-xs font-semibold tracking-tight">{{ $adminUser?->organization?->name ?? 'TicketLab' }}</span>
-                            <span class="truncate text-[11px] text-[var(--text-secondary)]">Admin Command</span>
+                            <span class="truncate text-xs font-semibold tracking-tight" data-tenant-name>{{ $tenantName }}</span>
+                            <span class="truncate text-[11px] text-[var(--text-secondary)]">{{ $adminUser?->subdivision ? $adminUser->subdivision->name . ' · Zone admin' : 'Admin Command' }}</span>
                         </div>
                     </a>
 
@@ -134,32 +145,66 @@
                     <span aria-hidden="true" :class="{ 'mx-auto': sidebarCollapsed }">→</span>
                 </a>
 
-                <div class="flex items-center justify-between">
-                    <a href="{{ route('profile.edit') }}" class="flex min-w-0 items-center gap-2" :title="sidebarCollapsed ? '{{ $adminUser?->name }}' : ''">
-                        <span class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-subtle)] text-[11px] font-semibold">{{ $adminUser?->initials() }}</span>
-                        <span class="flex min-w-0 flex-col" x-show="!sidebarCollapsed" x-transition>
-                            <span class="truncate text-xs font-medium">{{ $adminUser?->name }}</span>
-                            <span class="truncate text-[10px] capitalize text-[var(--text-tertiary)]">{{ str_replace('_', ' ', (string) $adminUser?->role) }}{{ $adminUser?->subdivision ? ' · ' . $adminUser->subdivision->name : '' }}</span>
-                        </span>
-                    </a>
-
-                    <button type="button"
-                            onclick="toggleStudioTheme(event, null, this)"
-                            class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] press-scale"
-                            title="Toggle Light / Dark">
-                        <svg class="size-3.5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-                        <svg class="hidden size-3.5 dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                    </button>
-                </div>
-
                 @auth
-                    <form method="POST" action="{{ route('logout') }}" class="w-full">
-                        @csrf
-                        <button type="submit" class="w-full cursor-pointer text-left text-[11px] text-[var(--text-tertiary)] transition hover:text-[var(--status-danger)]" :title="sidebarCollapsed ? 'Sign Out' : ''">
-                            <span x-show="!sidebarCollapsed" x-transition>Sign Out</span>
-                            <svg class="size-4 lg:hidden" :class="{ 'lg:block': sidebarCollapsed }" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    {{-- Account menu: the profile card opens upwards; Escape or a click outside closes it. --}}
+                    <div class="relative" x-data="{ accountOpen: false }" x-on:keydown.escape.window="accountOpen = false" x-on:click.outside="accountOpen = false">
+                        <button
+                            type="button"
+                            x-on:click="accountOpen = !accountOpen"
+                            :aria-expanded="accountOpen.toString()"
+                            aria-haspopup="menu"
+                            aria-controls="admin-account-menu"
+                            class="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-transparent p-1.5 text-left transition hover:border-[var(--border-hairline)] hover:bg-[var(--bg-subtle)]"
+                            :class="{ 'border-[var(--border-hairline)] bg-[var(--bg-subtle)]': accountOpen }"
+                            :title="sidebarCollapsed ? @js((string) $adminUser?->name) : ''"
+                        >
+                            <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--text-primary)] text-[11px] font-semibold text-[var(--bg-canvas)]">{{ $adminUser?->initials() }}</span>
+                            <span class="flex min-w-0 flex-1 flex-col" x-show="!sidebarCollapsed" x-transition>
+                                <span class="truncate text-xs font-semibold">{{ $adminUser?->name }}</span>
+                                <span class="truncate text-[10px] capitalize text-[var(--text-tertiary)]">{{ str_replace('_', ' ', (string) $adminUser?->role) }}{{ $adminUser?->subdivision ? ' · ' . $adminUser->subdivision->name : '' }}</span>
+                            </span>
+                            <svg x-show="!sidebarCollapsed" class="size-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                            </svg>
                         </button>
-                    </form>
+
+                        <div
+                            id="admin-account-menu"
+                            x-show="accountOpen"
+                            x-transition.origin.bottom.left
+                            role="menu"
+                            aria-label="Account"
+                            class="absolute bottom-full left-0 z-50 mb-2 w-60 overflow-hidden rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-1 shadow-lg"
+                            style="display: none;"
+                        >
+                            <div class="px-2.5 pb-2 pt-1.5">
+                                <p class="truncate text-xs font-semibold text-[var(--text-primary)]">{{ $adminUser?->name }}</p>
+                                <p class="truncate text-[11px] text-[var(--text-tertiary)]">{{ $adminUser?->email }}</p>
+                            </div>
+
+                            <div class="border-t border-[var(--border-hairline)] py-1">
+                                <a href="{{ route('profile.edit') }}" role="menuitem" class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">
+                                    <svg class="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+                                    Profile &amp; settings
+                                </a>
+                                <button type="button" role="menuitem" onclick="toggleStudioTheme(event, null, this)" class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">
+                                    <svg class="size-4 shrink-0 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                                    <svg class="hidden size-4 shrink-0 dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                    <span class="dark:hidden">Dark mode</span>
+                                    <span class="hidden dark:inline">Light mode</span>
+                                </button>
+                            </div>
+
+                            {{-- Sign-out is a POST with a CSRF token, so a link or image elsewhere can never sign an admin out. --}}
+                            <form method="POST" action="{{ route('logout') }}" class="border-t border-[var(--border-hairline)] pt-1" data-sign-out>
+                                @csrf
+                                <button type="submit" role="menuitem" class="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[var(--status-danger)] transition hover:bg-(--status-danger)/10">
+                                    <svg class="size-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" /></svg>
+                                    Sign out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 @endauth
             </div>
         </aside>
