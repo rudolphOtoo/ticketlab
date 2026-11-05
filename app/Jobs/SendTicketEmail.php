@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Mail\TicketIssuedMail;
-use App\Models\Attendee;
 use App\Models\Order;
-use App\Services\Payment\QrCodeService;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\Payment\TicketPassPdf;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
@@ -31,9 +29,11 @@ class SendTicketEmail implements ShouldQueue
         public int $orderId,
     ) {}
 
-    public function handle(QrCodeService $qrCodes): void
+    public function handle(TicketPassPdf $passes): void
     {
-        $order = Order::query()->with(['attendees.ticketType.event', 'organization'])->find($this->orderId);
+        $order = Order::query()
+            ->with(['attendees.ticketType.event', 'attendees.subdivision', 'organization'])
+            ->find($this->orderId);
 
         if (
             $order === null
@@ -43,18 +43,7 @@ class SendTicketEmail implements ShouldQueue
             return;
         }
 
-        $event = $order->attendees->firstOrFail()->ticketType->event;
-        $customization = is_array($event->customization) ? $event->customization : [];
-
-        $pdf = Pdf::loadView('pdf.ticket', [
-            'order' => $order,
-            'event' => $event,
-            'organizationName' => $order->organization->name,
-            'accent' => (string) ($customization['accent_hex'] ?? '#18181b'),
-            'qrCodes' => $order->attendees->mapWithKeys(static fn(Attendee $attendee): array => [
-                $attendee->id => $qrCodes->pngDataUri($attendee->qr_code_hash, 8, 2),
-            ]),
-        ])->setPaper('a5');
+        $pdf = $passes->render($order);
 
         Mail::to($order->customer_email, $order->customer_name)->send(new TicketIssuedMail($order, $pdf->output()));
     }

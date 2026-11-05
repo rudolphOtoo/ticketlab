@@ -175,7 +175,8 @@ class EventShow extends Component
         $pendingOrders ??= app(PendingOrderService::class);
         $event = $this->event();
         $organization = Organization::query()->findOrFail($event->organization_id);
-        $formFields = $event->formFields;
+        // Only the questions the buyer was shown: a switched-off required field must never block checkout.
+        $formFields = $event->formFields()->where('is_active', true)->get();
 
         $validated = $this->validate(...$this->checkoutRules($formFields));
 
@@ -328,7 +329,7 @@ class EventShow extends Component
             ? $schedule->day_label
             : 'Day 1');
 
-        $formFields = $event->formFields()->where('is_active', true)->orderBy('sort_order')->get();
+        $formFields = $event->formFields;
         $customization = is_array($event->customization) ? $event->customization : [];
         $viewingSpeaker = $this->viewingSpeakerId !== null
             ? $speakers->firstWhere('id', $this->viewingSpeakerId)
@@ -518,8 +519,8 @@ class EventShow extends Component
                 $field->field_type === 'textarea' => ['string', 'max:1000'],
                 // Rule::in quotes each option, so answers containing commas validate correctly.
                 $hasChoices => ['string', Rule::in($options)],
-                in_array($field->field_type, ['select', 'radio'], true) => ['string'],
-                $isCheckbox => [],
+                in_array($field->field_type, ['select', 'radio'], true) => ['string', 'max:255'],
+                $isCheckbox => ['boolean'],
                 default => ['string', 'max:255'],
             };
 

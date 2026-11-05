@@ -1,14 +1,14 @@
 @php($event = $attendees->first()?->ticketType?->event)
 
-<div class="min-h-screen bg-zinc-100 pb-12">
-    <header class="border-b border-zinc-200 bg-white">
+<div class="ticket-print-root min-h-screen bg-zinc-100 pb-12">
+    <header class="ticket-print-brand border-b border-zinc-200 bg-white">
         <div class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
             <div class="flex items-center gap-3">
                 @if ($organization->logo_url)
                     <img src="{{ $organization->logo_url }}" alt="{{ $organization->name }}" class="h-10 w-10 rounded-full object-cover">
                 @else
                     <div class="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">
-                        {{ \Illuminate\Support\Str::of($organization->name)->explode(' ')->map(fn ($word) => \Illuminate\Support\Str::substr($word, 0, 1))->take(2)->implode('') }}
+                        {{ $organization->initials() }}
                     </div>
                 @endif
                 <div>
@@ -23,8 +23,8 @@
         </div>
     </header>
 
-    <main class="mx-auto max-w-3xl px-4 pt-6 sm:px-6">
-        <div class="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
+    <main class="ticket-print-main mx-auto max-w-3xl px-4 pt-6 sm:px-6">
+        <div class="ticket-pass overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm">
             <div class="bg-gradient-to-br from-zinc-900 via-zinc-800 to-emerald-900 px-6 py-8 text-white sm:px-8">
                 <p class="text-xs font-medium uppercase tracking-[0.25em] text-emerald-200">{{ $isPaid ? 'You are in' : 'Payment pending' }}</p>
                 <h1 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{{ $event?->title ?? 'Event ticket' }}</h1>
@@ -93,9 +93,9 @@
                     </div>
 
                     <div class="no-print mt-6 grid gap-3 sm:grid-cols-2">
-                        <button type="button" onclick="window.print()" class="rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700">
+                        <a href="{{ route('public.tickets.pdf', ['order' => $order->reference]) }}" download class="rounded-xl bg-zinc-900 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-zinc-700">
                             Save as PDF
-                        </button>
+                        </a>
                         <button type="button" onclick="sharePass()" class="rounded-xl border border-zinc-300 px-4 py-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50">
                             Add to mobile pass
                         </button>
@@ -134,8 +134,31 @@
 
     <style>
         @media print {
+            /* No page margin means the browser has nowhere to print its URL, date and page-number headers. */
+            @page { size: A4 portrait; margin: 0; }
+
+            html, body { background: #fff !important; }
+
             .no-print { display: none !important; }
-            body { background: #fff !important; }
+
+            /* Keep the dark pass header, badges and pills instead of letting the browser strip backgrounds. */
+            .ticket-print-root, .ticket-print-root * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .ticket-print-root {
+                display: flex;
+                min-height: 100vh;
+                flex-direction: column;
+                justify-content: center;
+                padding: 12mm 0 !important;
+                background: #fff !important;
+            }
+
+            .ticket-print-brand { border: 0 !important; }
+            .ticket-print-main { width: 100%; max-width: 170mm; padding-top: 0 !important; }
+            .ticket-pass { box-shadow: none !important; }
             .ticket-card { break-inside: avoid; }
         }
     </style>

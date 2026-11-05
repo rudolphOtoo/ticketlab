@@ -14,7 +14,7 @@
                 Data Exports
             </h1>
             <p class="text-xs text-[var(--text-secondary)] mt-0.5">
-                Download attendee lists, questionnaire answers, and orders as CSV or Excel (.xlsx).
+                Download attendee lists and questionnaire answers as CSV, or an Excel analytics report with charts.
             </p>
         </div>
 
@@ -45,7 +45,7 @@
                         📊
                     </div>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
-                        CSV · Excel (.xlsx)
+                        CSV · Excel analytics (.xlsx)
                     </span>
                 </div>
 
@@ -54,7 +54,7 @@
                         Streaming Attendee Master Roster
                     </h3>
                     <p class="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                        Streams rows straight to your download, so large events export without slowing the server. Each custom registration question becomes its own column (e.g. Bus Route, T-Shirt, Dietary).
+                        The CSV streams rows straight to your download, so large events export without slowing the server. The Excel report adds a styled roster and a dashboard with revenue-by-zone and check-in charts. Each custom registration question becomes its own column (e.g. Bus Route, T-Shirt, Dietary).
                     </p>
                 </div>
 
@@ -85,13 +85,13 @@
                 </button>
                 <button
                     type="button"
-                    wire:click="exportAttendeeXlsx"
+                    wire:click="exportAnalyticsXlsx"
                     class="py-2.5 px-4 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-primary)] text-xs font-semibold hover:bg-[var(--bg-subtle)] transition shadow-2xs press-scale cursor-pointer flex items-center justify-center gap-2"
                 >
                     <svg class="size-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span>Download Excel (.xlsx)</span>
+                    <span>Download Excel Analytics Report (.xlsx)</span>
                 </button>
             </div>
         </div>
