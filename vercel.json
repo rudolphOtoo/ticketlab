@@ -2,7 +2,7 @@
     "version": 2,
     "framework": null,
     "installCommand": "npm ci",
-    "buildCommand": "npm run build && rm -f public/hot && mkdir -p dist",
+    "buildCommand": "rm -f bootstrap/cache/*.php && npm run build && rm -f public/hot && mkdir -p dist",
     "outputDirectory": "public",
     "functions": {
         "api/index.php": {

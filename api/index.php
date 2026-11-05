@@ -7,6 +7,14 @@ declare(strict_types=1);
 $_SERVER['SCRIPT_NAME'] = '/index.php';
 $_SERVER['SCRIPT_FILENAME'] = __DIR__ . '/../public/index.php';
 
+// Serverless Cache Isolation: ensure package and service manifests resolve to writable ephemeral storage.
+putenv('APP_PACKAGES_CACHE=/tmp/storage/bootstrap/cache/packages.php');
+putenv('APP_SERVICES_CACHE=/tmp/storage/bootstrap/cache/services.php');
+$_ENV['APP_PACKAGES_CACHE'] = '/tmp/storage/bootstrap/cache/packages.php';
+$_ENV['APP_SERVICES_CACHE'] = '/tmp/storage/bootstrap/cache/services.php';
+$_SERVER['APP_PACKAGES_CACHE'] = '/tmp/storage/bootstrap/cache/packages.php';
+$_SERVER['APP_SERVICES_CACHE'] = '/tmp/storage/bootstrap/cache/services.php';
+
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
 
 // Vercel Serverless Storage Fallback: Serve uploaded media from /tmp/storage/app/public

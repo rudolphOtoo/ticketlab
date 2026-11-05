@@ -50,6 +50,7 @@ if (($_SERVER['VERCEL'] ?? $_ENV['VERCEL'] ?? null) !== null) {
         '/tmp/storage/framework/views',
         '/tmp/storage/app/private/livewire-tmp',
         '/tmp/storage/app/public',
+        '/tmp/storage/bootstrap/cache',
     ];
     foreach ($directories as $dir) {
         if (is_dir($dir)) {
@@ -58,6 +59,13 @@ if (($_SERVER['VERCEL'] ?? $_ENV['VERCEL'] ?? null) !== null) {
 
         mkdir($dir, 0o755, true);
     }
+
+    putenv('APP_PACKAGES_CACHE=/tmp/storage/bootstrap/cache/packages.php');
+    putenv('APP_SERVICES_CACHE=/tmp/storage/bootstrap/cache/services.php');
+    $_ENV['APP_PACKAGES_CACHE'] = '/tmp/storage/bootstrap/cache/packages.php';
+    $_ENV['APP_SERVICES_CACHE'] = '/tmp/storage/bootstrap/cache/services.php';
+    $_SERVER['APP_PACKAGES_CACHE'] = '/tmp/storage/bootstrap/cache/packages.php';
+    $_SERVER['APP_SERVICES_CACHE'] = '/tmp/storage/bootstrap/cache/services.php';
 }
 
 return $app;
