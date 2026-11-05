@@ -13,7 +13,7 @@ includes = [
     "vendor/league/flysystem/src/**/*.php",
     "vendor/phpoffice/phpspreadsheet/src/PhpSpreadsheet/**/*.php"
 ]
-excludes = ["bootstrap/cache/**"]
+excludes = ["bootstrap/cache/**", "app/EnvKit/**"]
 
 [formatter]
 print-width = 120

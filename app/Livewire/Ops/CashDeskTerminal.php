@@ -211,7 +211,7 @@ class CashDeskTerminal extends Component
                     'quantity' => $this->quantity,
                     'total_amount' => $total,
                     'cash_tendered' => $tendered,
-                    'change_due' => $this->calculateChange(),
+                    'change_due' => max(0.00, $tendered - $total),
                     'issued_at' => now()->format('M d, Y · H:i:s'),
                     'qr_code_hash' => $firstPass->qr_code_hash,
                 ],
