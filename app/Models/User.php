@@ -9,6 +9,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -64,6 +65,32 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         ])->save();
 
         return $this;
+    }
+
+    /**
+     * Accounts an admin may inspect and manage: their own organisation, narrowed to their zone when zone-bound,
+     * and never platform administrators. Platform administrators see every account. Fails closed: an admin
+     * without an organisation matches nobody, rather than every account that has no organisation.
+     *
+     * @return Builder<self>
+     */
+    public static function manageableBy(self $actor): Builder
+    {
+        if ($actor->isSuperAdmin()) {
+            return self::query();
+        }
+
+        if ($actor->organization_id === null) {
+            return self::query()->whereRaw('1 = 0');
+        }
+
+        return self::query()
+            ->where('organization_id', $actor->organization_id)
+            ->whereNotIn('role', ['super_admin', 'superadmin'])
+            ->when($actor->subdivision_id, static fn(Builder $query, int $zoneId) => $query->where(
+                'subdivision_id',
+                $zoneId,
+            ));
     }
 
     public function isSuperAdmin(): bool

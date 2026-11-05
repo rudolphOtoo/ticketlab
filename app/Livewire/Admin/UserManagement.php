@@ -52,6 +52,10 @@ class UserManagement extends Component
     public function mount(): void
     {
         $this->actor();
+
+        // Confirmation carried over from the member details page after a removal.
+        $status = session('status');
+        $this->flashMessage = is_string($status) ? $status : null;
     }
 
     public function updatingSearch(): void
@@ -73,11 +77,7 @@ class UserManagement extends Component
 
     public function editUser(int $userId): void
     {
-        $member = $this->members($this->actor())->whereKey($userId)->first();
-
-        if ($member === null) {
-            return;
-        }
+        $member = $this->member($this->actor(), $userId);
 
         $this->resetValidation();
         $this->editingUserId = $member->id;
@@ -186,14 +186,10 @@ class UserManagement extends Component
             ['subdivisionId' => 'subdivision'],
         );
 
-        $member = DB::transaction(function () use ($actor, $organizationId): ?User {
+        $member = DB::transaction(function () use ($actor, $organizationId): User {
             $member = $this->editingUserId === null
                 ? new User()
-                : $this->members($actor)->whereKey($this->editingUserId)->lockForUpdate()->first();
-
-            if ($member === null) {
-                return null;
-            }
+                : $this->member($actor, $this->editingUserId, lock: true);
 
             $member->fill(['name' => $this->name, 'email' => $this->email]);
             $this->applyCredentials($member);
@@ -206,19 +202,17 @@ class UserManagement extends Component
             );
         });
 
-        if ($member !== null) {
-            if ($this->isInviteMode()) {
-                $token = PasswordBroker::broker()->createToken($member);
-                $this->generatedInviteLink = route('password.reset', ['token' => $token, 'email' => $member->email]);
-                $this->flashMessage = "{$member->name} was invited. Copy the activation link below if email is offline.";
+        if ($this->isInviteMode()) {
+            $token = PasswordBroker::broker()->createToken($member);
+            $this->generatedInviteLink = route('password.reset', ['token' => $token, 'email' => $member->email]);
+            $this->flashMessage = "{$member->name} was invited. Copy the activation link below if email is offline.";
 
-                return;
-            }
-
-            $this->flashMessage = $this->editingUserId === null
-                ? "{$member->name} was added to your team with instant password login."
-                : "{$member->name}'s access was updated.";
+            return;
         }
+
+        $this->flashMessage = $this->editingUserId === null
+            ? "{$member->name} was added to your team with instant password login."
+            : "{$member->name}'s access was updated.";
 
         $this->closeModal();
     }
@@ -233,12 +227,7 @@ class UserManagement extends Component
             return;
         }
 
-        $member = $this->members($actor)->whereKey($userId)->first();
-
-        if ($member === null) {
-            return;
-        }
-
+        $member = $this->member($actor, $userId);
         $name = $member->name;
         $member->delete();
 
@@ -268,13 +257,26 @@ class UserManagement extends Component
      */
     private function members(User $actor): Builder
     {
-        return User::query()
-            ->where('organization_id', $actor->organization_id)
-            ->whereNotIn('role', ['super_admin', 'superadmin'])
-            ->when($actor->subdivision_id, static fn(Builder $query, int $zoneId) => $query->where(
-                'subdivision_id',
-                $zoneId,
-            ));
+        return User::manageableBy($actor);
+    }
+
+    /**
+     * Resolve one member the actor may manage. Anything outside their organisation or zone, whether reached by a
+     * tampered id or an account that moved zones mid-session, is refused outright rather than silently ignored.
+     */
+    private function member(User $actor, int $userId, bool $lock = false): User
+    {
+        $member = $this
+            ->members($actor)
+            ->whereKey($userId)
+            ->when($lock, static fn(Builder $query) => $query->lockForUpdate())
+            ->first();
+
+        if (!$member instanceof User) {
+            abort(403, 'You can only manage team members inside your organization and zone.');
+        }
+
+        return $member;
     }
 
     public function render(): View
