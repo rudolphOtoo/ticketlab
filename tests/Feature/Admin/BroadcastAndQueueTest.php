@@ -40,7 +40,7 @@ test('ticket email job attaches a branded pdf with the passes', function (): voi
             'ticket_type_id' => $this->tier->id,
         ]);
 
-    new SendTicketEmail($order->id)->handle(app(\App\Services\Payment\QrCodeService::class));
+    new SendTicketEmail($order->id)->handle(app(\App\Services\Payment\TicketPassPdf::class));
 
     Mail::assertSent(TicketIssuedMail::class, static function (TicketIssuedMail $mail) use ($order): bool {
         $attachments = $mail->attachments();
@@ -58,7 +58,7 @@ test('ticket email job skips orders without passes', function (): void {
 
     $order = Order::factory()->create(['organization_id' => $this->org->id]);
 
-    new SendTicketEmail($order->id)->handle(app(\App\Services\Payment\QrCodeService::class));
+    new SendTicketEmail($order->id)->handle(app(\App\Services\Payment\TicketPassPdf::class));
 
     Mail::assertNothingSent();
 });
