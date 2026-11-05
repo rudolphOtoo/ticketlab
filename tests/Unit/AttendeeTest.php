@@ -13,9 +13,12 @@ it('extracts answers from nested label and value format', function () {
         ],
     ]);
 
-    expect($attendee->answerFor('t_shirt'))->toBe('XL')
-        ->and($attendee->answerFor('newsletter'))->toBe(false)
-        ->and($attendee->answerFor('notes'))->toBe('');
+    expect($attendee->answerFor('t_shirt'))
+        ->toBe('XL')
+        ->and($attendee->answerFor('newsletter'))
+        ->toBe(false)
+        ->and($attendee->answerFor('notes'))
+        ->toBe('');
 });
 
 it('extracts answers from legacy flat format', function () {
@@ -26,16 +29,14 @@ it('extracts answers from legacy flat format', function () {
         ],
     ]);
 
-    expect($attendee->answerFor('t_shirt'))->toBe('Large')
-        ->and($attendee->answerFor('seat_count'))->toBe(0);
+    expect($attendee->answerFor('t_shirt'))->toBe('Large')->and($attendee->answerFor('seat_count'))->toBe(0);
 });
 
 it('returns null when field is not present or custom_fields is empty or not an array', function () {
     $attendeeEmpty = new Attendee(['custom_fields' => []]);
     $attendeeNull = new Attendee(['custom_fields' => null]);
 
-    expect($attendeeEmpty->answerFor('missing'))->toBeNull()
-        ->and($attendeeNull->answerFor('missing'))->toBeNull();
+    expect($attendeeEmpty->answerFor('missing'))->toBeNull()->and($attendeeNull->answerFor('missing'))->toBeNull();
 });
 
 it('returns explicit null when nested value is null', function () {
@@ -47,5 +48,3 @@ it('returns explicit null when nested value is null', function () {
 
     expect($attendee->answerFor('optional_field'))->toBeNull();
 });
-
-

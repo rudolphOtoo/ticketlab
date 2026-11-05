@@ -123,8 +123,7 @@ test('the attendee export parses modern nested questionnaire custom fields witho
     expect($rows)->toHaveCount(2);
     $row = array_combine($rows[0], $rows[1]);
 
-    expect($row['Name'])->toBe('Kofi Annan')
-        ->and($row['Custom Field: Dietary Needs'])->toBe('Gluten-Free');
+    expect($row['Name'])->toBe('Kofi Annan')->and($row['Custom Field: Dietary Needs'])->toBe('Gluten-Free');
 });
 
 test('csv exports neutralise spreadsheet formulas typed by the public', function (): void {

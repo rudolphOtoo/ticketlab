@@ -25,6 +25,11 @@ return [
         'unrouted_zone_policy' => env('PAYSTACK_UNROUTED_ZONE_POLICY', 'fallback'),
     ],
 
+    // Shared secret for the serverless cron and migration endpoints; both refuse every request while it is unset.
+    'scheduler' => [
+        'token' => env('SCHEDULER_TOKEN'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

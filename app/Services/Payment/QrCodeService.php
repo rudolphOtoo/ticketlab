@@ -55,7 +55,8 @@ class QrCodeService
         string $foreground = '#000000',
         string $background = '#ffffff',
     ): string {
-        return 'data:image/png;base64,' . base64_encode($this->png($content, $scale, $margin, $foreground, $background));
+        return 'data:image/png;base64,'
+        . base64_encode($this->png($content, $scale, $margin, $foreground, $background));
     }
 
     /**

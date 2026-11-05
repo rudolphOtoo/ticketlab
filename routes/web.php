@@ -6,13 +6,15 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DedicatedPageController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\QrCodeController;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 
-// Scannable QR renderer for Marketing Studio, vector downloads, and public tickets.
-// Rate limited to 60 requests per minute to prevent CPU exhaustion.
-Route::get('api/qr', QrCodeController::class)->middleware('throttle:300,1')->name('api.qr');
+// Scannable QR renderer for the Marketing Studio. Rendering is CPU-bound, so it is staff-only and rate limited.
+Route::get('api/qr', QrCodeController::class)->middleware(['auth', 'throttle:300,1'])->name('api.qr');
 
 Route::middleware(['auth'])->group(function () {
     // Staff are redirected to their own surface; attendees land on their passes.
@@ -33,32 +35,32 @@ Route::get('partnership', DedicatedPageController::class)->defaults('page', 'par
 Route::get('faq', DedicatedPageController::class)->defaults('page', 'faq')->name('dedicated.faq');
 Route::get('contact', DedicatedPageController::class)->defaults('page', 'contact')->name('dedicated.contact');
 
-Route::get('api/run-scheduler', function (\Illuminate\Http\Request $request) {
-    $expectedToken = env('SCHEDULER_TOKEN');
-    if ($expectedToken && $request->query('token') !== $expectedToken) {
-        return response()->json(['error' => 'Unauthorized'], 401);
-    }
+// Serverless maintenance hooks. Both fail closed: without a configured token every request is refused.
+$hasSchedulerToken = static function (Request $request): bool {
+    $expected = config('services.scheduler.token');
+    $given = $request->query('token');
 
-    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+    return is_string($expected) && $expected !== '' && is_string($given) && hash_equals($expected, $given);
+};
 
-    return response()->json([
-        'message' => 'Scheduler executed',
-        'output' => \Illuminate\Support\Facades\Artisan::output(),
-    ]);
-})->middleware('throttle:10,1');
-
-Route::get('api/run-migrate', function (\Illuminate\Http\Request $request) {
-    $expectedToken = env('SCHEDULER_TOKEN');
-    if (! $expectedToken || $request->query('token') !== $expectedToken) {
+Route::get('api/run-scheduler', static function (Request $request) use ($hasSchedulerToken): JsonResponse {
+    if (!$hasSchedulerToken($request)) {
         return response()->json(['error' => 'Unauthorized: valid token query parameter required'], 401);
     }
 
-    \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+    Artisan::call('schedule:run');
 
-    return response()->json([
-        'message' => 'Migrations executed',
-        'output' => \Illuminate\Support\Facades\Artisan::output(),
-    ]);
+    return response()->json(['message' => 'Scheduler executed', 'output' => Artisan::output()]);
+})->middleware('throttle:10,1');
+
+Route::get('api/run-migrate', static function (Request $request) use ($hasSchedulerToken): JsonResponse {
+    if (!$hasSchedulerToken($request)) {
+        return response()->json(['error' => 'Unauthorized: valid token query parameter required'], 401);
+    }
+
+    Artisan::call('migrate', ['--force' => true]);
+
+    return response()->json(['message' => 'Migrations executed', 'output' => Artisan::output()]);
 })->middleware('throttle:10,1');
 
 require __DIR__ . '/settings.php';

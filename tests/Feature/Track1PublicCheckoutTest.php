@@ -81,7 +81,7 @@ test('atomic ticket holds prevent overselling when capacity is exhausted', funct
 
     $reservations = app(TicketReservationService::class);
 
-    $firstHold = $reservations->hold($ticket, 5, 'session-first', $this->zoneA->id);
+    $firstHold = $reservations->holdOrReuse($ticket, 5, 'session-first', $this->zoneA->id);
 
     expect($firstHold->status)
         ->toBe(ReservationStatus::Active)
@@ -92,7 +92,7 @@ test('atomic ticket holds prevent overselling when capacity is exhausted', funct
         ->and($ticket->fresh()->available_quantity)
         ->toBe(0);
 
-    expect(fn() => $reservations->hold($ticket->fresh(), 1, 'session-second', $this->zoneA->id))
+    expect(fn() => $reservations->holdOrReuse($ticket->fresh(), 1, 'session-second', $this->zoneA->id))
         ->toThrow(TicketSoldOutException::class);
 
     expect($ticket->fresh()->available_quantity)->toBe(0)->and(Reservation::query()->count())->toBe(1);
@@ -107,9 +107,9 @@ test('a partial hold cannot push stock below zero', function () {
 
     $reservations = app(TicketReservationService::class);
 
-    $reservations->hold($ticket, 2, 'session-one', null);
+    $reservations->holdOrReuse($ticket, 2, 'session-one', null);
 
-    expect(fn() => $reservations->hold($ticket->fresh(), 2, 'session-two', null))
+    expect(fn() => $reservations->holdOrReuse($ticket->fresh(), 2, 'session-two', null))
         ->toThrow(TicketSoldOutException::class);
 
     expect($ticket->fresh()->available_quantity)->toBe(1);
@@ -130,8 +130,8 @@ test('the release expired command restores stock and expires only lapsed holds',
 
     $reservations = app(TicketReservationService::class);
 
-    $expiredHold = $reservations->hold($ticket, 3, 'session-expired', $this->zoneA->id);
-    $activeHold = $reservations->hold($ticket->fresh(), 2, 'session-active', $this->zoneA->id);
+    $expiredHold = $reservations->holdOrReuse($ticket, 3, 'session-expired', $this->zoneA->id);
+    $activeHold = $reservations->holdOrReuse($ticket->fresh(), 2, 'session-active', $this->zoneA->id);
 
     $expiredHold->update(['expires_at' => now()->subMinute()]);
 
@@ -261,7 +261,7 @@ test('a signed charge success webhook fulfils a pending order and issues sha256 
         'available_quantity' => 10,
     ]);
 
-    $reservation = app(TicketReservationService::class)->hold($ticket, 2, 'session-webhook', $this->zoneA->id);
+    $reservation = app(TicketReservationService::class)->holdOrReuse($ticket, 2, 'session-webhook', $this->zoneA->id);
 
     $order = Order::factory()->create([
         'organization_id' => $this->organization->id,

@@ -23,6 +23,7 @@ test('admin can add gallery images via direct link and save gallery settings', f
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
+        'subdivision_id' => null,
     ]);
 
     Livewire::actingAs($admin)

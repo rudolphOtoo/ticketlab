@@ -179,13 +179,10 @@ class EventCustomizer extends Component
 
     public function render(): View
     {
-        $events = Collection::empty();
+        $events = Event::query()->where('organization_id', $this->organizationId)->orderByDesc('id')->get();
 
-        if ($this->organizationId !== null) {
-            $events = Event::query()->where('organization_id', $this->organizationId)->orderByDesc('id')->get();
-        }
-
-        $currentEvent = $this->getCurrentEvent();
+        // The switcher already lists every event, so the selected one is picked from it rather than queried again.
+        $currentEvent = $events->firstWhere('id', $this->selectedEventId)?->loadMissing('organization');
 
         $speakers = Collection::empty();
         $schedules = Collection::empty();

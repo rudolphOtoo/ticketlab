@@ -26,12 +26,6 @@ class ReservationStockService
             $ticket->decrement('available_quantity', $delta);
         }
 
-        $restore = $delta < 0 ? min(abs($delta), max(0, (int) $ticket->total_capacity - $available)) : 0;
-
-        if ($restore > 0) {
-            $ticket->increment('available_quantity', $restore);
-        }
-
         $currentSubdivisionId = $reservation->subdivision_id !== null ? (int) $reservation->subdivision_id : null;
 
         if ($delta !== 0 || $currentSubdivisionId !== $context['subdivision_id']) {
@@ -39,6 +33,11 @@ class ReservationStockService
                 'quantity' => $quantity,
                 'subdivision_id' => $context['subdivision_id'],
             ]);
+        }
+
+        // Restocked only after the hold shrinks, so the seats it gave up count as unclaimed.
+        if ($delta < 0) {
+            $ticket->restock(-$delta);
         }
 
         return $reservation->refresh();

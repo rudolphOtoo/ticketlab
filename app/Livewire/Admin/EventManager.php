@@ -16,12 +16,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use League\Flysystem\UnableToRetrieveMetadata;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use Throwable;
 
 #[Layout('layouts.admin')]
 #[Title('Event Lifecycle Manager')]
@@ -161,9 +163,12 @@ class EventManager extends Component
                 'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
                 'bannerUrlInput' => ['nullable', 'url', 'max:2048'],
             ]);
-        } catch (\League\Flysystem\UnableToRetrieveMetadata $e) {
+        } catch (UnableToRetrieveMetadata) {
             $this->banner = null;
-            $this->addError('banner', 'The temporary file was lost between serverless instances. Please select the image again or paste an image URL below.');
+            $this->addError(
+                'banner',
+                'The temporary file was lost between serverless instances. Please select the image again or paste an image URL below.',
+            );
 
             return;
         }
@@ -192,22 +197,8 @@ class EventManager extends Component
         $event->fill($attributes)->save();
 
         // Stored after saving so a new event's banner is filed under its own id.
-        if ($this->banner !== null) {
-            try {
-                $previousBanner = $event->banner_path;
-                $event->update(['banner_path' => MediaUrl::store(
-                    $this->banner,
-                    MediaUrl::eventDirectory($event->id, 'banners'),
-                )]);
-                MediaUrl::deleteStored($previousBanner);
-            } catch (\Throwable $e) {
-                $this->banner = null;
-                $this->addError('banner', 'Failed to store image: ' . $e->getMessage());
-
-                return;
-            }
-        } elseif ($this->bannerUrlInput !== null && trim($this->bannerUrlInput) !== '') {
-            $event->update(['banner_path' => trim($this->bannerUrlInput)]);
+        if (!$this->saveBanner($event)) {
+            return;
         }
 
         // Only an organisation's first event becomes the working event; later ones never switch the admin away.
@@ -294,6 +285,38 @@ class EventManager extends Component
         }
 
         $this->flashMessage = "'{$title}' was deleted.";
+    }
+
+    /**
+     * An uploaded banner takes precedence over a pasted URL. Returns false when the upload could not be stored.
+     */
+    private function saveBanner(Event $event): bool
+    {
+        if ($this->banner === null) {
+            $url = trim($this->bannerUrlInput ?? '');
+
+            if ($url !== '') {
+                $event->update(['banner_path' => $url]);
+            }
+
+            return true;
+        }
+
+        try {
+            $previousBanner = $event->banner_path;
+            $event->update(['banner_path' => MediaUrl::store(
+                $this->banner,
+                MediaUrl::eventDirectory($event->id, 'banners'),
+            )]);
+            MediaUrl::deleteStored($previousBanner);
+        } catch (Throwable $e) {
+            $this->banner = null;
+            $this->addError('banner', 'Failed to store image: ' . $e->getMessage());
+
+            return false;
+        }
+
+        return true;
     }
 
     private function organizationId(): int

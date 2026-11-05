@@ -103,16 +103,22 @@ class QueueMonitor extends Component
     }
 
     /**
-     * @param Collection<int, \stdClass> $jobs
+     * Payloads are streamed in chunks so a large broadcast backlog never loads the whole jobs table at once.
      *
-     * @return Collection<string, int>
+     * @return Collection<string, positive-int>
      */
-    private static function countByJob(Collection $jobs): Collection
+    private static function pendingByJob(): Collection
     {
-        return $jobs
-            ->map(static fn(\stdClass $job): string => self::jobName((string) $job->payload))
-            ->countBy()
-            ->sortDesc();
+        $counts = [];
+
+        foreach (DB::table('jobs')->select(['id', 'payload'])->lazyById(500) as $job) {
+            $name = self::jobName((string) $job->payload);
+            $counts[$name] = ($counts[$name] ?? 0) + 1;
+        }
+
+        arsort($counts);
+
+        return collect($counts);
     }
 
     private static function jobName(string $payload): string
@@ -150,7 +156,7 @@ class QueueMonitor extends Component
             'isSuperAdmin' => $isSuperAdmin,
             'pendingCount' => DB::table('jobs')->count(),
             'failedCount' => DB::table('failed_jobs')->count(),
-            'pendingByJob' => $isSuperAdmin ? self::countByJob(DB::table('jobs')->get(['payload'])) : collect(),
+            'pendingByJob' => $isSuperAdmin ? self::pendingByJob() : collect(),
             'failedJobs' => $failedJobs,
             'broadcasts' => $broadcasts,
             'batches' => $batches,

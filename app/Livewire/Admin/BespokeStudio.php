@@ -13,6 +13,7 @@ use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use League\Flysystem\UnableToRetrieveMetadata;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
@@ -388,7 +389,7 @@ class BespokeStudio extends Component
                 'new_image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
                 ...$this->imageDetailRules(),
             ]);
-        } catch (\League\Flysystem\UnableToRetrieveMetadata $e) {
+        } catch (UnableToRetrieveMetadata) {
             $this->new_image_file = null;
             throw ValidationException::withMessages([
                 'new_image_file' => 'The uploaded temporary file was lost between serverless instances. Please re-select the image or paste an image URL.',

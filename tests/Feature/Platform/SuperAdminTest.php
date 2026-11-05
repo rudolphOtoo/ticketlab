@@ -64,7 +64,7 @@ test('super admin can access platform dashboard and view metrics', function () {
         ->actingAs($superAdmin)
         ->get(route('platform.dashboard'))
         ->assertOk()
-        ->assertSee('Cross-Tenant Oversight')
+        ->assertSee('Platform Management')
         ->assertSee('Charis Ministries')
         ->assertSee('Accra Tech Hub');
 

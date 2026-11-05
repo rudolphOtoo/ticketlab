@@ -23,6 +23,7 @@ test('admin can manually issue complimentary pass with tag chips', function () {
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
+        'subdivision_id' => null,
     ]);
 
     $event = Event::create([
@@ -76,6 +77,7 @@ test('admin can edit attendee details and update tags', function () {
         'password' => Hash::make('password'),
         'organization_id' => $org->id,
         'role' => 'admin',
+        'subdivision_id' => null,
     ]);
 
     $event = Event::create([

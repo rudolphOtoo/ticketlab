@@ -6,11 +6,11 @@ namespace App\Livewire\Ops;
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
-use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Services\Payment\AttendeeIssuer;
 use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -70,7 +70,7 @@ class CashDeskTerminal extends Component
 
         $orders = Order::with('attendees.ticketType')
             ->where('payment_method', PaymentMethod::PhysicalCash->value)
-            ->when($orgId, static fn($q) => $q->where('organization_id', $orgId))
+            ->where('organization_id', $orgId)
             ->when($zoneId, static fn($q, int $zone) => $q->where('subdivision_id', $zone))
             ->latest('paid_at')
             ->take(5)
@@ -144,7 +144,7 @@ class CashDeskTerminal extends Component
         return max(0.00, $tendered - $total);
     }
 
-    public function processCashSale(): void
+    public function processCashSale(AttendeeIssuer $issuer): void
     {
         $total = $this->calculateTotal();
         $tendered = (float) $this->cashTendered;
@@ -174,7 +174,7 @@ class CashDeskTerminal extends Component
             return;
         }
 
-        $result = DB::transaction(function () use ($event, $total, $tendered): array {
+        $result = DB::transaction(function () use ($event, $tendered, $issuer): array {
             // Pin the tier to the active event so a tampered tier id cannot sell another tenant's stock.
             $tier = TicketType::query()
                 ->whereKey($this->selectedTierId)
@@ -189,10 +189,17 @@ class CashDeskTerminal extends Component
                 ];
             }
 
+            // Priced from the locked row, so a price edit mid-sale cannot under- or over-charge the order.
+            $total = (float) $tier->price * $this->quantity;
+
+            if ($tendered < $total) {
+                return ['success' => false, 'error' => 'Tendered amount is less than total price.'];
+            }
+
             $tier->decrement('available_quantity', $this->quantity);
 
             $order = $this->createCashOrder($event, $total);
-            $firstPass = $this->issueAttendeePasses($order, $tier);
+            $firstPass = $issuer->issue($order, $tier, $this->quantity, [])->firstOrFail();
 
             return [
                 'success' => true,
@@ -253,29 +260,6 @@ class CashDeskTerminal extends Component
         ]);
     }
 
-    /**
-     * Issue one QR pass per ticket and return the first, which is shown on the receipt.
-     */
-    private function issueAttendeePasses(Order $order, TicketType $tier): Attendee
-    {
-        $passes = collect(range(1, $this->quantity))->map(fn(int $number): Attendee => Attendee::query()->create([
-            'organization_id' => $order->organization_id,
-            'order_id' => $order->id,
-            'subdivision_id' => $order->subdivision_id,
-            'ticket_type_id' => $tier->id,
-            'name' => $this->quantity > 1 ? $order->customer_name . ' (Pass ' . $number . ')' : $order->customer_name,
-            'email' => $order->customer_email,
-            'phone' => $order->customer_phone,
-            'qr_code_hash' => hash(
-                'sha256',
-                'TL-PASS-' . $order->reference . '-' . $number . '-' . bin2hex(random_bytes(4)),
-            ),
-            'checked_in_at' => null,
-        ]));
-
-        return $passes->firstOrFail();
-    }
-
     private function getActiveEvent(): ?Event
     {
         $user = auth()->user();
@@ -285,7 +269,7 @@ class CashDeskTerminal extends Component
             return ActiveEvent::resolve($orgId);
         }
 
-        $events = Event::query()->when($orgId, static fn($q) => $q->where('organization_id', $orgId));
+        $events = Event::query()->where('organization_id', $orgId);
 
         return $this->eventId ? $events->find($this->eventId) : $events->latest()->first();
     }
@@ -296,11 +280,15 @@ class CashDeskTerminal extends Component
         /** @var Collection<int, TicketType> $tiers */
         $tiers = $event ? $event->ticketTypes()->get() : collect();
 
+        // Priced from the tiers already on screen rather than re-querying the selected one.
+        $selectedTier = $tiers->firstWhere('id', $this->selectedTierId);
+        $total = $selectedTier === null ? 0.00 : (float) $selectedTier->price * $this->quantity;
+
         return view('livewire.ops.cash-desk-terminal', [
             'event' => $event,
             'tiers' => $tiers,
-            'total' => $this->calculateTotal(),
-            'changeDue' => $this->calculateChange(),
+            'total' => $total,
+            'changeDue' => max(0.00, (float) $this->cashTendered - $total),
         ]);
     }
 }

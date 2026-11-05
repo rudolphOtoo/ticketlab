@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Livewire\Admin\AttendeeRoster;
+use App\Livewire\Ops\ScannerTerminal;
 use App\Livewire\Public\EventShow;
 use App\Models\Attendee;
 use App\Models\Event;
@@ -12,8 +13,11 @@ use App\Models\PlatformSetting;
 use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Services\Reservation\TicketReservationService;
 use App\Support\ActiveEvent;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
@@ -58,6 +62,16 @@ test('tiers that are paused or outside their sales window cannot be bought onlin
     'not yet on sale' => [['sales_start_at' => now()->addDay(), 'sales_end_at' => now()->addWeek()], 'Coming Soon'],
     'sales closed' => [['sales_start_at' => now()->subWeek(), 'sales_end_at' => now()->subDay()], 'Sales Closed'],
 ]);
+
+test('the public checkout cannot be pointed at another event by tampering with its ids', function (string $property): void {
+    $draft = Event::factory()->create(['status' => 'draft']);
+
+    expect(fn() => Livewire::test(EventShow::class, [
+        'org_slug' => $this->org->slug,
+        'event_slug' => $this->event->slug,
+    ])->set($property, $property === 'eventId' ? $draft->id : $draft->organization_id))
+        ->toThrow(CannotUpdateLockedPropertyException::class);
+})->with(['eventId', 'organizationId']);
 
 test('paused tiers are hidden from the public page', function (): void {
     TicketType::factory()->create([
@@ -136,6 +150,38 @@ test('voiding a pass restores one seat and never pushes stock above capacity', f
     expect($tier->fresh()->available_quantity)->toBe(1)->and(Attendee::query()->count())->toBe(0);
 });
 
+test('voiding one of two passes on a single-seat tier frees no seat while the other still holds it', function (): void {
+    $tier = TicketType::factory()->create([
+        'event_id' => $this->event->id,
+        'total_capacity' => 1,
+        'available_quantity' => 1,
+    ]);
+    comp_pass($this, $tier);
+    comp_pass($this, $tier);
+
+    Livewire::actingAs($this->admin)
+        ->test(AttendeeRoster::class)
+        ->call('voidPass', Attendee::query()->orderBy('id')->value('id'));
+
+    expect($tier->fresh()->available_quantity)->toBe(0)->and(Attendee::query()->count())->toBe(1);
+});
+
+test('an expiring hold never restocks seats that comps issued past sell-out have claimed', function (): void {
+    $tier = TicketType::factory()->create([
+        'event_id' => $this->event->id,
+        'total_capacity' => 2,
+        'available_quantity' => 2,
+    ]);
+    $hold = app(TicketReservationService::class)->holdOrReuse($tier, 1, 'session-comp-race', null);
+    comp_pass($this, $tier);
+    comp_pass($this, $tier);
+    $hold->update(['expires_at' => now()->subMinute()]);
+
+    Artisan::call('reservations:release-expired');
+
+    expect($tier->fresh()->available_quantity)->toBe(0);
+});
+
 /*
  |--------------------------------------------------------------------------
  | Platform settings: one lookup per key, correct defaults per caller
@@ -158,4 +204,33 @@ test('missing platform settings are cached and each caller gets its own default'
     PlatformSetting::set('never_set_key', 'stored');
 
     expect(PlatformSetting::get('never_set_key', 'ignored'))->toBe('stored');
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | Org-scoped tools fail closed for accounts without an organisation
+ |--------------------------------------------------------------------------
+ */
+
+test('a platform super admin without an organisation cannot see, void, or scan any tenant\'s passes', function (): void {
+    $superAdmin = User::factory()->create()->assignMembership('super_admin', null);
+    $tier = TicketType::factory()->create(['event_id' => $this->event->id]);
+    $pass = Attendee::factory()->create([
+        'organization_id' => $this->org->id,
+        'ticket_type_id' => $tier->id,
+        'subdivision_id' => null,
+        'name' => 'Tenant Guest Abena',
+    ]);
+
+    Livewire::actingAs($superAdmin)
+        ->test(AttendeeRoster::class)
+        ->assertDontSee('Tenant Guest Abena')
+        ->call('voidPass', $pass->id);
+
+    Livewire::actingAs($superAdmin)
+        ->test(ScannerTerminal::class)
+        ->call('validatePass', $pass->qr_code_hash)
+        ->assertSet('scanState', 'invalid');
+
+    expect($pass->fresh())->not->toBeNull()->and($pass->fresh()->checked_in_at)->toBeNull();
 });

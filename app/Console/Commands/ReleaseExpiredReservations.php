@@ -60,16 +60,8 @@ class ReleaseExpiredReservations extends Command
                 return false;
             }
 
-            if ($ticketType !== null) {
-                $restoredQuantity = min(
-                    $ticketType->available_quantity + $reservation->quantity,
-                    $ticketType->total_capacity,
-                );
-
-                $ticketType->update(['available_quantity' => $restoredQuantity]);
-            }
-
             $reservation->update(['status' => ReservationStatus::Expired]);
+            $ticketType?->restock((int) $reservation->quantity);
 
             return true;
         });
