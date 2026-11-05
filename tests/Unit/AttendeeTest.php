@@ -37,3 +37,15 @@ it('returns null when field is not present or custom_fields is empty or not an a
     expect($attendeeEmpty->answerFor('missing'))->toBeNull()
         ->and($attendeeNull->answerFor('missing'))->toBeNull();
 });
+
+it('returns explicit null when nested value is null', function () {
+    $attendee = new Attendee([
+        'custom_fields' => [
+            'optional_field' => ['label' => 'Optional', 'value' => null],
+        ],
+    ]);
+
+    expect($attendee->answerFor('optional_field'))->toBeNull();
+});
+
+

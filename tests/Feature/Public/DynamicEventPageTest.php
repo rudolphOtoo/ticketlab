@@ -334,3 +334,51 @@ test('switched-off required questionnaire fields are not displayed and do not bl
         ->assertHasNoErrors();
 });
 
+test('responses submitted for inactive questionnaire fields are stripped and never persisted to order metadata', function (): void {
+    $org = Organization::factory()->create();
+    $event = Event::factory()->create(['organization_id' => $org->id, 'status' => 'published']);
+    $ticket = TicketType::factory()->create(['event_id' => $event->id, 'price' => 50, 'available_quantity' => 10]);
+
+    EventFormField::create([
+        'organization_id' => $org->id,
+        'event_id' => $event->id,
+        'field_key' => 'active_field',
+        'label' => 'Active Question',
+        'field_type' => 'text',
+        'is_required' => false,
+        'is_active' => true,
+        'sort_order' => 1,
+    ]);
+
+    EventFormField::create([
+        'organization_id' => $org->id,
+        'event_id' => $event->id,
+        'field_key' => 'hidden_field',
+        'label' => 'Hidden Inactive Question',
+        'field_type' => 'text',
+        'is_required' => false,
+        'is_active' => false,
+        'sort_order' => 2,
+    ]);
+
+    $component = Livewire::test(EventShow::class, [
+        'org_slug' => $org->slug,
+        'event_slug' => $event->slug,
+    ])
+        ->set('ticketTypeId', $ticket->id)
+        ->set('quantity', 1)
+        ->set('customerName', 'Kwame Nkrumah')
+        ->set('customerEmail', 'kwame@example.com')
+        ->set('customerPhone', '0244111222')
+        ->set('customFieldResponses.active_field', 'Valid Answer')
+        ->set('customFieldResponses.hidden_field', 'Injected Inactive Payload')
+        ->call('startCheckout')
+        ->assertHasNoErrors();
+
+    $order = Order::query()->where('reference', $component->get('orderReference'))->firstOrFail();
+
+    expect($order->metadata['custom_fields'])->toHaveKey('active_field')
+        ->and($order->metadata['custom_fields'])->not->toHaveKey('hidden_field');
+});
+
+

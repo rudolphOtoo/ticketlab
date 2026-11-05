@@ -105,6 +105,31 @@ test('the attendee export writes a header row, one row per attendee and question
     expect($row['Name'])->toBe('Akosua Boateng, Jr.')->and($row['Dietary Needs'])->toBe('Vegetarian');
 });
 
+test('the attendee export parses modern nested questionnaire custom fields without duplicating labels', function (): void {
+    export_attendee($this, [
+        'name' => 'Kofi Annan',
+        'custom_fields' => [
+            'dietary' => [
+                'label' => 'Dietary Needs',
+                'value' => 'Gluten-Free',
+            ],
+        ],
+    ]);
+
+    $rows = csv_rows(
+        Livewire::actingAs($this->admin)
+            ->test(DataExportCentral::class, ['eventId' => $this->event->id])
+            ->instance()
+            ->exportAttendeeCsv(),
+    );
+
+    expect($rows)->toHaveCount(2);
+    $row = array_combine($rows[0], $rows[1]);
+
+    expect($row['Name'])->toBe('Kofi Annan')
+        ->and($row['Dietary Needs'])->toBe('Gluten-Free');
+});
+
 test('csv exports neutralise spreadsheet formulas typed by the public', function (): void {
     export_attendee($this, [
         'name' => '=HYPERLINK("http://evil.test","Click")',
