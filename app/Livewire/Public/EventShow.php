@@ -47,6 +47,9 @@ class EventShow extends Component
     /** The event mount() already loaded, reused by the first render; not persisted to later requests. */
     protected ?Event $mountedEvent = null;
 
+    /** Memoized event instance with eager-loaded relations for the current request lifecycle. */
+    protected ?Event $resolvedEvent = null;
+
     public ?int $ticketTypeId = null;
 
     public int $quantity = 1;
@@ -114,7 +117,7 @@ class EventShow extends Component
 
     public function selectTicketType(int $ticketTypeId): void
     {
-        $ticketType = $this->event()->ticketTypes()->whereKey($ticketTypeId)->first();
+        $ticketType = $this->event()->ticketTypes->firstWhere('id', $ticketTypeId);
 
         if ($ticketType === null || !$ticketType->isOnSale()) {
             return;
@@ -181,9 +184,9 @@ class EventShow extends Component
     ): void {
         $pendingOrders ??= app(PendingOrderService::class);
         $event = $this->event();
-        $organization = Organization::query()->findOrFail($event->organization_id);
+        $organization = $event->organization;
         // Only the questions the buyer was shown: a switched-off required field must never block checkout.
-        $formFields = $event->formFields()->where('is_active', true)->get();
+        $formFields = $event->formFields->where('is_active', true)->values();
 
         $validated = $this->validate(...$this->checkoutRules($formFields));
 
@@ -297,15 +300,7 @@ class EventShow extends Component
 
     public function render(): View
     {
-        // One query per relation, already ordered for display; nothing below re-queries them.
-        $event = ($this->mountedEvent ?? $this->event())->loadMissing([
-            'organization',
-            'ticketTypes',
-            'speakers' => static fn($q) => $q->orderBy('sort_order'),
-            'schedules' => static fn($q) => $q->orderBy('sort_order'),
-            'faqs' => static fn($q) => $q->where('is_published', true)->orderBy('sort_order'),
-            'formFields' => static fn($q) => $q->where('is_active', true)->orderBy('sort_order'),
-        ]);
+        $event = $this->event();
         $organization = $event->organization;
 
         /** @var Collection<int, TicketType> $ticketTypes */
@@ -346,7 +341,7 @@ class EventShow extends Component
             'organization' => $organization,
             'event' => $event,
             'ticketTypes' => $ticketTypes,
-            'subdivisions' => $organization->subdivisions()->orderBy('name')->get(),
+            'subdivisions' => $organization->subdivisions->sortBy('name')->values(),
             'selectedTicketType' => $selectedTicketType,
             'subtotal' => $subtotal,
             'breakdown' => $breakdown,
@@ -580,8 +575,31 @@ class EventShow extends Component
 
     private function event(): Event
     {
-        return Event::query()
+        if ($this->resolvedEvent !== null) {
+            return $this->resolvedEvent;
+        }
+
+        if ($this->mountedEvent !== null) {
+            return $this->resolvedEvent = $this->mountedEvent->loadMissing([
+                'organization.subdivisions',
+                'ticketTypes',
+                'speakers' => static fn($q) => $q->orderBy('sort_order'),
+                'schedules' => static fn($q) => $q->orderBy('sort_order'),
+                'faqs' => static fn($q) => $q->where('is_published', true)->orderBy('sort_order'),
+                'formFields' => static fn($q) => $q->where('is_active', true)->orderBy('sort_order'),
+            ]);
+        }
+
+        return $this->resolvedEvent = Event::query()
             ->where('organization_id', $this->organizationId)
+            ->with([
+                'organization.subdivisions',
+                'ticketTypes',
+                'speakers' => static fn($q) => $q->orderBy('sort_order'),
+                'schedules' => static fn($q) => $q->orderBy('sort_order'),
+                'faqs' => static fn($q) => $q->where('is_published', true)->orderBy('sort_order'),
+                'formFields' => static fn($q) => $q->where('is_active', true)->orderBy('sort_order'),
+            ])
             ->findOrFail($this->eventId);
     }
 
@@ -591,7 +609,7 @@ class EventShow extends Component
             return null;
         }
 
-        return TicketType::query()->where('event_id', $this->eventId)->find($this->ticketTypeId);
+        return $this->event()->ticketTypes->firstWhere('id', $this->ticketTypeId);
     }
 
     private function platformFee(Organization $organization): float
