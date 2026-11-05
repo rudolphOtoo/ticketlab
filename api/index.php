@@ -39,6 +39,12 @@ if (str_starts_with($uri, '/storage/') && ! str_contains($uri, '..')) {
             exit;
         }
     }
+
+    http_response_code(404);
+    header('Content-Type: text/plain');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    echo 'Not Found';
+    exit;
 }
 
 // Vercel Edge Fallback: Serve static assets generated inside the PHP Lambda

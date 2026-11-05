@@ -27,11 +27,20 @@
                 <!-- Main Event Hero Card -->
                 <div class="overflow-hidden rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-md">
                     @if ($event->bannerUrl())
-                        <img
-                            src="{{ $event->bannerUrl() }}"
-                            alt="{{ $event->title }}"
-                            class="h-64 w-full object-cover sm:h-80"
-                        />
+                        <div class="relative">
+                            <img
+                                src="{{ $event->bannerUrl() }}"
+                                alt="{{ $event->title }}"
+                                class="h-64 w-full object-cover sm:h-80"
+                                onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';"
+                            />
+                            <div class="hidden h-56 w-full items-center justify-center bg-gradient-to-br from-[var(--bg-subtle)] via-[var(--bg-surface)] to-[var(--bg-canvas)] border-b border-[var(--border-hairline)] p-6 text-center text-[var(--text-primary)]">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.2em] text-[var(--accent-brand)] font-bold">{{ $organization->name }}</p>
+                                    <p class="mt-2 text-2xl sm:text-3xl font-black text-[var(--text-primary)]">{{ $customization['headline'] ?? $event->title }}</p>
+                                </div>
+                            </div>
+                        </div>
                     @else
                         <div class="flex h-56 w-full items-center justify-center bg-gradient-to-br from-[var(--bg-subtle)] via-[var(--bg-surface)] to-[var(--bg-canvas)] border-b border-[var(--border-hairline)] p-6 text-center text-[var(--text-primary)]">
                             <div>

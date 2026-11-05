@@ -40,16 +40,19 @@ final class MediaUrl
             return $path;
         }
 
-        $url = Storage::disk(self::disk())->url($path);
-
-        // Local files are served by this app: a root-relative URL works on any host, whatever APP_URL says.
+        // Local files are served by this app: verify the file physically exists on disk.
         if (config('filesystems.disks.' . self::disk() . '.driver') === 'local') {
+            if (! Storage::disk(self::disk())->exists($path)) {
+                return null;
+            }
+
+            $url = Storage::disk(self::disk())->url($path);
             $relative = parse_url($url, PHP_URL_PATH);
 
             return is_string($relative) ? $relative : $url;
         }
 
-        return $url;
+        return Storage::disk(self::disk())->url($path);
     }
 
     /**
