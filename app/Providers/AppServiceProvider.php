@@ -24,6 +24,16 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(SmsGatewayInterface::class, SmsManager::class);
+
+        // Development-only packages: never register in production or when not installed.
+        if (! $this->app->isProduction()) {
+            if (class_exists(\LaraMint\LaravelBrain\LaravelBrainServiceProvider::class)) {
+                $this->app->register(\LaraMint\LaravelBrain\LaravelBrainServiceProvider::class);
+            }
+            if (class_exists(\LaraMint\LaravelStress\LaravelStressServiceProvider::class)) {
+                $this->app->register(\LaraMint\LaravelStress\LaravelStressServiceProvider::class);
+            }
+        }
     }
 
     /**

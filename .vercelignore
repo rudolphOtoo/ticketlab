@@ -1,6 +1,12 @@
 .env*
 .neon
 /vendor
+bootstrap/cache/*.php
+bootstrap/cache/packages.php
+bootstrap/cache/services.php
+bootstrap/cache/config.php
+bootstrap/cache/routes-v7.php
+bootstrap/cache/events.php
 public/hot
 hot
 !public/build/**
