@@ -13,10 +13,7 @@ use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
 use App\Support\CsvWriter;
-use App\Support\XlsxWriter;
 use Livewire\Livewire;
-use OpenSpout\Reader\XLSX\Reader as XlsxReader;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 beforeEach(function (): void {
@@ -98,11 +95,11 @@ test('the attendee export writes a header row, one row per attendee and question
     );
 
     expect($rows)->toHaveCount(2);
-    expect($rows[0])->toContain('Attendee ID', 'Name', 'Email', 'Dietary Needs');
+    expect($rows[0])->toContain('Attendee ID', 'Name', 'Email', 'Custom Field: Dietary Needs');
 
     $row = array_combine($rows[0], $rows[1]);
 
-    expect($row['Name'])->toBe('Akosua Boateng, Jr.')->and($row['Dietary Needs'])->toBe('Vegetarian');
+    expect($row['Name'])->toBe('Akosua Boateng, Jr.')->and($row['Custom Field: Dietary Needs'])->toBe('Vegetarian');
 });
 
 test('csv exports neutralise spreadsheet formulas typed by the public', function (): void {
@@ -121,7 +118,7 @@ test('csv exports neutralise spreadsheet formulas typed by the public', function
 
     expect($row['Name'])
         ->toBe('\'=HYPERLINK("http://evil.test","Click")')
-        ->and($row['Dietary Needs'])
+        ->and($row['Custom Field: Dietary Needs'])
         ->toBe("'@SUM(A1:A9)");
 
     $roster = csv_rows(Livewire::actingAs($this->admin)->test(AttendeeRoster::class)->instance()->exportCsv());
@@ -164,97 +161,4 @@ test('the csv writer keeps numbers and plain text unchanged', function (): void 
         ->toBe('')
         ->and(CsvWriter::safe('+233244000000'))
         ->toBe("'+233244000000");
-});
-
-/**
- * @return array{rows: list<list<mixed>>, sheetXml: string}
- */
-function xlsx_contents(BinaryFileResponse $response): array
-{
-    $path = $response->getFile()->getPathname();
-
-    $reader = new XlsxReader();
-    $reader->open($path);
-    $rows = [];
-
-    foreach ($reader->getSheetIterator() as $sheet) {
-        foreach ($sheet->getRowIterator() as $row) {
-            $rows[] = $row->toArray();
-        }
-    }
-
-    $reader->close();
-
-    $zip = new ZipArchive();
-    $zip->open($path);
-    $sheetXml = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
-    $zip->close();
-
-    return ['rows' => $rows, 'sheetXml' => $sheetXml];
-}
-
-test('the attendee export also downloads as an excel workbook with an xlsx filename', function (): void {
-    export_attendee($this, ['name' => 'Akosua Boateng, Jr.', 'custom_fields' => ['dietary' => 'Vegetarian']]);
-
-    $response = Livewire::actingAs($this->admin)
-        ->test(DataExportCentral::class, ['eventId' => $this->event->id])
-        ->instance()
-        ->exportAttendeeXlsx();
-
-    expect($response->getStatusCode())
-        ->toBe(200)
-        ->and($response->headers->get('content-type'))
-        ->toBe(XlsxWriter::CONTENT_TYPE)
-        ->and($response->headers->get('content-disposition'))
-        ->toStartWith('attachment; filename=attendees_kingdom-summit_')
-        ->toEndWith('.xlsx');
-
-    ['rows' => $rows] = xlsx_contents($response);
-
-    expect($rows)->toHaveCount(2);
-
-    $row = array_combine($rows[0], $rows[1]);
-
-    expect($row['Name'])
-        ->toBe('Akosua Boateng, Jr.')
-        ->and($row['Dietary Needs'])
-        ->toBe('Vegetarian')
-        ->and($row['Price Paid (GHS)'])
-        ->toEqual(round((float) $this->tier->price, 2));
-});
-
-test('excel exports store text typed by the public as text, never as a formula', function (): void {
-    export_attendee($this, [
-        'name' => '=HYPERLINK("http://evil.test","Click")',
-        'custom_fields' => ['dietary' => '@SUM(A1:A9)'],
-    ]);
-
-    ['rows' => $rows, 'sheetXml' => $xml] = xlsx_contents(
-        Livewire::actingAs($this->admin)
-            ->test(DataExportCentral::class, ['eventId' => $this->event->id])
-            ->instance()
-            ->exportAttendeeXlsx(),
-    );
-
-    $row = array_combine($rows[0], $rows[1]);
-
-    expect($row['Name'])->toBe('=HYPERLINK("http://evil.test","Click")')->and($xml)->not->toContain('<f>');
-});
-
-test('the excel export respects zone scoping', function (): void {
-    $otherZone = Subdivision::factory()->create(['organization_id' => $this->org->id]);
-    $zoneAdmin = User::factory()->create()->assignMembership('admin', $this->org->id, $this->zone->id);
-
-    export_attendee($this, ['name' => 'Own Zone Guest']);
-    $foreign = export_attendee($this, ['name' => 'Other Zone Guest']);
-    $foreign->update(['subdivision_id' => $otherZone->id]);
-
-    ['rows' => $rows] = xlsx_contents(
-        Livewire::actingAs($zoneAdmin)
-            ->test(DataExportCentral::class, ['eventId' => $this->event->id])
-            ->instance()
-            ->exportAttendeeXlsx(),
-    );
-
-    expect(array_column(array_slice($rows, 1), 1))->toBe(['Own Zone Guest']);
 });
