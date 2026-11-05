@@ -101,4 +101,17 @@ class Attendee extends Model
     {
         return $this->checked_in_at !== null;
     }
+
+    /**
+     * The buyer's answer to one registration question, or null when it was left unanswered.
+     *
+     * Online checkout stores answers labelled ({key: {label, value}}); older and manually created passes store
+     * the bare value ({key: value}). Both shapes are read here so callers never see the wrapper.
+     */
+    public function answerFor(string $fieldKey): mixed
+    {
+        $answer = is_array($this->custom_fields) ? $this->custom_fields[$fieldKey] ?? null : null;
+
+        return is_array($answer) && array_key_exists('value', $answer) ? $answer['value'] : $answer;
+    }
 }
