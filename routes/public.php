@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Payment\PaystackWebhookController;
 use App\Http\Controllers\TenantHomeController;
 use App\Http\Controllers\TenantPageController;
+use App\Http\Controllers\TicketPassPdfController;
 use App\Livewire\Public\EventDirectory;
 use App\Livewire\Public\EventShow;
 use App\Livewire\Public\TicketShow;
@@ -32,9 +33,11 @@ Route::post('api/payzephyr/webhook', [PaystackWebhookController::class, 'handle'
 
 Route::get('events', EventDirectory::class)->name('public.events.index');
 
-Route::get('tickets/{order:reference}', TicketShow::class)
-    ->name('public.tickets.show')
-    ->middleware('throttle:60,1');
+Route::get('tickets/{order:reference}', TicketShow::class)->name('public.tickets.show')->middleware('throttle:60,1');
+
+Route::get('tickets/{order:reference}/pdf', TicketPassPdfController::class)->name('public.tickets.pdf')->middleware(
+    'throttle:20,1',
+);
 
 Route::prefix('{org_slug}')
     ->name('public.')
