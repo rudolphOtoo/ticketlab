@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -92,6 +93,24 @@ class Organization extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * Badge letters for the organisation: the first letter of its first two words ("Perez Dome & …" → "PD").
+     * Words that start with a symbol, such as "&", are skipped.
+     */
+    public function initials(): string
+    {
+        $words = preg_split('/\s+/u', trim($this->name), -1, PREG_SPLIT_NO_EMPTY);
+        $letters = array_filter(
+            is_array($words) ? $words : [],
+            static fn(string $word): bool => preg_match('/^\p{L}/u', $word) === 1,
+        );
+
+        return Str::upper(implode('', array_map(
+            static fn(string $word): string => Str::substr($word, 0, 1),
+            array_slice(array_values($letters), 0, 2),
+        )));
     }
 
     /**

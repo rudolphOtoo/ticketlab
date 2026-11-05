@@ -72,7 +72,7 @@ final class CsvWriter
             return (string) $value;
         }
 
-        return preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'" . $value : $value;
+        return preg_match('/^[=+\-@\t\r\n]/', $value) === 1 ? "'" . $value : $value;
     }
 
     /**

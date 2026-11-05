@@ -4,22 +4,20 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
-use App\Models\Attendee;
+use App\Exports\AttendeeRoster;
+use App\Exports\EventAnalyticsExport;
 use App\Models\Event;
-use App\Models\EventFormField;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\ActiveEvent;
 use App\Support\CsvWriter;
-use App\Support\XlsxWriter;
-use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -51,14 +49,15 @@ class DataExportCentral extends Component
 
     public function exportAttendeeCsv(): StreamedResponse
     {
-        [$fileName, $rows] = $this->attendeeExport();
+        [$fileName, $roster] = $this->attendeeExport();
 
         return response()->streamDownload(
-            static function () use ($rows): void {
+            static function () use ($roster): void {
                 $writer = CsvWriter::toOutput();
 
-                foreach ($rows as $row) {
-                    $writer->addRow($row);
+                // 500 passes at a time, so the download runs in constant memory however large the roster is.
+                foreach ($roster->query()->lazy(500) as $attendee) {
+                    $writer->addRow($roster->row($attendee));
                 }
 
                 $writer->close();
@@ -69,35 +68,25 @@ class DataExportCentral extends Component
     }
 
     /**
-     * An XLSX file is a zip archive, so it is written to a temporary file in constant memory and then sent.
+     * The Excel analytics report: the styled roster plus a dashboard with native revenue and check-in charts.
      */
-    public function exportAttendeeXlsx(): BinaryFileResponse
+    public function exportAnalyticsXlsx(): BinaryFileResponse
     {
-        [$fileName, $rows] = $this->attendeeExport();
+        [$fileName, $roster, $scope] = $this->attendeeExport();
 
-        $path = tempnam(sys_get_temp_dir(), 'attendees_');
-
-        if ($path === false) {
-            abort(500, 'Unable to prepare the Excel export.');
-        }
-
-        $writer = XlsxWriter::toFile($path, 'Attendees');
-
-        foreach ($rows as $row) {
-            $writer->addRow($row);
-        }
-
-        $writer->close();
-
-        return response()->download($path, $fileName . '.xlsx', [
-            'Content-Type' => XlsxWriter::CONTENT_TYPE,
-        ])->deleteFileAfterSend();
+        return Excel::download(
+            new EventAnalyticsExport($roster, $scope),
+            str_replace('attendees_', 'event_analytics_', $fileName) . '.xlsx',
+            \Maatwebsite\Excel\Excel::XLSX,
+            ['Content-Type' => EventAnalyticsExport::CONTENT_TYPE],
+        );
     }
 
     /**
-     * Authorise the export and describe it: the download name (without extension) and its rows.
+     * Authorise the export and describe it: the download name (without extension), the roster in scope and a
+     * human-readable summary of that scope.
      *
-     * @return array{string, \Generator<int, array<string, string|int|float|null>>}
+     * @return array{string, AttendeeRoster, string}
      */
     private function attendeeExport(): array
     {
@@ -106,7 +95,8 @@ class DataExportCentral extends Component
         }
 
         $orgId = $this->organizationId;
-        $zoneId = auth()->user()?->subdivision_id;
+        $user = auth()->user();
+        $zoneId = $user?->subdivision_id;
 
         $event = $this->selectedEventId === null
             ? null
@@ -115,69 +105,15 @@ class DataExportCentral extends Component
         // An event id outside this organisation falls back to an organisation-wide export.
         $fileName = 'attendees_' . ($event !== null ? $event->slug : 'all') . '_' . now()->format('Y_m_d_His');
 
-        return [$fileName, $this->attendeeRows($orgId, $zoneId, $event?->id, $this->formFieldsFor($event))];
-    }
+        // Zone-bound admins always have a zone; everyone else exports every zone.
+        $zoneName = $user?->subdivision->name ?? 'All zones';
+        $scope = implode(' · ', [
+            $event !== null ? $event->title : 'All events',
+            $zoneName,
+            'Generated ' . now()->format('j M Y, g:i A'),
+        ]);
 
-    /**
-     * One row per attendee in the export scope, loaded 500 at a time; each questionnaire field becomes a column.
-     *
-     * @param Collection<int, EventFormField> $customFormFields
-     *
-     * @return \Generator<int, array<string, string|int|float|null>>
-     */
-    private function attendeeRows(int $orgId, ?int $zoneId, ?int $eventId, Collection $customFormFields): \Generator
-    {
-        $attendees = Attendee::query()
-            ->with(['ticketType', 'order', 'subdivision'])
-            ->when($zoneId, static fn(Builder $q, int $zone) => $q->where('subdivision_id', $zone))
-            ->whereHas('ticketType.event', static function (Builder $q) use ($orgId, $eventId): void {
-                $q->where('organization_id', $orgId);
-                if ($eventId !== null) {
-                    $q->where('id', $eventId);
-                }
-            })
-            ->lazy(500);
-
-        foreach ($attendees as $att) {
-            $row = [
-                'Attendee ID' => $att->id,
-                'Name' => $att->name,
-                'Email' => $att->email,
-                'Phone' => $att->phone,
-                'Ticket Tier' => $att->ticketType->name,
-                'Price Paid (GHS)' => round((float) $att->ticketType->price, 2),
-                'Order Reference' => $att->order->reference,
-                'Status' => $att->checked_in_at !== null ? 'Checked-In' : 'Pending',
-                'Checked In At' => self::checkedInAt($att->checked_in_at),
-            ];
-
-            $customValues = is_array($att->custom_fields) ? $att->custom_fields : [];
-
-            foreach ($customFormFields as $field) {
-                $row[$field->label] = self::answer($customValues[$field->field_key] ?? null);
-            }
-
-            yield $row;
-        }
-    }
-
-    private static function checkedInAt(?CarbonInterface $at): string
-    {
-        return $at === null ? 'N/A' : $at->format('Y-m-d H:i:s');
-    }
-
-    /**
-     * Questionnaire answers are stored as JSON: checkbox answers are lists, unanswered questions are missing.
-     */
-    private static function answer(mixed $value): string
-    {
-        return match (true) {
-            is_array($value) => implode(', ', array_map(static fn(mixed $option): string => is_scalar($option)
-                ? (string) $option
-                : '', $value)),
-            is_scalar($value) => (string) $value,
-            default => 'N/A',
-        };
+        return [$fileName, new AttendeeRoster($orgId, $zoneId, $event?->id), $scope];
     }
 
     public function exportJsonBackup(): StreamedResponse
@@ -287,13 +223,5 @@ class DataExportCentral extends Component
             'events' => $events,
             'selectedEvent' => $selectedEvent,
         ]);
-    }
-
-    /**
-     * @return Collection<int, EventFormField>
-     */
-    private function formFieldsFor(?Event $event): Collection
-    {
-        return $event === null ? new Collection() : $event->formFields()->get();
     }
 }
