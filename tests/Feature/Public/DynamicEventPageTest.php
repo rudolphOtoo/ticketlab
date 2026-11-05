@@ -303,3 +303,34 @@ test('questionnaire options containing commas validate correctly', function (): 
     $checkout('Accra, Greater Accra')->assertHasNoErrors();
     $checkout('Accra')->assertHasErrors(['customFieldResponses.city']);
 });
+
+test('switched-off required questionnaire fields are not displayed and do not block checkout', function (): void {
+    $org = Organization::factory()->create();
+    $event = Event::factory()->create(['organization_id' => $org->id, 'status' => 'published']);
+    $ticket = TicketType::factory()->create(['event_id' => $event->id, 'price' => 50, 'available_quantity' => 10]);
+
+    EventFormField::create([
+        'organization_id' => $org->id,
+        'event_id' => $event->id,
+        'field_key' => 'emergency_contact',
+        'label' => 'Emergency Contact Phone',
+        'field_type' => 'text',
+        'is_required' => true,
+        'is_active' => false,
+        'sort_order' => 1,
+    ]);
+
+    Livewire::test(EventShow::class, [
+        'org_slug' => $org->slug,
+        'event_slug' => $event->slug,
+    ])
+        ->assertDontSee('Emergency Contact Phone')
+        ->set('ticketTypeId', $ticket->id)
+        ->set('quantity', 1)
+        ->set('customerName', 'Abena Pokua')
+        ->set('customerEmail', 'abena@example.com')
+        ->set('customerPhone', '0244123456')
+        ->call('startCheckout')
+        ->assertHasNoErrors();
+});
+
