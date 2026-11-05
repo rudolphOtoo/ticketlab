@@ -121,7 +121,19 @@
                 </div>
 
                 <!-- Ticket Tiers Selection Section -->
-                <div id="tickets" class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md sm:p-8 space-y-5">
+                <div
+                    id="tickets"
+                    x-data="{
+                        selectedId: {{ $ticketTypeId ?? 'null' }},
+                        selectTicket(id, isSoldOut) {
+                            if (isSoldOut) return;
+                            this.selectedId = id;
+                            $wire.selectTicketType(id);
+                        }
+                    }"
+                    x-init="$watch('$wire.ticketTypeId', value => selectedId = value)"
+                    class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md sm:p-8 space-y-5"
+                >
                     <div>
                         <h2 class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Choose your ticket</h2>
                     </div>
@@ -135,32 +147,42 @@
                             <div
                                 wire:key="ticket-{{ $ticketType->id }}"
                                 tabindex="0"
-                                wire:click="{{ $isSoldOut ? '' : "selectTicketType({$ticketType->id})" }}"
-                                @keydown.enter="{{ $isSoldOut ? '' : "selectTicketType({$ticketType->id})" }}"
+                                @click="selectTicket({{ $ticketType->id }}, {{ $isSoldOut ? 'true' : 'false' }})"
+                                @keydown.enter="selectTicket({{ $ticketType->id }}, {{ $isSoldOut ? 'true' : 'false' }})"
                                 @class([
                                     'rounded-2xl border p-4 transition-all focus-ring press-scale',
                                     'opacity-50 cursor-not-allowed bg-[var(--bg-subtle)] border-[var(--border-hairline)]' => $isSoldOut,
-                                    'cursor-pointer hover:border-[var(--text-secondary)]' => ! $isSoldOut,
+                                    'cursor-pointer hover:border-[var(--text-secondary)] active:scale-[0.98]' => ! $isSoldOut,
                                     'border-[var(--border-focused)] bg-[var(--color-primary)] text-[var(--color-primary-fg)] shadow-md' => $isSelected,
                                     'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-primary)]' => ! $isSelected,
                                 ])
+                                :class="{
+                                    'border-[var(--border-focused)] bg-[var(--color-primary)] text-[var(--color-primary-fg)] shadow-md': selectedId === {{ $ticketType->id }},
+                                    'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-primary)]': selectedId !== {{ $ticketType->id }}
+                                }"
                             >
                                 <div class="flex items-start justify-between gap-3">
                                     <div>
                                         <p class="font-bold text-sm">{{ $ticketType->name }}</p>
-                                        <p @class([
-                                            'mt-1 text-xs',
-                                            'text-[var(--color-primary-fg)]/80' => $isSelected,
-                                            'text-[var(--text-secondary)]' => ! $isSelected,
-                                        ])>
+                                        <p
+                                            @class([
+                                                'mt-1 text-xs',
+                                                'text-[var(--color-primary-fg)]/80' => $isSelected,
+                                                'text-[var(--text-secondary)]' => ! $isSelected,
+                                            ])
+                                            :class="selectedId === {{ $ticketType->id }} ? 'text-[var(--color-primary-fg)]/80' : 'text-[var(--text-secondary)]'"
+                                        >
                                             {{ $ticketType->description ?: 'Standard admittance pass' }}
                                         </p>
                                     </div>
-                                    <span @class([
-                                        'rounded-full px-2.5 py-0.5 text-[10px] font-semibold',
-                                        'bg-[var(--color-primary-fg)] text-[var(--color-primary)] font-bold' => $isSelected,
-                                        $this->availabilityBadgeClass($ticketType) => ! $isSelected,
-                                    ])>
+                                    <span
+                                        @class([
+                                            'rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors',
+                                            'bg-[var(--color-primary-fg)] text-[var(--color-primary)] font-bold' => $isSelected,
+                                            $this->availabilityBadgeClass($ticketType) => ! $isSelected,
+                                        ])
+                                        :class="selectedId === {{ $ticketType->id }} ? 'bg-[var(--color-primary-fg)] text-[var(--color-primary)] font-bold' : '{{ $this->availabilityBadgeClass($ticketType) }}'"
+                                    >
                                         {{ $this->availabilityBadge($ticketType) }}
                                     </span>
                                 </div>
@@ -169,11 +191,14 @@
                                     <span class="text-lg font-black">
                                         GHS {{ number_format((float) $ticketType->price, 2) }}
                                     </span>
-                                    <span @class([
-                                        'text-[11px]',
-                                        'text-[var(--color-primary-fg)]/80' => $isSelected,
-                                        'text-[var(--text-secondary)]' => ! $isSelected,
-                                    ])>
+                                    <span
+                                        @class([
+                                            'text-[11px]',
+                                            'text-[var(--color-primary-fg)]/80' => $isSelected,
+                                            'text-[var(--text-secondary)]' => ! $isSelected,
+                                        ])
+                                        :class="selectedId === {{ $ticketType->id }} ? 'text-[var(--color-primary-fg)]/80' : 'text-[var(--text-secondary)]'"
+                                    >
                                         {{ $ticketType->available_quantity }} left
                                     </span>
                                 </div>
