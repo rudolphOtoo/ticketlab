@@ -33,14 +33,16 @@
 @fonts
 
 <script>
-    (() => {
+    window.applyAppTheme = function() {
         const stored = localStorage.getItem('theme');
-        if (stored === 'light' || (!stored && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+        if (stored === 'light' || ((!stored || stored === 'system') && window.matchMedia('(prefers-color-scheme: light)').matches)) {
             document.documentElement.classList.remove('dark');
         } else {
             document.documentElement.classList.add('dark');
         }
-    })();
+    };
+    window.applyAppTheme();
+    document.addEventListener('livewire:navigated', window.applyAppTheme);
 
     function toggleStudioTheme(event, targetTheme = null, triggerEl = null) {
         const btn = triggerEl || event?.target?.closest('button') || event?.currentTarget;
@@ -64,6 +66,7 @@
                 document.documentElement.classList.remove('dark');
             }
             localStorage.setItem('theme', nextTheme);
+            document.cookie = 'theme=' + nextTheme + ';path=/;max-age=31536000;SameSite=Lax';
             document.dispatchEvent(new CustomEvent('theme-changed', {
                 detail: { theme: nextTheme }
             }));

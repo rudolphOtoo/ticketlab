@@ -28,6 +28,21 @@ document.addEventListener('alpine:init', () => {
                     applyTheme(this.currentTheme);
                 }
             });
+
+            // Keep synchronized across Livewire page navigations
+            document.addEventListener('livewire:navigated', () => {
+                this.storedTheme = localStorage.getItem('theme') ?? 'system';
+                this.currentTheme = computeTheme(this.storedTheme);
+                applyTheme(this.currentTheme);
+            });
+
+            // Keep synchronized with external theme change events
+            document.addEventListener('theme-changed', (event) => {
+                if (event.detail?.theme) {
+                    this.storedTheme = event.detail.theme;
+                    this.currentTheme = computeTheme(this.storedTheme);
+                }
+            });
         },
 
         /**
@@ -36,6 +51,7 @@ document.addEventListener('alpine:init', () => {
         setTheme(newTheme) {
             this.storedTheme = newTheme;
             localStorage.setItem('theme', newTheme);
+            document.cookie = 'theme=' + (newTheme === 'system' ? computeTheme('system') : newTheme) + ';path=/;max-age=31536000;SameSite=Lax';
             
             this.currentTheme = computeTheme(newTheme);
             applyTheme(this.currentTheme);

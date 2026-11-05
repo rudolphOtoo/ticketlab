@@ -39,7 +39,7 @@
     ];
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => request()->cookie('theme', 'dark') !== 'light'])>
 <head>
     @include('partials.head')
     <title>{{ $title ?? 'Admin' }} — TicketLab Admin</title>
