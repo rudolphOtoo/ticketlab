@@ -112,11 +112,8 @@ test('admins cannot change their own role', function (): void {
 test('members of other organizations cannot be edited or deleted', function (): void {
     $foreign = User::factory()->create()->assignMembership('usher', Organization::factory()->create()->id);
 
-    Livewire::actingAs($this->admin)
-        ->test(UserManagement::class)
-        ->call('editUser', $foreign->id)
-        ->assertSet('isModalOpen', false)
-        ->call('deleteUser', $foreign->id);
+    Livewire::actingAs($this->admin)->test(UserManagement::class)->call('editUser', $foreign->id)->assertForbidden();
+    Livewire::actingAs($this->admin)->test(UserManagement::class)->call('deleteUser', $foreign->id)->assertForbidden();
 
     expect($foreign->fresh())->not->toBeNull();
 });
@@ -174,4 +171,114 @@ test('admin can onboard staff via activation link without manual password', func
         ->toBeNull();
 
     expect($component->get('generatedInviteLink'))->not->toBeNull()->toContain('reset-password');
+});
+
+/*
+ |--------------------------------------------------------------------------
+ | Zone-bound admins only see and manage their own zone's team
+ |--------------------------------------------------------------------------
+ */
+
+describe('zone-bound team management', function (): void {
+    beforeEach(function (): void {
+        $this->otherZone = Subdivision::factory()->create(['organization_id' => $this->org->id]);
+        $this->zoneAdmin = User::factory()
+            ->create(['name' => 'Zone Lead'])
+            ->assignMembership('admin', $this->org->id, $this->zone->id);
+        $this->zoneUsher = User::factory()
+            ->create(['name' => 'Own Zone Usher'])
+            ->assignMembership('usher', $this->org->id, $this->zone->id);
+        $this->otherZoneUsher = User::factory()
+            ->create(['name' => 'Other Zone Usher'])
+            ->assignMembership('usher', $this->org->id, $this->otherZone->id);
+        $this->orgWideStaff = User::factory()
+            ->create(['name' => 'Org Wide Staff'])
+            ->assignMembership('staff', $this->org->id);
+        $this->admin->update(['name' => 'Org Wide Admin']);
+        User::factory()
+            ->create(['name' => 'Platform Owner', 'organization_id' => $this->org->id])
+            ->assignMembership('super_admin', $this->org->id);
+    });
+
+    test('a zone admin lists only their own zone\'s team', function (): void {
+        $this
+            ->actingAs($this->zoneAdmin)
+            ->get(route('admin.users'))
+            ->assertOk()
+            ->assertSee('Own Zone Usher')
+            ->assertDontSee('Other Zone Usher')
+            ->assertDontSee('Org Wide Staff')
+            ->assertDontSee('Org Wide Admin')
+            ->assertDontSee('Platform Owner');
+    });
+
+    test('an organisation admin lists the team across every zone', function (): void {
+        $this
+            ->actingAs($this->admin)
+            ->get(route('admin.users'))
+            ->assertOk()
+            ->assertSee('Zone Lead')
+            ->assertSee('Own Zone Usher')
+            ->assertSee('Other Zone Usher')
+            ->assertSee('Org Wide Staff')
+            ->assertDontSee('Platform Owner');
+    });
+
+    test('a zone admin is forbidden from editing or removing anyone outside their zone', function (string $target): void {
+        $member = $this->{$target};
+
+        Livewire::actingAs($this->zoneAdmin)
+            ->test(UserManagement::class)
+            ->call('editUser', $member->id)
+            ->assertForbidden();
+        Livewire::actingAs($this->zoneAdmin)
+            ->test(UserManagement::class)
+            ->call('deleteUser', $member->id)
+            ->assertForbidden();
+
+        expect($member->fresh())->not->toBeNull();
+    })->with(['another zone\'s usher' => 'otherZoneUsher', 'an organisation-wide admin' => 'admin']);
+
+    test('a zone admin can still edit and remove their own zone\'s team', function (): void {
+        Livewire::actingAs($this->zoneAdmin)
+            ->test(UserManagement::class)
+            ->call('editUser', $this->zoneUsher->id)
+            ->assertSet('isModalOpen', true)
+            ->set('name', 'Renamed Usher')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect($this->zoneUsher->fresh()->name)->toBe('Renamed Usher');
+
+        Livewire::actingAs($this->zoneAdmin)->test(UserManagement::class)->call('deleteUser', $this->zoneUsher->id);
+
+        expect($this->zoneUsher->fresh())->toBeNull();
+    });
+
+    test('a zone admin cannot create an organisation-wide admin', function (): void {
+        Livewire::actingAs($this->zoneAdmin)
+            ->test(UserManagement::class)
+            ->call('openCreateModal')
+            ->set('name', 'Would Be Global')
+            ->set('email', 'global@example.com')
+            ->set('password', 'Sup3r-Secret-Pass!')
+            ->set('role', 'admin')
+            ->set('subdivisionId', '')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(User::query()->where('email', 'global@example.com')->value('subdivision_id'))->toBe($this->zone->id);
+    });
+
+    test('a member moved out of the zone mid-session can no longer be saved', function (): void {
+        $component = Livewire::actingAs($this->zoneAdmin)
+            ->test(UserManagement::class)
+            ->call('editUser', $this->zoneUsher->id);
+
+        $this->zoneUsher->assignMembership('usher', $this->org->id, $this->otherZone->id);
+
+        $component->set('name', 'Hijacked')->call('save')->assertForbidden();
+
+        expect($this->zoneUsher->fresh()->name)->not->toBe('Hijacked');
+    });
 });
