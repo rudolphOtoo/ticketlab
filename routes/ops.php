@@ -14,6 +14,7 @@ use App\Livewire\Admin\MarketingStudio;
 use App\Livewire\Admin\QueueMonitor;
 use App\Livewire\Admin\SubdivisionManager;
 use App\Livewire\Admin\TicketManager;
+use App\Livewire\Admin\UserDetails;
 use App\Livewire\Admin\UserManagement;
 use App\Livewire\Admin\ZonePayouts;
 use App\Livewire\Ops\CashDeskTerminal;
@@ -55,6 +56,7 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Staff & team management (RBAC)
         Route::get('users', UserManagement::class)->name('users');
+        Route::get('users/{user}', UserDetails::class)->name('users.show');
 
         // Subdivision management (CRUD)
         Route::get('subdivisions', SubdivisionManager::class)->name('subdivisions');

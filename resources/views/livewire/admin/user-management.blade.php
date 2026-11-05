@@ -49,7 +49,7 @@
                             <div class="flex items-center gap-2.5">
                                 <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-subtle)] text-[11px] font-semibold">{{ $member->initials() }}</span>
                                 <div class="flex min-w-0 flex-col">
-                                    <span class="truncate font-semibold">{{ $member->name }}{{ $member->id === $actor->id ? ' (you)' : '' }}</span>
+                                    <a href="{{ route('admin.users.show', $member) }}" wire:navigate class="truncate font-semibold hover:underline">{{ $member->name }}{{ $member->id === $actor->id ? ' (you)' : '' }}</a>
                                     <span class="truncate text-[11px] text-[var(--text-secondary)]">{{ $member->email }}</span>
                                 </div>
                             </div>
