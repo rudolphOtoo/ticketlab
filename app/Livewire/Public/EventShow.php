@@ -580,7 +580,9 @@ class EventShow extends Component
 
     private function event(): Event
     {
-        return Event::query()->findOrFail($this->eventId);
+        return Event::query()
+            ->where('organization_id', $this->organizationId)
+            ->findOrFail($this->eventId);
     }
 
     private function selectedTicketType(): ?TicketType

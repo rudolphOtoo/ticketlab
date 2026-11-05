@@ -181,7 +181,7 @@ class ScannerTerminal extends Component
     }
 
     /**
-     * Constrain a query to the operator's organisation; superadmins without one see every tenant.
+     * Constrain a query to the operator's organisation; users without one match no tenant rows (fail-closed).
      *
      * @template TModel of Model
      *
