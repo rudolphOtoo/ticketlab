@@ -24,10 +24,10 @@ In your Vercel Project Dashboard (**Settings -> Environment Variables**), set th
 | `APP_NAME` | `TicketLab` | App title |
 | `APP_ENV` | `staging` | Or `production` |
 | `APP_KEY` | *(Generate via `php artisan key:generate --show`)* | 32-char base64 key |
-| `APP_DEBUG` | `true` | Set to `false` once staging checks pass |
+| `APP_DEBUG` | `false` | Never `true` on a public URL: debug pages expose environment values |
 | `APP_URL` | `https://<your-vercel-app>.vercel.app` | Your Vercel domain |
 | `LOG_CHANNEL` | `stderr` | **Critical**: Vercel has read-only filesystem; outputs to Vercel log stream |
-| `LOG_LEVEL` | `debug` | |
+| `LOG_LEVEL` | `info` | |
 | `DB_CONNECTION` | `pgsql` | Enables PostgreSQL driver |
 | `DATABASE_URL` | `postgresql://...neon.tech/neondb?sslmode=require` | Your Neon pooled connection string |
 | `DB_SSLMODE` | `require` | Required for Neon |
@@ -53,10 +53,9 @@ Run this command once from your local development machine:
 ```bash
 DATABASE_URL="postgresql://user:pass@ep-xyz.region.aws.neon.tech/neondb?sslmode=require" DB_CONNECTION=pgsql php artisan migrate --force
 ```
-*(Optional) Seed default test data:*
-```bash
-DATABASE_URL="postgresql://user:pass@ep-xyz.region.aws.neon.tech/neondb?sslmode=require" DB_CONNECTION=pgsql php artisan db:seed --force
-```
+> **Never seed production.** `php artisan db:seed` creates fictional demo churches whose logins all use the
+> published password `password`, so the seeder refuses to run when `APP_ENV=production`. Seed only a separate,
+> throwaway staging database (with `APP_ENV=staging`). Real organisations are onboarded by the platform super admin.
 
 ### Option B: Via Web Endpoint
 Open in your browser:
