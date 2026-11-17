@@ -4,54 +4,9 @@
     $galleryHeading = (string) ($galleryConfig['heading'] ?? 'Moments & Gallery');
     $galleryLead = (string) ($galleryConfig['lead'] ?? 'Capturing the vibrant energy, keynote sessions, and electric connections.');
 
-    // The featured event's photos plus organisation-wide ones, each with a display-ready src.
-    $configuredImages = \App\Support\EventGallery::forEvent($organization, $event ?? null);
-    $galleryImages = $configuredImages !== []
-        ? $configuredImages
-        : [
-            [
-                'id' => 'demo-1',
-                'url' => 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80',
-                'title' => 'Main Auditorium Keynote',
-                'caption' => 'Opening visionary session at the Perez Dome',
-                'tag' => 'Keynote',
-            ],
-            [
-                'id' => 'demo-2',
-                'url' => 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
-                'title' => 'Executive Leadership Summit',
-                'caption' => 'Strategic roundtables and interactive discussions',
-                'tag' => 'Panels',
-            ],
-            [
-                'id' => 'demo-3',
-                'url' => 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=1200&q=80',
-                'title' => 'Stage Presence & Atmosphere',
-                'caption' => 'Dynamic lighting and acoustic production',
-                'tag' => 'Atmosphere',
-            ],
-            [
-                'id' => 'demo-4',
-                'url' => 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=1200&q=80',
-                'title' => 'VIP & Founders Networking',
-                'caption' => 'Uniting creators and executives across borders',
-                'tag' => 'Networking',
-            ],
-            [
-                'id' => 'demo-5',
-                'url' => 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=1200&q=80',
-                'title' => 'Interactive Workshop Pavilion',
-                'caption' => 'Hands-on training and collaborative breakout tracks',
-                'tag' => 'Audience',
-            ],
-            [
-                'id' => 'demo-6',
-                'url' => 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80',
-                'title' => 'Evening Gala & Celebration',
-                'caption' => 'Cultural performance and fellowship',
-                'tag' => 'Atmosphere',
-            ],
-        ];
+    // Only the organisation's own photos (featured event plus organisation-wide). Never stock imagery: a church
+    // site must not show photos or captions that are not theirs.
+    $galleryImages = \App\Support\EventGallery::forEvent($organization, $event ?? null);
 
     $tags = array_values(array_unique(array_merge(['All'], array_column($galleryImages, 'tag'))));
 @endphp
@@ -59,6 +14,14 @@
 <x-layouts::dedicated :organization="$organization" :event="$event" title="{{ $galleryHeading }}">
     @include('tenants.pages.page-header', ['heading' => $galleryHeading, 'lead' => $galleryLead])
 
+    @if ($galleryImages === [])
+        <div class="mx-auto w-full max-w-2xl px-4 py-16 text-center sm:px-6" data-gallery-empty>
+            <div class="rounded-3xl border border-dashed border-[var(--border-hairline)] bg-[var(--bg-surface)] px-6 py-12">
+                <p class="text-base font-semibold text-[var(--text-primary)]">Photos coming soon</p>
+                <p class="mt-2 text-sm text-[var(--text-secondary)]">{{ $organization->name }} has not shared any photos yet. Check back after the event.</p>
+            </div>
+        </div>
+    @else
     <div
         x-data="{
             activeFilter: 'All',
@@ -185,6 +148,7 @@
             </div>
         </template>
     </div>
+    @endif
 
     @include('tenants.partials.contact-cta')
 </x-layouts::dedicated>

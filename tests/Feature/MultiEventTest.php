@@ -309,6 +309,8 @@ test('uploaded banners and speaker photos render on the public event page from s
 test('uploaded gallery photos render with storage urls in the public gallery and lightbox', function (): void {
     Storage::fake('public');
     $event = Event::factory()->create(['organization_id' => $this->org->id]);
+    // Missing local media resolves to null, so the uploaded photo must actually exist on the disk.
+    Storage::disk('public')->put("events/{$event->id}/gallery/stage.jpg", 'jpeg-bytes');
     $this->org->update([
         'settings' => [
             'bespoke' => [

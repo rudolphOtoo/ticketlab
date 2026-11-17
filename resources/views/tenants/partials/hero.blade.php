@@ -38,9 +38,8 @@
 
             @if ($checkoutUrl)
                 @php
-                    $isMultiTenant = !App\Models\PlatformSetting::isDedicatedMode();
-                    $highlightsUrl = $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'highlights']) : route('dedicated.highlights');
-                    $aboutUrl = $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'about']) : route('dedicated.about');
+                    $highlightsUrl = $organization->pageUrl('highlights');
+                    $aboutUrl = $organization->pageUrl('about');
                 @endphp
                 <div class="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row lg:justify-start">
                     <a href="{{ $phase === 'ended' ? $highlightsUrl : $checkoutUrl }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--dedicated-accent)] px-7 py-3.5 text-sm font-bold text-white shadow-md transition hover:opacity-90 press-scale sm:w-auto">
