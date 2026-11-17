@@ -180,13 +180,42 @@ class Organization extends Model
     }
 
     /**
+     * True only for the one organisation the dedicated site serves at "/". Every other organisation keeps its
+     * own /{org_slug} URLs even in dedicated mode, so its pages never link into the home organisation's site.
+     */
+    public function isDedicatedHome(): bool
+    {
+        return PlatformSetting::isDedicatedMode() && PlatformSetting::getHomeOrgSlug() === $this->slug;
+    }
+
+    /**
+     * This organisation's public home page.
+     */
+    public function homeUrl(): string
+    {
+        return $this->isDedicatedHome() ? url('/') : route('public.tenant.home', ['org_slug' => $this->slug]);
+    }
+
+    /**
+     * One of this organisation's marketing sub-pages (about, speakers, packages, highlights, gallery, partnership,
+     * faq, contact).
+     */
+    public function pageUrl(string $page): string
+    {
+        return (
+            $this->isDedicatedHome() && Route::has('dedicated.' . $page)
+                ? route('dedicated.' . $page)
+                : route('public.tenant.page', ['org_slug' => $this->slug, 'page' => $page])
+        );
+    }
+
+    /**
      * Resolves the navigation links based on bespoke CMS configuration.
      *
      * @return list<array{key: string, label: string, url: string, active: bool}>
      */
     public function bespokeNavLinks(): array
     {
-        $isDedicated = PlatformSetting::isDedicatedMode();
         $settings = $this->bespokeSettings();
         $navConfig = (array) ($settings['nav'] ?? []);
         $links = [];
@@ -197,11 +226,7 @@ class Organization extends Model
             }
 
             $label = (string) ($item['label'] ?? ucfirst($key));
-            $url = match (true) {
-                !$isDedicated => route('public.tenant.page', ['org_slug' => $this->slug, 'page' => $key]),
-                Route::has('dedicated.' . $key) => route('dedicated.' . $key),
-                default => url('/' . $key),
-            };
+            $url = $this->pageUrl((string) $key);
 
             $links[] = [
                 'key' => $key,

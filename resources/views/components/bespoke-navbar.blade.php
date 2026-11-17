@@ -10,8 +10,7 @@
     $accentHex = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($custom['accent_hex'] ?? '')) === 1 ? $custom['accent_hex'] : '#d97706';
     $navUser = auth()->user();
     $staffHome = $navUser?->staffHomeUrl();
-    $isMultiTenant = !App\Models\PlatformSetting::isDedicatedMode();
-    $homeUrl = $isMultiTenant ? url('/' . $organization->slug) : url('/');
+    $homeUrl = $organization->homeUrl();
     $siteLinks = $organization->bespokeNavLinks();
 
     $checkoutUrl = null;

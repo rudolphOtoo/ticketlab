@@ -3,39 +3,14 @@
     $galleryConfig = (array) ($bespoke['gallery'] ?? []);
     $galleryHeading = (string) ($galleryConfig['heading'] ?? 'Moments & Highlights');
     $galleryLead = (string) ($galleryConfig['lead'] ?? 'Capturing the vibrant energy, keynote sessions, and electric connections.');
-    $isMultiTenant = !App\Models\PlatformSetting::isDedicatedMode();
-    $galleryUrl = $isMultiTenant
-        ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'gallery'])
-        : route('dedicated.gallery');
+    $galleryUrl = $organization->pageUrl('gallery');
 
-    // The featured event's photos plus organisation-wide ones, each with a display-ready src.
-    $configuredImages = \App\Support\EventGallery::forEvent($organization, $event ?? null);
-    $galleryItems = $configuredImages !== []
-        ? array_slice($configuredImages, 0, 6)
-        : [
-            [
-                'url' => 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80',
-                'title' => 'Main Stage Keynote',
-                'tag' => 'Keynote',
-            ],
-            [
-                'url' => 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=800&q=80',
-                'title' => 'Executive Roundtable',
-                'tag' => 'Panels',
-            ],
-            [
-                'url' => 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=800&q=80',
-                'title' => 'Acoustic Atmosphere',
-                'tag' => 'Atmosphere',
-            ],
-            [
-                'url' => 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=800&q=80',
-                'title' => 'Patron Networking',
-                'tag' => 'Networking',
-            ],
-        ];
+    // Only the organisation's own photos (featured event plus organisation-wide). Never stock imagery: a church
+    // site must not show photos or captions that are not theirs.
+    $galleryItems = array_slice(\App\Support\EventGallery::forEvent($organization, $event ?? null), 0, 6);
 @endphp
 
+@if ($galleryItems !== [])
 <section id="gallery" class="relative mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
@@ -89,3 +64,4 @@
     </div>
 </section>
 
+@endif

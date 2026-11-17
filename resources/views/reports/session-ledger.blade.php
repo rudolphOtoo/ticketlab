@@ -130,7 +130,7 @@
             </td>
             <td style="width: 25%;">
                 <div class="meta-label">Event</div>
-                <div class="meta-value">{{ $event?->title ?? 'Summit 2026' }}</div>
+                <div class="meta-value">{{ $event?->title ?? 'All events' }}</div>
             </td>
             <td style="width: 25%;">
                 <div class="meta-label">Opened At</div>

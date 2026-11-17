@@ -42,7 +42,7 @@ final class MediaUrl
 
         // Local files are served by this app: verify the file physically exists on disk.
         if (config('filesystems.disks.' . self::disk() . '.driver') === 'local') {
-            if (! Storage::disk(self::disk())->exists($path)) {
+            if (!Storage::disk(self::disk())->exists($path)) {
                 return null;
             }
 

@@ -63,7 +63,7 @@
             <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3.5 sm:p-4.5 shadow-xs flex flex-col gap-3">
                 <div class="flex items-center justify-between">
                     <span class="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-[var(--text-tertiary)]">1. Select Ticket Tier</span>
-                    <span class="text-[11px] text-[var(--text-secondary)]">Event: <strong class="text-[var(--text-primary)]">{{ $event ? $event->title : 'Summit 2026' }}</strong></span>
+                    <span class="text-[11px] text-[var(--text-secondary)]">Event: <strong class="text-[var(--text-primary)]">{{ $event?->title ?? 'No active event' }}</strong></span>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">

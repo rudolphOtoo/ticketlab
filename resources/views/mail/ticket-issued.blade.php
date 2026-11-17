@@ -1,5 +1,7 @@
 @extends('mail.layout')
 
+@section('brand', $order->organization->name)
+
 @section('content')
     <h1 style="margin:0 0 12px;font-size:20px;">Your passes are confirmed</h1>
     <p style="margin:0 0 12px;">Hi {{ $order->customer_name }}, thank you for your order for <strong>{{ $eventTitle }}</strong>.</p>
