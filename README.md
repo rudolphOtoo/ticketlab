@@ -95,8 +95,12 @@ Set in the super admin dashboard (`/platform`):
 | `DB_CONNECTION`, `DATABASE_URL` | SQLite locally; PostgreSQL (Neon) in production, with `DB_SSLMODE=require` |
 | `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY` | `sk_test_`/`pk_test_` locally, `sk_live_`/`pk_live_` in production |
 | `QUEUE_CONNECTION` | `database` |
-| `SCHEDULER_TOKEN` | Protects `/api/run-scheduler` and `/api/run-migrate`; both refuse every request while it's unset |
-| `MEDIA_DISK` | Where uploaded banners, speaker photos and gallery images go. `public` = local disk. **Vercel's disk is temporary**, so uploads vanish there. A cloud disk (`s3`, with the `AWS_*` variables, or any S3-compatible store via `AWS_ENDPOINT`) needs the `league/flysystem-aws-s3-v3` package, **which is not installed yet**. Until it is, use image URLs for banners and logos in production |
+| `SCHEDULER_TOKEN` | Protects `/api/run-scheduler` and `/api/run-migrate`, sent as `Authorization: Bearer <token>`. Both refuse every request while it's unset |
+| `SCHEDULER_LOCK_STORE` | Cache store for scheduler and command locks: `database` (default) or `redis`. Never `file`, which isn't shared between serverless instances |
+| `MEDIA_DISK` | Public media disk: `public` locally, `r2` in production (see [Media storage](#media-storage-cloudflare-r2)) |
+| `PRIVATE_DISK` | Private files and temporary uploads: `local` locally, `r2-private` in production |
+| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` | Cloudflare R2 API token and account endpoint (`https://<account-id>.r2.cloudflarestorage.com`) |
+| `R2_PUBLIC_BUCKET`, `R2_PRIVATE_BUCKET`, `MEDIA_URL` | The two buckets, and the custom domain serving the public one (e.g. `https://media.example.com`) |
 | `MAIL_*` | Ticket emails, invitations, zone-choice requests and payout alerts |
 | `SMS_ENABLED`, `SMS_DRIVER`, `MNOTIFY_*` | Optional SMS passes |
 
@@ -111,9 +115,55 @@ Jobs go to four queues, and the worker must run all of them, in this priority or
 php artisan queue:work --queue=transactional,emails,broadcasts,default
 ```
 
-The scheduler (`php artisan schedule:run` every minute) releases expired seat holds every 5 minutes, re-checks payout
-subaccounts daily at 03:00, and on Vercel also runs the worker for 55 seconds each minute. On Vercel, call
-`GET /api/run-scheduler?token=<SCHEDULER_TOKEN>` every minute from a cron service.
+The scheduler (`php artisan schedule:run` every minute) does the following:
+- releases expired seat holds every 5 minutes;
+- reconciles pending payments every 10 minutes;
+- re-checks a batch of payout subaccounts every hour (each zone about once a day);
+- on Vercel, also runs the queue worker each minute.
+
+### Scheduler on Vercel
+
+Vercel Hobby only allows daily crons, so an **external cron** (for example cron-job.org) calls the scheduler every minute:
+
+- URL: `https://<your-domain>/api/run-scheduler`, method `GET`, every 1 minute.
+- Header: `Authorization: Bearer <SCHEDULER_TOKEN>`. The old `?token=` query parameter still works for this release
+  only and logs a deprecation warning. It will be removed, and query strings end up in logs, so don't use it.
+
+Every due task runs **inside that one HTTP request**, and `vercel.json` sets the function's `maxDuration` to
+**60 seconds** (the request is killed after that). So every task is bounded, and the worst case of everything that can
+be due in the same minute stays under 60 seconds (`config/scheduler.php`, checked by a test):
+
+| Task | Bound | Worst case |
+|---|---|---|
+| `payments:reconcile-pending` | at most 25 orders, oldest first; stops after 15 s; each Paystack call times out at 10 s | 25 s |
+| `payouts:recheck-subaccounts` | at most 20 zones, longest unchecked first; stops after 8 s; each lookup times out at 5 s | 13 s |
+| queue worker | `--stop-when-empty --max-time=15 --max-jobs=50` | 15 s |
+| `reservations:release-expired` | a few queries | < 1 s |
+
+Work that doesn't fit waits for the next run. Each task is `withoutOverlapping()`, with a lock in the shared
+`SCHEDULER_LOCK_STORE` (database by default) that expires after 2–10 minutes. Laravel's default lock lasts 24 hours,
+which would block a task for a day if the platform killed the request holding it.
+
+## Media storage (Cloudflare R2)
+
+- **Public media** (organisation logos, event banners, speaker photos, gallery, flyers):
+  - Stored on `MEDIA_DISK` under `orgs/{org_id}/…`, with `Cache-Control: public, max-age=31536000, immutable`. File names are random, so a path never changes content.
+  - Uploads accept jpg/png/webp only, up to 5 MB.
+  - A queued job makes WebP copies at 200, 800 and 1600 px wide (never upscaled), and pages serve those once ready.
+  - Replacing or removing an image deletes the old file and its copies.
+  - Pasted image links still work.
+- **Private files** (ledger PDFs, and Livewire's temporary uploads) live on `PRIVATE_DISK`. They never get a public URL: after the authorisation check, a **5-minute signed link** is handed out.
+- **CSV and JSON exports** are never stored. They stream straight to the authorised admin.
+
+In production nothing is written to the server's disk. On Vercel that disk is temporary and per instance.
+
+**R2 setup (once):**
+1. **Buckets.** In Cloudflare → R2, create two buckets, e.g. `ticketlab-media` (public) and `ticketlab-private`. Keep the private one without public access.
+2. **Custom domain.** On the public bucket → Settings → Custom Domains, connect e.g. `media.example.com`. That's `MEDIA_URL`.
+3. **API token.** R2 → Manage API tokens → create a token with *Object Read & Write* on both buckets. Copy the access key ID, secret, and the S3 endpoint `https://<account-id>.r2.cloudflarestorage.com`.
+4. **CORS on the private bucket.** Livewire uploads straight to it from the browser, so add a policy allowing `PUT` and `POST` from `https://<your-domain>` with header `content-type`.
+5. **Lifecycle rule on the private bucket.** Delete objects under `livewire-tmp/` after 1 day; abandoned temporary uploads are cleaned up there.
+6. **Environment.** `MEDIA_DISK=r2`, `PRIVATE_DISK=r2-private`, `R2_*`, `MEDIA_URL` (see Environment above).
 
 ## Local development
 
@@ -135,7 +185,8 @@ codes (see above).
 |---|---|
 | `tenancy:move-event {event} --to-org={slug} [--map="Old=New"] [--with-ledgers] [--execute]` | Moves an event filed under the wrong organisation, with all its rows, mapping zones by name. Dry run by default |
 | `passes:request-zone-choice [--organization=slug] [--send] [--resend]` | Emails buyers of paid passes with no zone a one-time "choose your zone" link. Dry run by default |
-| `payouts:recheck-subaccounts` | Re-verifies every zone's subaccount with Paystack (daily on the scheduler) |
+| `payments:reconcile-pending [--older-than=10] [--execute]` | Asks Paystack about orders still pending: confirms paid ones exactly as the webhook would, releases seats of failed or abandoned ones. Dry run by default; every 10 minutes on the scheduler |
+| `payouts:recheck-subaccounts` | Re-verifies zones' subaccounts with Paystack, a batch each hour, so each zone is checked about once a day |
 | `reservations:release-expired` | Returns expired seat holds to stock (every 5 minutes) |
 
 Read-only data checks live in [`docs/data-repair/`](docs/data-repair/). The production deploy steps are in

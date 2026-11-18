@@ -19,13 +19,21 @@ Do the steps in order. Do not start a step until the previous one has passed its
 ## 0. Prepare (before the window)
 
 - [ ] From GHAMSU: the exact zone names (e.g. Accra, Kumasi, Cape Coast), the organisation admin's name and email,
-      contact email and phone, logo URL (https), and brand colour.
+      contact email and phone, logo file (JPG/PNG/WebP, up to 5 MB) or an https link, and brand colour.
 - [ ] In the Paystack **live** dashboard: one subaccount per zone (Settings → Subaccounts), each settling in GHS to that
       zone's bank or MoMo account. Write down each `ACCT_…` code next to its zone name.
-- [ ] Paystack **live** webhook URL is `https://<your-domain>/api/paystack/webhook`. Not the old
-      `/api/payzephyr/webhook`, which still exists but should no longer be used.
-- [ ] A cron service calls `GET https://<your-domain>/api/run-scheduler?token=<SCHEDULER_TOKEN>` every minute. This runs the
-      queue worker (ticket emails, invitations, zone-choice emails), seat-hold release, and the daily payout re-check.
+- [ ] Paystack **live** webhook URL is `https://<your-domain>/api/paystack/webhook`. The old `/api/payzephyr/webhook`
+      is removed in this release and now returns 404.
+- [ ] **Cloudflare R2** is set up as in the README ("Media storage"): a public bucket with the custom domain (`MEDIA_URL`),
+      a private bucket with CORS for `https://<your-domain>` and a lifecycle rule for `livewire-tmp/`, and one API token
+      for both. Upload a test file to each bucket from the dashboard, and open the public one at
+      `https://<MEDIA_URL>/<file>`.
+- [ ] **cron-job.org** job (Vercel Hobby only allows daily crons): URL `https://<your-domain>/api/run-scheduler`,
+      method GET, every 1 minute, with a request header `Authorization: Bearer <SCHEDULER_TOKEN>`. Keep the job
+      **disabled** until step 3. It runs the queue worker (ticket emails, invitations, zone-choice emails), seat-hold
+      release, pending-payment reconciliation and the payout re-check, all inside Vercel's 60-second limit (see the README).
+      If an older cron calls `?token=…`, it keeps working for this release (with a deprecation warning); it's replaced in
+      step 10.
 - [ ] Find the Methodist event's id and which organisation it is under, and whether a GMSU organisation already exists
       (read-only; run in the Neon SQL editor):
       ```sql
@@ -45,6 +53,32 @@ Do the steps in order. Do not start a step until the previous one has passed its
         php artisan tinker --execute="App\Models\User::query()->create(['name' => 'Platform Admin', 'email' => 'you@your-domain', 'password' => Str::password(40)])->assignMembership('super_admin', null)->markEmailAsVerified();"
       ```
 
+## Rehearsal on a Neon branch (a day or two before the window)
+
+Run steps 3, 5, 6 and 7 once against a **copy** of production, to find surprises (unmapped zones, odd row counts,
+timings) without touching real data or real buyers.
+
+- [ ] In Neon, create a branch of production named `rehearsal-<date>`.
+- [ ] Create a Vercel **Preview** deployment of this branch pointed at it. Preview environment variables:
+  - `DATABASE_URL` = the rehearsal branch;
+  - **test** Paystack keys;
+  - `MAIL_MAILER=log`, so no buyer is emailed;
+  - `MEDIA_DISK=public`, `PRIVATE_DISK=local`;
+  - a separate `SCHEDULER_TOKEN`.
+
+  Do **not** point cron-job.org at the preview.
+- [ ] Step 3: run the migrations against the rehearsal branch (same command, rehearsal `DATABASE_URL`).
+- [ ] Step 5: onboard GMSU on the preview. Use **test** subaccount codes from the Paystack test dashboard, one per zone.
+- [ ] Step 6: run the move dry run, then `--execute`. Keep both outputs: the real run's counts should match them.
+- [ ] Step 7: run `zoneless-paid-passes.sql`, and `passes:request-zone-choice` **without** `--send` (a dry run).
+- [ ] Run `php artisan payments:reconcile-pending` (a dry run) and note how many orders are stuck in pending.
+- [ ] Buy one ticket per zone on the preview with Paystack **test** cards or MoMo, and scan each at its own and another
+      zone's gate.
+- [ ] Note how long steps 3–7 took. That's your maintenance-window estimate.
+- [ ] Delete the preview deployment and the `rehearsal-<date>` branch.
+
+---
+
 ## 1. Back up Neon
 
 - [ ] In the Neon console, create a **branch** of the production database named `pre-zones-release-<date>`.
@@ -56,12 +90,15 @@ Do the steps in order. Do not start a step until the previous one has passed its
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=info`.
 - [ ] `PAYSTACK_SECRET_KEY=sk_live_…` and `PAYSTACK_PUBLIC_KEY=pk_live_…`.
 - [ ] **Remove** `PAYSTACK_SPLIT_PAYMENTS` and `PAYSTACK_UNROUTED_ZONE_POLICY` (no longer read).
-- [ ] `MEDIA_DISK`: keep `public` for now and use **image URLs** for banners and logos. Vercel's disk is temporary,
-      and the cloud-disk adapter (`league/flysystem-aws-s3-v3`) is **not installed** yet, so `MEDIA_DISK=s3` would break
-      uploads.
-- [ ] Worker queues: nothing to set. The worker runs `transactional,emails,broadcasts,default` from `config/queue.php`.
-      Confirm the cron from step 0 is active.
-- [ ] `SCHEDULER_TOKEN` is set to a long random value.
+- [ ] Storage: `MEDIA_DISK=r2`, `PRIVATE_DISK=r2-private`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
+      `R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`, `R2_PUBLIC_BUCKET`, `R2_PRIVATE_BUCKET`,
+      `MEDIA_URL=https://media.<your-domain>`. Nothing is written to Vercel's disk after this. Images uploaded earlier to
+      the old local disk were already lost between instances; re-upload them, or paste their links.
+- [ ] `CACHE_STORE=database` and `SCHEDULER_LOCK_STORE=database` (or `redis`). Never `file`: locks must be shared
+      between serverless instances.
+- [ ] Worker queues: nothing to set. The worker runs `transactional,emails,broadcasts,default` from `config/queue.php`,
+      bounded to 15 seconds and 50 jobs per run.
+- [ ] `SCHEDULER_TOKEN` is set to a long random value. (It's rotated in step 10, once the header-based cron is live.)
 
 ---
 
@@ -70,7 +107,8 @@ Do the steps in order. Do not start a step until the previous one has passed its
 ## 3. Deploy and migrate
 
 - [ ] Merge the PR and let Vercel deploy production.
-- [ ] Run the migrations from your laptop against Neon (preferred over the web hook, which takes the token in the URL):
+- [ ] Run the migrations from your laptop against Neon (preferred over the `/api/run-migrate` hook, which is bounded by
+      Vercel's 60-second limit):
       ```bash
       DATABASE_URL="postgresql://…neon.tech/neondb?sslmode=require" DB_CONNECTION=pgsql APP_ENV=production \
         php artisan migrate --force
@@ -79,6 +117,8 @@ Do the steps in order. Do not start a step until the previous one has passed its
       `ticket_type_zone_capacities`, and payout verification columns on `subdivisions`. All are additive; no data is changed.
 - [ ] Check: `php artisan migrate:status` (same environment variables) shows all migrations as Ran. The site loads, and
       `/up` returns 200.
+- [ ] Enable the cron-job.org job from step 0 (Bearer header). From now on, the queue worker sends the invitation and
+      zone-choice emails of steps 5 and 7. Check its first runs return 200.
 
 ## 4. Check and remove the seeded `@ticketlab.test` accounts
 
@@ -174,6 +214,30 @@ Run from your laptop with the same Neon variables as step 3.
       payment, with the ticket value each zone is owed and where the money actually settled (the main account for older sales).
 - [ ] Settle those amounts to each zone by hand from the main account, and keep the report as the record. The audit trail
       on the same page shows who assigned each zone.
+
+## 10. Post-deploy checks
+
+- [ ] **Scheduler.** The cron-job.org history shows HTTP 200 every minute since step 3, and Vercel's logs show no
+      "Deprecated: scheduler token sent as ?token=" warnings.
+- [ ] **Stuck payments.** Dry run first, then let the scheduler take over. It runs every 10 minutes with `--execute`,
+      at most 25 orders per run:
+      ```bash
+      DATABASE_URL="…" DB_CONNECTION=pgsql APP_ENV=production PAYSTACK_SECRET_KEY=sk_live_… \
+        php artisan payments:reconcile-pending
+      ```
+      Every listed order should show `success` (to be confirmed), `failed`/`abandoned` (seats released), or `ongoing`.
+      Anything "held for review" needs a person: look up the reference in the Paystack dashboard.
+- [ ] **Media.** Upload a logo for GMSU on `/platform/organizations` → Edit. It appears from `MEDIA_URL`, and a minute
+      later as a `@thumb.webp` copy (the queue worker made the WebP copies).
+- [ ] **Ledger PDF.** Download one as the GMSU organisation admin. The link opens a `r2.cloudflarestorage.com` URL that
+      stops working after 5 minutes.
+- [ ] **Rotate `SCHEDULER_TOKEN`** now that the header-based cron is live:
+  1. generate a new long random value;
+  2. set it in Vercel (Production) and redeploy;
+  3. update the cron-job.org header to the new token;
+  4. confirm `curl -H "Authorization: Bearer <old token>" https://<your-domain>/api/run-scheduler` returns **401**, and
+     the cron shows 200 again;
+  5. remove any old cron that still used `?token=`.
 
 ---
 
