@@ -16,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $order_id
  * @property int $organization_id
  * @property int|null $subdivision_id
+ * @property CarbonImmutable|null $zone_assigned_at
+ * @property int|null $zone_assigned_by
+ * @property string|null $zone_assigned_via
  * @property int $ticket_type_id
  * @property string $name
  * @property string $email
@@ -61,6 +64,7 @@ class Attendee extends Model
     {
         return [
             'checked_in_at' => 'datetime',
+            'zone_assigned_at' => 'datetime',
             'custom_fields' => 'array',
         ];
     }

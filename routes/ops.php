@@ -17,6 +17,7 @@ use App\Livewire\Admin\TicketManager;
 use App\Livewire\Admin\UserDetails;
 use App\Livewire\Admin\UserManagement;
 use App\Livewire\Admin\ZonePayouts;
+use App\Livewire\Admin\ZoneReassignments;
 use App\Livewire\Admin\ZoneVenues;
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Livewire\Ops\ScannerTerminal;
@@ -89,6 +90,9 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Where and when each zone of the working event meets
         Route::get('zone-venues', ZoneVenues::class)->name('zone-venues');
+
+        // Passes given a zone after payment: per-zone amounts to settle by hand, and the audit trail
+        Route::get('zone-reassignments', ZoneReassignments::class)->name('zone-reassignments');
 
         // Zone payout accounts (Paystack subaccounts) & per-zone settlement ledger
         Route::get('payouts', ZonePayouts::class)->name('payouts');
