@@ -34,9 +34,13 @@ class PaystackGateway
 
         $baseUrl = rtrim((string) config('services.paystack.base_url', 'https://api.paystack.co'), '/');
 
-        $response = Http::withToken($secretKey)->acceptJson()->get(
-            $baseUrl . '/transaction/verify/' . rawurlencode($reference),
-        );
+        // Bounded: reconciliation and the browser callback must never hang on Paystack (Guzzle's default is 30 s).
+        $timeout = (int) config('scheduler.paystack_timeout_seconds', 10);
+        $response = Http::withToken($secretKey)
+            ->acceptJson()
+            ->connectTimeout(min(5, $timeout))
+            ->timeout($timeout)
+            ->get($baseUrl . '/transaction/verify/' . rawurlencode($reference));
 
         $response->throw();
 

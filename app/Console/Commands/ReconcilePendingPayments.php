@@ -12,7 +12,9 @@ use App\Models\TicketType;
 use App\Services\Payment\OrderFulfillmentException;
 use App\Services\Payment\PaystackGateway;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -45,18 +47,59 @@ class ReconcilePendingPayments extends Command
 
     public function handle(PaystackGateway $paystack): int
     {
+        // Also guards manual runs against the scheduled one; expires on its own if the request is killed.
+        $store = Cache::store(config('scheduler.lock_store'))->getStore();
+
+        if (!$store instanceof LockProvider) {
+            $this->error('The scheduler lock store (SCHEDULER_LOCK_STORE) must support locks: use database or redis.');
+
+            return self::FAILURE;
+        }
+
+        $lock = $store->lock('payments:reconcile-pending', 600);
+
+        if (!$lock->get()) {
+            $this->warn('Another reconciliation run is in progress; skipping this one.');
+
+            return self::SUCCESS;
+        }
+
+        try {
+            return $this->reconcileBatch($paystack);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function reconcileBatch(PaystackGateway $paystack): int
+    {
         $minutes = max(1, (int) (is_numeric($this->option('older-than')) ? $this->option('older-than') : 10));
+        $batch = max(1, (int) config('scheduler.reconcile.batch_size'));
+        $deadline = now()->addSeconds(max(1, (int) config('scheduler.reconcile.time_budget_seconds')));
         $this->execute = (bool) $this->option('execute');
         $rows = [];
 
-        Order::query()
+        // Oldest first and at most one batch per run, so a backlog drains over several runs inside the time limit.
+        $orders = Order::query()
             ->where('payment_status', OrderStatus::Pending->value)
             ->where('created_at', '<=', now()->subMinutes($minutes))
+            ->orderBy('created_at')
             ->orderBy('id')
-            ->each(function (Order $order) use ($paystack, &$rows): void {
-                [$status, $action] = $this->reconcile($order, $paystack);
-                $rows[] = [$order->reference, $order->created_at?->diffForHumans(), $status, $action];
-            });
+            ->limit($batch)
+            ->get();
+
+        foreach ($orders as $order) {
+            if (now()->greaterThanOrEqualTo($deadline)) {
+                $this->warn(
+                    'Time budget reached; ' . ($orders->count() - count($rows)) . ' order(s) wait for the next run.',
+                );
+
+                break;
+            }
+
+            [$status, $action] = $this->reconcile($order, $paystack);
+            $rows[] = [$order->reference, $order->created_at?->diffForHumans(), $status, $action];
+        }
 
         $this->table(['Order', 'Created', 'Paystack', $this->execute ? 'Done' : 'Would do'], $rows);
         $this->info(
