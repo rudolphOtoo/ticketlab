@@ -17,6 +17,25 @@
 
 ---
 
+## 🟢 Done: Multi-church zones release (branch `fix/tenant-branding-isolation`, see AUDIT.md)
+
+- [x] Tenant branding isolation (no other organisation or demo identity on any page, pass, email or PDF)
+- [x] Queue worker runs every dispatched queue; fictional zoned demo seed that never seeds production
+- [x] Zone gates refuse other zones' passes; per-zone venues; zone admins locked to their zone; org per-zone totals
+- [x] Zoneless paid passes: admin assignment, buyer one-time choice, settlement report, audit trail
+- [x] Super admin onboarding and editing of organisations; public sign-up creates attendees only
+- [x] Zone-required checkout, per-zone capacity, mandatory zone payout split, publish gate, stored subaccount verification with a daily re-check
+- [x] `tenancy:move-event` for events filed under the wrong organisation
+- [x] README and production deploy runbook (`docs/runbooks/production-deploy.md`)
+
+### Still open (from AUDIT.md)
+- [ ] Cloud media disk: add `league/flysystem-aws-s3-v3` and set `MEDIA_DISK` (C-1)
+- [ ] Paystack refund webhook voids passes (B-2); reconciliation command for stuck pending orders (B-3)
+- [ ] Remove the `api/payzephyr/webhook` route (B-7); scheduler/migrate token out of the query string (E-2)
+- [ ] Policies for every admin action (E-1); Ghana phone validation (B-5); Open Graph previews per organisation (D-2)
+
+---
+
 ## 🎯 To Do (Universal Event Platform Roadmap)
 
 ### 📦 Milestone 1: Core CMS Schema & Scoped Models
