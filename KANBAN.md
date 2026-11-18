@@ -27,12 +27,16 @@
 - [x] Zone-required checkout, per-zone capacity, mandatory zone payout split, publish gate, stored subaccount verification with a daily re-check
 - [x] `tenancy:move-event` for events filed under the wrong organisation
 - [x] README and production deploy runbook (`docs/runbooks/production-deploy.md`)
+- [x] Maintenance hooks take `Authorization: Bearer` (E-2); `payments:reconcile-pending` (B-3); PayZephyr route removed (B-7)
+- [x] Scheduled tasks bounded to Vercel's 60 s request (batches, time budgets, short shared locks)
+- [x] Cloudflare R2 media and private storage with WebP sizes and signed links (C-1)
 
-### Still open (from AUDIT.md)
-- [ ] Cloud media disk: add `league/flysystem-aws-s3-v3` and set `MEDIA_DISK` (C-1)
-- [ ] Paystack refund webhook voids passes (B-2); reconciliation command for stuck pending orders (B-3)
-- [ ] Remove the `api/payzephyr/webhook` route (B-7); scheduler/migrate token out of the query string (E-2)
-- [ ] Policies for every admin action (E-1); Ghana phone validation (B-5); Open Graph previews per organisation (D-2)
+### 🔜 Follow-up PR (from AUDIT.md)
+- [ ] **B-2** Paystack `refund.processed` webhook: mark the order refunded and void its passes, so the gate refuses them
+- [ ] **E-1** Policies with `authorize()` on every admin and ops action (defence in depth beyond the current scoping and guards)
+- [ ] **B-5** Ghana phone validation at checkout and cash desk (normalise to +233, check network prefixes)
+- [ ] **D-2** Open Graph and WhatsApp previews per organisation and event (name, title, banner), and a single `<title>`
+- [ ] Remove the deprecated `?token=` scheduler fallback after one release (E-2 follow-through)
 
 ---
 
