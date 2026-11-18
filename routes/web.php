@@ -6,8 +6,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DedicatedPageController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\QrCodeController;
+use App\Http\Middleware\VerifySchedulerToken;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
@@ -35,32 +35,19 @@ Route::get('partnership', DedicatedPageController::class)->defaults('page', 'par
 Route::get('faq', DedicatedPageController::class)->defaults('page', 'faq')->name('dedicated.faq');
 Route::get('contact', DedicatedPageController::class)->defaults('page', 'contact')->name('dedicated.contact');
 
-// Serverless maintenance hooks. Both fail closed: without a configured token every request is refused.
-$hasSchedulerToken = static function (Request $request): bool {
-    $expected = config('services.scheduler.token');
-    $given = $request->query('token');
+// Serverless maintenance hooks, called by an external cron. Token in "Authorization: Bearer" (see VerifySchedulerToken).
+Route::middleware([VerifySchedulerToken::class, 'throttle:10,1'])->group(static function (): void {
+    Route::get('api/run-scheduler', static function (): JsonResponse {
+        Artisan::call('schedule:run');
 
-    return is_string($expected) && $expected !== '' && is_string($given) && hash_equals($expected, $given);
-};
+        return response()->json(['message' => 'Scheduler executed', 'output' => Artisan::output()]);
+    });
 
-Route::get('api/run-scheduler', static function (Request $request) use ($hasSchedulerToken): JsonResponse {
-    if (!$hasSchedulerToken($request)) {
-        return response()->json(['error' => 'Unauthorized: valid token query parameter required'], 401);
-    }
+    Route::get('api/run-migrate', static function (): JsonResponse {
+        Artisan::call('migrate', ['--force' => true]);
 
-    Artisan::call('schedule:run');
-
-    return response()->json(['message' => 'Scheduler executed', 'output' => Artisan::output()]);
-})->middleware('throttle:10,1');
-
-Route::get('api/run-migrate', static function (Request $request) use ($hasSchedulerToken): JsonResponse {
-    if (!$hasSchedulerToken($request)) {
-        return response()->json(['error' => 'Unauthorized: valid token query parameter required'], 401);
-    }
-
-    Artisan::call('migrate', ['--force' => true]);
-
-    return response()->json(['message' => 'Migrations executed', 'output' => Artisan::output()]);
-})->middleware('throttle:10,1');
+        return response()->json(['message' => 'Migrations executed', 'output' => Artisan::output()]);
+    });
+});
 
 require __DIR__ . '/settings.php';
