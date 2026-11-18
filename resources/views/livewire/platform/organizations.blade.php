@@ -35,7 +35,7 @@
                     @endphp
                     <tr data-organization="{{ $organization->slug }}">
                         <td class="px-4 py-3">
-                            <span class="block font-semibold">{{ $organization->name }}</span>
+                            <a href="{{ route('platform.organizations.edit', $organization) }}" wire:navigate class="block font-semibold hover:underline">{{ $organization->name }}</a>
                             <a href="{{ url('/' . $organization->slug) }}" target="_blank" rel="noopener" class="font-mono text-[11px] text-[var(--text-secondary)] underline">/{{ $organization->slug }}</a>
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums" data-events-count>{{ $organization->events_count }}</td>

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Livewire\Auth\AcceptInvitation;
+use App\Livewire\Platform\EditOrganization;
 use App\Livewire\Platform\OnboardOrganization;
 use App\Livewire\Platform\Organizations;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,7 @@ Route::middleware(['auth', 'super_admin'])
     ->group(function () {
         Route::get('organizations', Organizations::class)->name('organizations');
         Route::get('organizations/create', OnboardOrganization::class)->name('organizations.create');
+        Route::get('organizations/{organization}/edit', EditOrganization::class)->name('organizations.edit');
     });
 
 Route::get('invitations/{user}/accept', AcceptInvitation::class)->middleware([
