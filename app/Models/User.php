@@ -24,7 +24,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $name
  * @property string $email
  * @property CarbonImmutable|null $email_verified_at
- * @property string $password
+ * @property string|null $password Null for an invited admin who has not accepted yet.
  * @property string|null $role
  * @property int|null $organization_id
  * @property int|null $subdivision_id

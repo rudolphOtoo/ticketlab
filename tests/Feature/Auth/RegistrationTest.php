@@ -40,29 +40,31 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticated();
     }
 
-    public function test_registration_provisions_organization_and_assigns_admin(): void
+    public function test_public_registration_creates_an_attendee_account_and_never_an_organisation(): void
     {
         $response = $this->post(route('register.store'), [
             'organization_name' => 'Kingdom Gatherings',
             'name' => 'Pastor Mensah',
-            'email' => 'mensah@kingdom.org',
+            'email' => 'mensah@example.test',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
 
         $response->assertSessionHasNoErrors();
 
-        $user = \App\Models\User::query()->where('email', 'mensah@kingdom.org')->firstOrFail();
+        $user = \App\Models\User::query()->where('email', 'mensah@example.test')->firstOrFail();
+
         expect($user->role)
-            ->toBe('admin')
-            ->and($user->organization)
-            ->not
+            ->toBe('attendee')
+            ->and($user->organization_id)
             ->toBeNull()
-            ->and($user->organization->name)
-            ->toBe('Kingdom Gatherings')
-            ->and($user->organization->slug)
-            ->toBe('kingdom-gatherings')
+            ->and($user->subdivision_id)
+            ->toBeNull()
             ->and($user->isAdmin())
-            ->toBeTrue();
+            ->toBeFalse()
+            ->and(\App\Models\Organization::query()->count())
+            ->toBe(0);
+
+        $this->get(route('admin.index'))->assertForbidden();
     }
 }

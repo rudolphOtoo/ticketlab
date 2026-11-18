@@ -54,7 +54,10 @@ test('self-registered accounts are created as attendees', function () {
         'password_confirmation' => 'password',
     ]);
 
-    expect(User::query()->where('email', 'buyer@example.com')->value('role'))->toBe('admin');
+    expect(User::query()->where('email', 'buyer@example.com')->value('role'))
+        ->toBe('attendee')
+        ->and(Organization::query()->whereKeyNot([$this->orgA->id, $this->orgB->id])->count())
+        ->toBe(0);
 });
 
 test('roster detail modal cannot load an attendee from another organization', function () {
