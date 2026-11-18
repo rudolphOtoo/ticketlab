@@ -14,8 +14,9 @@ return [
      |
      */
     'temporary_file_upload' => [
-        'disk' => env('LIVEWIRE_DISK', env('MEDIA_DISK', env('FILESYSTEM_DISK', 'local'))),
-        'rules' => ['nullable', 'file', 'max:12288'],
+        // Temporary uploads are never public: they go to the private disk (the private R2 bucket in production).
+        'disk' => env('LIVEWIRE_DISK', env('PRIVATE_DISK', 'local')),
+        'rules' => ['nullable', 'file', 'max:5120'],
         'directory' => 'livewire-tmp',
         'middleware' => 'throttle:60,1',
         'cleanup' => true,

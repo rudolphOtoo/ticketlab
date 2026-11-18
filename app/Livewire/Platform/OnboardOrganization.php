@@ -10,6 +10,7 @@ use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\OrganizationAdminInvitation;
 use App\Services\Payment\PaystackSubaccountResolver;
+use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * Super admin onboarding: one step creates the organisation, its zones (each with its Paystack payout
@@ -28,6 +31,8 @@ use Livewire\Component;
 #[Title('Onboard an organisation')]
 class OnboardOrganization extends Component
 {
+    use WithFileUploads;
+
     public string $name = '';
 
     public string $slug = '';
@@ -41,6 +46,8 @@ class OnboardOrganization extends Component
     public string $contactPhone = '';
 
     public string $logoUrl = '';
+
+    public ?TemporaryUploadedFile $logo = null;
 
     public string $brandColor = '#18181b';
 
@@ -108,6 +115,7 @@ class OnboardOrganization extends Component
             'contactEmail' => ['required', 'email', 'max:255'],
             'contactPhone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ()-]{7,20}$/'],
             'logoUrl' => ['nullable', 'url:https', 'max:2048'],
+            'logo' => ['nullable', ...MediaUrl::UPLOAD_RULES],
             'brandColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'timezone' => ['required', 'timezone:all'],
             'zones' => ['required', 'array', 'min:1', 'max:50'],
@@ -158,6 +166,13 @@ class OnboardOrganization extends Component
                 'brand_color' => $this->brandColor,
             ],
         ]);
+
+        // An uploaded logo wins over a pasted link; it is filed under the new organisation's own folder.
+        if ($this->logo !== null) {
+            $organization->forceFill([
+                'logo_url' => MediaUrl::store($this->logo, MediaUrl::organizationDirectory($organization->id, 'logos')),
+            ])->save();
+        }
 
         foreach ($this->zones as $zone) {
             $created = Subdivision::query()->create([

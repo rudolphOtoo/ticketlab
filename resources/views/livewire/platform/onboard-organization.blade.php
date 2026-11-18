@@ -41,8 +41,10 @@
                 @error('contactPhone') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label for="org-logo" class="{{ $labelClass }}">Logo URL (https, optional)</label>
-                <input id="org-logo" type="url" wire:model="logoUrl" class="{{ $inputClass }}" />
+                <span class="{{ $labelClass }}">Logo (optional)</span>
+                <input id="org-logo-file" type="file" wire:model="logo" accept="image/jpeg,image/png,image/webp" class="block text-xs" aria-label="Upload logo" />
+                @error('logo') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                <input id="org-logo" type="url" wire:model="logoUrl" placeholder="or paste an https link" aria-label="Logo link" class="mt-1.5 {{ $inputClass }}" />
                 @error('logoUrl') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
             </div>
             <div class="grid grid-cols-2 gap-3">

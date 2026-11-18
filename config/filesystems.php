@@ -30,10 +30,16 @@ return [
      */
 
     /*
-     | Disk for admin uploads (banners, speaker photos, gallery, flyers). Keep "public" locally; point it at a
-     | cloud disk such as "s3" on hosts whose filesystem is not persistent (e.g. serverless platforms).
+     | Public media (organisation logos, event banners, speaker photos, gallery, flyers): "public" locally, "r2" in
+     | production. Serverless hosts (Vercel) have no persistent disk, so production must never write media locally.
      */
     'media_disk' => env('MEDIA_DISK', 'public'),
+
+    /*
+     | Private files (ledger PDFs, Livewire's temporary uploads): "local" locally, "r2-private" in production. Served only
+     | through short-lived signed links after an authorisation check, never by a public URL.
+     */
+    'private_disk' => env('PRIVATE_DISK', 'local'),
 
     'disks' => [
         'local' => [
@@ -52,6 +58,33 @@ return [
             'serve' => true,
             'throw' => false,
             'report' => false,
+        ],
+
+        // Cloudflare R2 (S3-compatible). The public bucket is served from MEDIA_URL (a custom domain on the bucket).
+        'r2' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_PUBLIC_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'url' => env('MEDIA_URL'),
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+            'report' => true,
+        ],
+
+        // A separate private bucket: no public access, files reached only through temporary signed URLs.
+        'r2-private' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_PRIVATE_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw' => true,
+            'report' => true,
         ],
 
         's3' => [

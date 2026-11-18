@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Services\Payment\PaystackSubaccountResolver;
+use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * Super admin edits an organisation's identity and adds zones.
@@ -28,6 +31,8 @@ use Livewire\Component;
 #[Title('Edit organisation')]
 class EditOrganization extends Component
 {
+    use WithFileUploads;
+
     #[Locked]
     public int $organizationId;
 
@@ -40,6 +45,8 @@ class EditOrganization extends Component
     public string $contactPhone = '';
 
     public string $logoUrl = '';
+
+    public ?TemporaryUploadedFile $logo = null;
 
     public string $brandColor = '#18181b';
 
@@ -61,7 +68,8 @@ class EditOrganization extends Component
         $this->subdivisionLabel = $organization->subdivision_label;
         $this->contactEmail = is_string($settings['contact_email'] ?? null) ? $settings['contact_email'] : '';
         $this->contactPhone = is_string($settings['contact_phone'] ?? null) ? $settings['contact_phone'] : '';
-        $this->logoUrl = $organization->logo_url ?? '';
+        // The URL field shows pasted links only; an uploaded logo is shown as a preview with a Remove button.
+        $this->logoUrl = MediaUrl::isExternal($organization->logo_url) ? (string) $organization->logo_url : '';
         $this->brandColor = is_string($settings['brand_color'] ?? null) ? $settings['brand_color'] : '#18181b';
         $this->timezone = is_string($settings['timezone'] ?? null) ? $settings['timezone'] : 'Africa/Accra';
     }
@@ -76,6 +84,7 @@ class EditOrganization extends Component
             'contactEmail' => ['required', 'email', 'max:255'],
             'contactPhone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ()-]{7,20}$/'],
             'logoUrl' => ['nullable', 'url:https', 'max:2048'],
+            'logo' => ['nullable', ...MediaUrl::UPLOAD_RULES],
             'brandColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'timezone' => ['required', 'timezone:all'],
         ]);
@@ -83,10 +92,13 @@ class EditOrganization extends Component
         $organization = $this->organization();
         $before = $organization->only(['name', 'subdivision_label', 'logo_url']);
 
+        $previousLogo = $organization->logo_url;
+        $logo = $this->nextLogo($organization, $previousLogo);
+
         $organization->forceFill([
             'name' => trim($this->name),
             'subdivision_label' => trim($this->subdivisionLabel),
-            'logo_url' => $this->logoUrl !== '' ? $this->logoUrl : null,
+            'logo_url' => $logo,
             'settings' => [
                 ...($organization->settings ?? []),
                 'contact_email' => $this->contactEmail,
@@ -96,8 +108,44 @@ class EditOrganization extends Component
             ],
         ])->save();
 
+        // A replaced uploaded logo (and its WebP copies) is deleted; pasted links are never touched.
+        if ($previousLogo !== $logo) {
+            MediaUrl::deleteStored($previousLogo);
+        }
+
+        $this->logo = null;
         $this->audit($actor, 'organization.updated', ['before' => $before]);
         $this->flashMessage = "{$organization->name} was updated.";
+    }
+
+    public function removeLogo(): void
+    {
+        $actor = self::superAdmin();
+        $organization = $this->organization();
+
+        MediaUrl::deleteStored($organization->logo_url);
+        $organization->forceFill(['logo_url' => null])->save();
+        $this->logoUrl = '';
+        $this->logo = null;
+
+        $this->audit($actor, 'organization.logo_removed', []);
+        $this->flashMessage = 'The logo was removed.';
+    }
+
+    /**
+     * A new upload wins; otherwise a pasted link; otherwise the current uploaded logo stays.
+     */
+    private function nextLogo(Organization $organization, ?string $current): ?string
+    {
+        if ($this->logo !== null) {
+            return MediaUrl::store($this->logo, MediaUrl::organizationDirectory($organization->id, 'logos'));
+        }
+
+        if ($this->logoUrl !== '') {
+            return $this->logoUrl;
+        }
+
+        return MediaUrl::isExternal($current) ? null : $current;
     }
 
     /**

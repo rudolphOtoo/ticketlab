@@ -4,8 +4,8 @@
     <header class="ticket-print-brand border-b border-zinc-200 bg-white">
         <div class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
             <div class="flex items-center gap-3">
-                @if ($organization->logo_url)
-                    <img src="{{ $organization->logo_url }}" alt="{{ $organization->name }}" class="h-10 w-10 rounded-full object-cover">
+                @if ($organization->logoUrl())
+                    <img src="{{ $organization->logoUrl() }}" alt="{{ $organization->name }}" class="h-10 w-10 rounded-full object-cover">
                 @else
                     <div class="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">
                         {{ $organization->initials() }}

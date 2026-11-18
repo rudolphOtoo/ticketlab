@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -129,6 +130,25 @@ class Organization extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * The logo's URL: an uploaded logo (as a WebP copy of the given size once generated), or a pasted https or
+     * same-site link. Anything else (javascript:, data:, protocol-relative) is never rendered.
+     */
+    public function logoUrl(string $size = 'thumb'): ?string
+    {
+        $logo = $this->logo_url;
+
+        if (!is_string($logo) || trim($logo) === '') {
+            return null;
+        }
+
+        if (MediaUrl::isExternal($logo)) {
+            return preg_match('#^(https://|/(?!/))#i', $logo) === 1 ? $logo : null;
+        }
+
+        return MediaUrl::resolve($logo, $size);
     }
 
     /**

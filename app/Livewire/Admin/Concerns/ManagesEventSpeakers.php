@@ -85,7 +85,7 @@ trait ManagesEventSpeakers
                 'speaker_topic' => ['nullable', 'string', 'max:150'],
                 'speaker_bio' => ['nullable', 'string', 'max:1000'],
                 'speaker_photo_path' => ['nullable', 'string', 'max:2048'],
-                'speaker_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+                'speaker_photo' => ['nullable', ...MediaUrl::UPLOAD_RULES],
                 'speaker_is_featured' => ['boolean'],
                 'speaker_sort_order' => ['required', 'integer', 'min:0'],
             ]);
@@ -112,7 +112,7 @@ trait ManagesEventSpeakers
             $previousPhoto = $this->speaker_photo_path;
             $this->speaker_photo_path = MediaUrl::store(
                 $this->speaker_photo,
-                MediaUrl::eventDirectory($event->id, 'speakers'),
+                MediaUrl::eventDirectory($event->organization_id, $event->id, 'speakers'),
             );
         }
 

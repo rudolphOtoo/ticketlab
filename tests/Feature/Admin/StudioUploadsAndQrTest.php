@@ -62,9 +62,9 @@ test('marketing studio stores an uploaded flyer background on the public disk', 
     $path = $component->get('backgroundPath');
 
     expect($path)
-        ->toStartWith('events/' . $component->get('selectedEventId') . '/flyers/')
+        ->toMatch('#^orgs/\d+/events/' . $component->get('selectedEventId') . '/flyers/#')
         ->and($component->get('backgroundUrl'))
-        ->toStartWith('/storage/events/');
+        ->toStartWith('/storage/orgs/');
     Storage::disk('public')->assertExists($path);
 
     $component->call('removeBackground')->assertSet('backgroundUrl', null);
@@ -103,9 +103,10 @@ test('speaker photos upload to the public speakers directory', function (): void
     $speaker = EventSpeaker::query()->where('name', 'Dr. Abena Owusu')->firstOrFail();
 
     expect($speaker->photo_path)
-        ->toStartWith("events/{$speaker->event_id}/speakers/")
+        ->toStartWith("orgs/{$speaker->organization_id}/events/{$speaker->event_id}/speakers/")
+        // The queued WebP copy is served once generated (synchronously here).
         ->and($speaker->photoUrl())
-        ->toBe('/storage/' . $speaker->photo_path);
+        ->toBe('/storage/' . App\Support\MediaUrl::variantPath((string) $speaker->photo_path, 'medium'));
     Storage::disk('public')->assertExists((string) $speaker->photo_path);
 });
 

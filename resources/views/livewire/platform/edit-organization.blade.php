@@ -42,9 +42,18 @@
                 <input id="org-phone" type="tel" wire:model="contactPhone" class="{{ $inputClass }}" />
                 @error('contactPhone') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
             </div>
-            <div>
-                <label for="org-logo" class="{{ $labelClass }}">Logo URL (https)</label>
-                <input id="org-logo" type="url" wire:model="logoUrl" class="{{ $inputClass }}" />
+            <div class="sm:col-span-2 space-y-2" data-logo-field>
+                <span class="{{ $labelClass }}">Logo</span>
+                @if ($organization->logoUrl())
+                    <div class="flex items-center gap-3">
+                        <img src="{{ $organization->logoUrl() }}" alt="{{ $organization->name }} logo" class="size-12 rounded-lg border border-[var(--border-hairline)] object-contain" />
+                        <button type="button" wire:click="removeLogo" wire:confirm="Remove the logo?" class="cursor-pointer text-xs font-semibold text-rose-600">Remove</button>
+                    </div>
+                @endif
+                <input id="org-logo-file" type="file" wire:model="logo" accept="image/jpeg,image/png,image/webp" class="block text-xs" aria-label="Upload logo" />
+                <p class="text-[11px] text-[var(--text-tertiary)]">JPG, PNG or WebP, up to 5 MB. Or paste an https link:</p>
+                @error('logo') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
+                <input id="org-logo" type="url" wire:model="logoUrl" placeholder="https://…" aria-label="Logo link" class="{{ $inputClass }}" />
                 @error('logoUrl') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
             </div>
             <div>

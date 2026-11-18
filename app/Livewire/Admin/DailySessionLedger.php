@@ -17,6 +17,7 @@ use App\Services\Ledger\SessionReportService;
 use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -104,6 +105,10 @@ class DailySessionLedger extends Component
         }
     }
 
+    /**
+     * The authorisation check is activeSession(): only this admin's organisation (and zone) can be reached. Only then
+     * is a short-lived signed link (cloud storage) or a streamed file (local disk) handed out.
+     */
     public function downloadPdfReport(SessionReportService $reportService): ?StreamedResponse
     {
         $session = $this->activeSession();
@@ -111,7 +116,15 @@ class DailySessionLedger extends Component
             return null;
         }
 
-        return $reportService->downloadReport($session);
+        $download = $reportService->downloadReport($session);
+
+        if ($download instanceof RedirectResponse) {
+            $this->redirect($download->getTargetUrl());
+
+            return null;
+        }
+
+        return $download;
     }
 
     private function orgId(): ?int

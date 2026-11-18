@@ -9,7 +9,7 @@
     $zonesLabel = \Illuminate\Support\Str::plural($zoneLabel);
     // Zone admins work on their own zone's people and money; what every zone shares is edited organisation-wide.
     $orgWide = $adminUser !== null && ($adminUser->isSuperAdmin() || $adminUser->subdivision_id === null);
-    $tenantLogo = is_string($tenant?->logo_url) && preg_match('#^(https?://|/(?!/))#i', $tenant->logo_url) === 1 ? $tenant->logo_url : null;
+    $tenantLogo = $tenant?->logoUrl();
 
     $adminNav = [
         'Command' => [
