@@ -9,6 +9,7 @@ use App\Http\Controllers\TicketPassPdfController;
 use App\Livewire\Public\EventDirectory;
 use App\Livewire\Public\EventShow;
 use App\Livewire\Public\TicketShow;
+use App\Models\Organization;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
@@ -26,11 +27,6 @@ Route::post('api/paystack/webhook', [PaystackWebhookController::class, 'handle']
     ->middleware('throttle:300,1')
     ->withoutMiddleware([ValidateCsrfToken::class]);
 
-Route::post('api/payzephyr/webhook', [PaystackWebhookController::class, 'handle'])
-    ->name('public.payzephyr.webhook')
-    ->middleware('throttle:300,1')
-    ->withoutMiddleware([ValidateCsrfToken::class]);
-
 Route::get('events', EventDirectory::class)->name('public.events.index');
 
 Route::get('tickets/{order:reference}', TicketShow::class)->name('public.tickets.show')->middleware('throttle:60,1');
@@ -42,7 +38,10 @@ Route::get('tickets/{order:reference}/pdf', TicketPassPdfController::class)->nam
 Route::prefix('{org_slug}')
     ->name('public.')
     ->where([
-        'org_slug' => '(?!ops(/|$)|admin(/|$)|api(/|$)|livewire(/|$)|up(/|$)|dashboard(/|$)|settings(/|$)|tickets(/|$)|events(/|$)|platform(/|$)|login(/|$)|register(/|$)|about-us(/|$)|speakers(/|$)|conference-packages(/|$)|highlights(/|$)|gallery(/|$)|partnership(/|$)|faq(/|$)|contact(/|$))[A-Za-z0-9][A-Za-z0-9-]*',
+        'org_slug' =>
+            '(?!(?:'
+                . implode('|', array_map(preg_quote(...), Organization::RESERVED_SLUGS))
+                . ')(?:/|$))[A-Za-z0-9][A-Za-z0-9-]*',
     ])
     ->group(function () {
         // Multi-tenant bespoke organization showcase landing page

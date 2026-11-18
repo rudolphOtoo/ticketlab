@@ -13,6 +13,7 @@ use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
 use App\Services\Payment\AttendeeIssuer;
+use App\Services\Zones\ZoneAssignment;
 use App\Support\ActiveEvent;
 use App\Support\CsvWriter;
 use Illuminate\Contracts\View\View;
@@ -46,6 +47,11 @@ class AttendeeRoster extends Component
     public int $perPage = 10;
 
     public ?int $selectedAttendeeId = null;
+
+    /** @var list<int|string> Passes ticked for a bulk zone assignment. */
+    public array $selectedAttendeeIds = [];
+
+    public ?int $assignZoneId = null;
 
     public ?string $flashMessage = null;
 
@@ -386,23 +392,78 @@ class AttendeeRoster extends Component
         $this->flashMessage = "Pass for '{$name}' has been voided and seat restored.";
     }
 
+    /**
+     * Give one zoneless paid pass a zone. Organisation admins only; enforced in the service.
+     */
+    public function assignZoneToAttendee(int $attendeeId, ZoneAssignment $assignment): void
+    {
+        $this->assignZones([$attendeeId], $assignment);
+    }
+
+    /**
+     * Give every selected zoneless paid pass the chosen zone.
+     */
+    public function assignZoneToSelected(ZoneAssignment $assignment): void
+    {
+        $this->assignZones(array_map(intval(...), $this->selectedAttendeeIds), $assignment);
+        $this->selectedAttendeeIds = [];
+    }
+
+    /**
+     * @param list<int> $attendeeIds
+     */
+    private function assignZones(array $attendeeIds, ZoneAssignment $assignment): void
+    {
+        $user = auth()->user();
+
+        if (!$user instanceof User) {
+            abort(401);
+        }
+
+        $this->validate(['assignZoneId' => [
+            'required',
+            'integer',
+            Rule::exists(Subdivision::class, 'id')->where('organization_id', $user->organization_id),
+        ]]);
+
+        // Only ids inside this admin's own roster scope are passed on; the service then keeps only zoneless paid passes.
+        $ids = array_values(array_map(
+            intval(...),
+            $this->scopedAttendees($user)->whereKey($attendeeIds)->pluck('id')->all(),
+        ));
+        $assigned = $assignment->assignByAdmin($user, $ids, (int) $this->assignZoneId);
+        $skipped = count($attendeeIds) - $assigned;
+
+        $this->flashMessage =
+            $assigned
+            . ' pass'
+            . ($assigned === 1 ? '' : 'es')
+            . ' assigned.'
+            . (
+                $skipped > 0
+                    ? " {$skipped} skipped: they already have a " . strtolower($user->zoneLabel()) . ' or are unpaid.'
+                    : ''
+            );
+    }
+
     public function exportCsv(): StreamedResponse
     {
         $user = auth()->user();
         $fileName = 'attendee_roster_' . now()->format('Y_m_d_His') . '.csv';
+        $zoneColumn = $user?->zoneLabel() ?? 'Zone';
 
         return response()->streamDownload(
-            function () use ($user) {
+            function () use ($user, $zoneColumn) {
                 $writer = CsvWriter::toOutput();
 
-                $this->buildQuery($user)->chunk(500, static function ($attendees) use ($writer) {
+                $this->buildQuery($user)->chunk(500, static function ($attendees) use ($writer, $zoneColumn) {
                     foreach ($attendees as $att) {
                         $writer->addRow([
                             'ID' => $att->id,
                             'Name' => self::orNa($att->name),
                             'Email' => self::orNa($att->email),
                             'Phone' => self::orNa($att->phone),
-                            'Subdivision' => $att->subdivision ? $att->subdivision->name : 'General',
+                            $zoneColumn => $att->subdivision ? $att->subdivision->name : 'None',
                             'Ticket Tier' => $att->ticketType->name,
                             'QR Code' => $att->qr_code_hash,
                             'Checked In At' => $att->checked_in_at?->format('Y-m-d H:i:s') ?? 'Pending',
@@ -445,8 +506,12 @@ class AttendeeRoster extends Component
         $query = $this->scopedAttendees($user)->with(['subdivision', 'ticketType', 'checkedInByUser']);
 
         // 1. Zone filter (only meaningful for users not already bound to a zone)
-        if ($user?->subdivision_id === null && $this->zoneFilter !== '') {
-            $query->where('subdivision_id', (int) $this->zoneFilter);
+        if ($user?->subdivision_id === null) {
+            match ($this->zoneFilter) {
+                '' => null,
+                'none' => $query->whereNull('subdivision_id'),
+                default => $query->where('subdivision_id', (int) $this->zoneFilter),
+            };
         }
 
         // 2. Status filter
@@ -522,6 +587,19 @@ class AttendeeRoster extends Component
             'ticketTypes' => $ticketTypes,
             'selectedAttendee' => $selectedAttendee,
             'isUserScoped' => $user && $user->subdivision_id !== null,
+            // Only organisation-wide admins assign zones to passes sold before a zone was required.
+            'canAssignZones' => $user instanceof User && $user->subdivision_id === null && $user->isAdmin(),
+            'zonelessCount' =>
+                $user instanceof User && $user->subdivision_id === null && $user->organization_id !== null
+                    ? $this
+                        ->scopedAttendees($user)
+                        ->whereNull('subdivision_id')
+                        ->whereHas('order', static fn(Builder $order) => $order->where(
+                            'payment_status',
+                            OrderStatus::Paid->value,
+                        ))
+                        ->count()
+                    : 0,
             'scopedZoneName' => $user?->subdivision?->name,
         ]);
     }

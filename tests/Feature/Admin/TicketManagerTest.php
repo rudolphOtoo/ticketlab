@@ -22,6 +22,8 @@ test('authenticated admin can view ticket tier manager for their organization', 
         'slug' => 'accra-summit-' . uniqid(),
     ]);
 
+    payable_zone($org);
+
     $user = User::forceCreate([
         'name' => 'Admin Jane',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
@@ -66,6 +68,8 @@ test('org admin can create a new ticket tier with perks', function () {
         'name' => 'Kumasi Expo Org',
         'slug' => 'kumasi-expo-' . uniqid(),
     ]);
+
+    payable_zone($org);
 
     $user = User::forceCreate([
         'name' => 'Admin Kwame',
@@ -120,6 +124,8 @@ test('org admin cannot reduce total capacity below sold tickets count', function
         'slug' => 'summit-' . uniqid(),
     ]);
 
+    payable_zone($org);
+
     $user = User::forceCreate([
         'name' => 'Admin Kofi',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
@@ -171,6 +177,8 @@ test('org admin can toggle active sales status', function () {
         'slug' => 'expo-' . uniqid(),
     ]);
 
+    payable_zone($org);
+
     $user = User::forceCreate([
         'name' => 'Admin Akosua',
         'email' => 'admin_' . uniqid() . '@ticketlab.test',
@@ -211,6 +219,8 @@ test('org admin can delete a tier with zero sales, but cannot delete a tier with
         'name' => 'Music Org',
         'slug' => 'music-' . uniqid(),
     ]);
+
+    payable_zone($org);
 
     $user = User::forceCreate([
         'name' => 'Admin Yaw',
@@ -290,7 +300,11 @@ test('org admin can delete a tier with zero sales, but cannot delete a tier with
 
 test('multi-tenant isolation prevents admin from seeing or mutating another organization ticket tiers', function () {
     $orgA = Organization::create(['name' => 'Org A', 'slug' => 'org-a-' . uniqid()]);
+
+    payable_zone($orgA);
     $orgB = Organization::create(['name' => 'Org B', 'slug' => 'org-b-' . uniqid()]);
+
+    payable_zone($orgB);
 
     $adminA = User::forceCreate([
         'name' => 'Admin A',

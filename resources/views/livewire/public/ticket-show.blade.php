@@ -4,8 +4,8 @@
     <header class="ticket-print-brand border-b border-zinc-200 bg-white">
         <div class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
             <div class="flex items-center gap-3">
-                @if ($organization->logo_url)
-                    <img src="{{ $organization->logo_url }}" alt="{{ $organization->name }}" class="h-10 w-10 rounded-full object-cover">
+                @if ($organization->logoUrl())
+                    <img src="{{ $organization->logoUrl() }}" alt="{{ $organization->name }}" class="h-10 w-10 rounded-full object-cover">
                 @else
                     <div class="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white">
                         {{ $organization->initials() }}
@@ -30,9 +30,15 @@
                 <h1 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{{ $event?->title ?? 'Event ticket' }}</h1>
                 @if ($event)
                     <p class="mt-2 text-sm text-zinc-300">
-                        {{ $event->start_at->format('D, j M Y · g:i A') }}
-                        @if ($event->venue)
-                            · {{ $event->venue }}
+                        {{ $venue->startAt->format('D, j M Y · g:i A') }}
+                        @if ($venue->place())
+                            · {{ $venue->place() }}
+                        @endif
+                        @if ($venue->zone)
+                            · {{ $organization->subdivision_label }}: {{ $venue->zone->name }}
+                        @endif
+                        @if ($venue->mapUrl)
+                            · <a href="{{ $venue->mapUrl }}" target="_blank" rel="noopener noreferrer" class="underline">Map</a>
                         @endif
                     </p>
                 @endif
@@ -52,6 +58,32 @@
                         Your payment is confirmed, but your passes are still being generated. Please refresh in a moment.
                     </div>
                 @else
+                    @if ($zoneMessage)
+                        <p class="mb-4 rounded-2xl bg-emerald-50 p-4 text-sm font-medium text-emerald-900" data-zone-message>{{ $zoneMessage }}</p>
+                    @endif
+
+                    @if ($zoneChoices !== [])
+                        <div class="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950" data-choose-zone>
+                            <p class="font-semibold">Choose your {{ strtolower($organization->subdivision_label) }}</p>
+                            <p class="mt-1 text-amber-900/80">Your {{ $attendees->count() === 1 ? 'pass needs' : 'passes need' }} a {{ strtolower($organization->subdivision_label) }} before the gate can admit you. Pick the one you will attend. <strong>You can only choose once.</strong></p>
+                            <ul class="mt-4 grid gap-2">
+                                @foreach ($zoneChoices as $choice)
+                                    <li>
+                                        <button
+                                            type="button"
+                                            wire:click="chooseZone({{ $choice['id'] }})"
+                                            wire:confirm="Attend {{ $choice['name'] }}? This cannot be changed later."
+                                            class="w-full cursor-pointer rounded-xl border border-amber-300 bg-white px-4 py-3 text-left hover:border-amber-500"
+                                        >
+                                            <span class="block font-semibold">{{ $choice['name'] }}</span>
+                                            <span class="block text-xs text-zinc-600">{{ $choice['venue']->startAt->format('D, j M Y · g:i A') }}@if ($choice['venue']->place()) · {{ $choice['venue']->place() }}@endif</span>
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <div class="space-y-5">
                         @foreach ($attendees as $attendee)
                             <article class="ticket-card overflow-hidden rounded-2xl border border-zinc-200">

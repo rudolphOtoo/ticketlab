@@ -150,7 +150,7 @@
                     <div class="grid gap-3 sm:grid-cols-2">
                         @foreach ($ticketTypes as $ticketType)
                             @php
-                                $isSoldOut = (int) ($ticketType->available_quantity ?? 0) <= 0 || ! $ticketType->isOnSale();
+                                $isSoldOut = $this->seatsLeft($ticketType) <= 0 || ! $ticketType->isOnSale();
                                 $isSelected = $ticketTypeId === $ticketType->id;
                             @endphp
                             <div
@@ -208,7 +208,7 @@
                                         ])
                                         :class="selectedId === {{ $ticketType->id }} ? 'text-[var(--color-primary-fg)]/80' : 'text-[var(--text-secondary)]'"
                                     >
-                                        {{ $ticketType->available_quantity }} left
+                                        {{ $this->seatsLeft($ticketType) }} left
                                     </span>
                                 </div>
                             </div>
@@ -229,7 +229,7 @@
                                 wire:model.live="subdivisionId"
                                 class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3 py-2 text-xs shadow-xs focus:border-[var(--border-focused)] focus:outline-hidden"
                             >
-                                <option value="">No {{ strtolower($organization->subdivision_label) }} / general admission</option>
+                                <option value="" disabled>Choose your {{ strtolower($organization->subdivision_label) }}…</option>
                                 @foreach ($subdivisions as $subdivision)
                                     <option value="{{ $subdivision->id }}">{{ $subdivision->name }}</option>
                                 @endforeach
@@ -237,6 +237,34 @@
                             @error('subdivisionId')
                                 <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                             @enderror
+
+                            @if ($zoneVenues->isNotEmpty())
+                                <ul class="mt-3 grid gap-2" data-zone-venues>
+                                    @foreach ($subdivisions as $zone)
+                                        @php $zv = $zoneVenues[$zone->id]; @endphp
+                                        <li>
+                                            <button
+                                                type="button"
+                                                wire:click="$set('subdivisionId', {{ $zone->id }})"
+                                                @class([
+                                                    'w-full cursor-pointer rounded-xl border px-3 py-2 text-left text-xs transition',
+                                                    'border-[var(--border-focused)] bg-[var(--bg-subtle)]' => (int) $subdivisionId === $zone->id,
+                                                    'border-[var(--border-hairline)] hover:bg-[var(--bg-subtle)]' => (int) $subdivisionId !== $zone->id,
+                                                ])
+                                            >
+                                                <span class="block font-semibold text-[var(--text-primary)]">{{ $zone->name }}</span>
+                                                <span class="block text-[var(--text-secondary)]">{{ $zv->startAt->format('D, j M Y · g:i A') }}</span>
+                                                @if ($zv->place())
+                                                    <span class="block text-[var(--text-secondary)]">📍 {{ $zv->place() }}</span>
+                                                @endif
+                                            </button>
+                                            @if ($zv->mapUrl)
+                                                <a href="{{ $zv->mapUrl }}" target="_blank" rel="noopener noreferrer" class="mt-0.5 inline-block pl-3 text-[11px] font-semibold underline text-[var(--text-secondary)]">Open map</a>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </div>
                     @endif
 
@@ -553,19 +581,24 @@
                     @if ($subdivisions->isNotEmpty())
                         <div>
                             <label for="subdivisionId" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                                {{ $organization->subdivision_label ?: 'Campus / Branch' }}
+                                {{ $organization->subdivision_label }}
                             </label>
                             <select
                                 id="subdivisionId"
-                                wire:model="subdivisionId"
+                                wire:model.live="subdivisionId"
                                 class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3.5 py-2 text-xs shadow-xs focus:border-[var(--border-focused)] focus:outline-hidden"
                             >
-                                <option value="">-- Select an option --</option>
+                                <option value="" disabled>Choose your {{ strtolower($organization->subdivision_label) }}…</option>
                                 @foreach ($subdivisions as $sub)
                                     <option value="{{ $sub->id }}">{{ $sub->name }}</option>
                                 @endforeach
                             </select>
                             @error('subdivisionId') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            @if ($subdivisionId !== null && ($chosen = $zoneVenues[(int) $subdivisionId] ?? null) !== null)
+                                <p class="mt-1 text-[11px] text-[var(--text-secondary)]" data-chosen-zone-venue>
+                                    {{ $chosen->startAt->format('D, j M Y · g:i A') }}@if ($chosen->place()) · 📍 {{ $chosen->place() }}@endif
+                                </p>
+                            @endif
                         </div>
                     @endif
 

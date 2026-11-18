@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\PlatformSetting;
@@ -25,6 +26,7 @@ use Livewire\WithFileUploads;
 #[Title('Bespoke Portal CMS & Navigation')]
 class BespokeStudio extends Component
 {
+    use RequiresOrganizationWideAdmin;
     use WithFileUploads;
 
     #[Locked]
@@ -386,7 +388,7 @@ class BespokeStudio extends Component
     {
         try {
             $this->validate([
-                'new_image_file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+                'new_image_file' => ['required', ...MediaUrl::UPLOAD_RULES],
                 ...$this->imageDetailRules(),
             ]);
         } catch (UnableToRetrieveMetadata) {
@@ -401,9 +403,10 @@ class BespokeStudio extends Component
         ]);
         $this->new_image_file = null;
 
+        $organizationId = (int) $this->organizationId;
         $directory = $this->activeEventId !== null
-            ? MediaUrl::eventDirectory($this->activeEventId, 'gallery')
-            : "gallery/{$this->organizationId}";
+            ? MediaUrl::eventDirectory($organizationId, $this->activeEventId, 'gallery')
+            : MediaUrl::organizationDirectory($organizationId, 'gallery');
 
         return MediaUrl::store($file, $directory);
     }

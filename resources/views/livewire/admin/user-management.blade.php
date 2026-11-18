@@ -1,4 +1,8 @@
 @php
+    $zl = auth()->user()?->zoneLabel() ?? 'Zone';
+    $zls = auth()->user()?->zonesLabel() ?? 'Zones';
+@endphp
+@php
     $inputClass = 'w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3.5 py-2 text-xs font-medium text-[var(--text-primary)] shadow-[var(--shadow-inset)] focus:border-[var(--border-focused)] focus:outline-hidden focus:ring-2 focus:ring-[var(--border-focused)]/20';
     $roleLabels = ['admin' => 'Admin', 'staff' => 'Staff', 'usher' => 'Staff', 'org_admin' => 'Admin'];
 @endphp
@@ -38,7 +42,7 @@
                 <tr>
                     <th class="px-4 py-3 font-semibold">Member</th>
                     <th class="px-4 py-3 font-semibold">Role</th>
-                    <th class="px-4 py-3 font-semibold">Subdivision</th>
+                    <th class="px-4 py-3 font-semibold">{{ $zl }}</th>
                     <th class="px-4 py-3 text-right font-semibold">Actions</th>
                 </tr>
             </thead>
@@ -59,7 +63,7 @@
                                 {{ $roleLabels[$member->role] ?? ucfirst((string) $member->role) }}
                             </x-ui.badge>
                         </td>
-                        <td class="px-4 py-3 text-[var(--text-secondary)]">{{ $member->subdivision?->name ?? 'All subdivisions' }}</td>
+                        <td class="px-4 py-3 text-[var(--text-secondary)]">{{ $member->subdivision?->name ?? 'All ' . strtolower($zls) }}</td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1.5">
                                 <button type="button" wire:click="editUser({{ $member->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">Edit</button>
@@ -93,7 +97,7 @@
                 <div class="flex items-center justify-between border-b border-[var(--border-hairline)] pb-3">
                     <div>
                         <h2 class="text-base font-bold sm:text-lg">{{ $editingUserId ? 'Edit Team Member' : 'Add Team Member' }}</h2>
-                        <p class="mt-0.5 text-xs text-[var(--text-secondary)]">Role and subdivision decide which surfaces this person can open.</p>
+                        <p class="mt-0.5 text-xs text-[var(--text-secondary)]">Role and {{ strtolower($zl) }} decide which surfaces this person can open.</p>
                     </div>
                     <button type="button" wire:click="closeModal" class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]" aria-label="Close modal">
                         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -185,10 +189,10 @@
                             @error('role') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label for="member-subdivision" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Subdivision</label>
+                            <label for="member-subdivision" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">{{ $zl }}</label>
                             <select id="member-subdivision" wire:model="subdivisionId" class="{{ $inputClass }} cursor-pointer" @disabled($actor->subdivision_id !== null)>
                                 @if ($actor->subdivision_id === null)
-                                    <option value="">All subdivisions</option>
+                                    <option value="">All {{ strtolower($zls) }}</option>
                                 @endif
                                 @foreach ($subdivisions as $subdivision)
                                     <option value="{{ $subdivision->id }}">{{ $subdivision->name }}</option>

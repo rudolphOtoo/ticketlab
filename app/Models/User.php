@@ -24,7 +24,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $name
  * @property string $email
  * @property CarbonImmutable|null $email_verified_at
- * @property string $password
+ * @property string|null $password Null for an invited admin who has not accepted yet.
  * @property string|null $role
  * @property int|null $organization_id
  * @property int|null $subdivision_id
@@ -131,6 +131,24 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             || $this->organization_id !== null
             && in_array($this->role, self::ADMIN_ROLES, true)
         );
+    }
+
+    /**
+     * The organisation's own word for a zone ("Zone", "Branch", "Campus"…), for every staff-facing label.
+     */
+    public function zoneLabel(): string
+    {
+        $label = $this->organization?->subdivision_label;
+
+        return is_string($label) && trim($label) !== '' ? trim($label) : 'Zone';
+    }
+
+    /**
+     * Plural of zoneLabel(): "Zones", "Branches", "Campuses".
+     */
+    public function zonesLabel(): string
+    {
+        return Str::plural($this->zoneLabel());
     }
 
     /**

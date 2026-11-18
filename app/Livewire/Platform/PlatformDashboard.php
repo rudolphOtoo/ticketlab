@@ -82,24 +82,6 @@ class PlatformDashboard extends Component
         $this->selectedTenantId = null;
     }
 
-    public function jumpToTenantAdmin(int $tenantId): void
-    {
-        $tenant = Organization::query()->find($tenantId);
-
-        if ($tenant === null) {
-            return;
-        }
-
-        $event = $tenant->events()->latest('id')->first();
-
-        if ($event !== null) {
-            \App\Support\ActiveEvent::set($event);
-        }
-
-        // Redirect to admin overview for that organization
-        $this->redirectRoute('admin.index', navigate: true);
-    }
-
     /**
      * @return array{database: string, cache: string, queue: string, failed_jobs: int}
      */

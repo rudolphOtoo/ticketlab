@@ -61,3 +61,81 @@ function paystack_initialized(Request $request): \GuzzleHttp\Promise\PromiseInte
         ],
     ]);
 }
+
+/**
+ * Paystack recognises these subaccount codes as active GHS subaccounts for the suite's key.
+ *
+ * Checkout and publishing verify every zone's code through the real resolver, so tests that are not about payout
+ * verification mark their zones payable with this instead of bypassing the check.
+ */
+function paystack_accepts_subaccounts(string ...$codes): void
+{
+    $stubs = [];
+
+    foreach ($codes as $code) {
+        $stubs['api.paystack.co/subaccount/' . $code] = Http::response([
+            'status' => true,
+            'message' => 'Subaccount retrieved',
+            'data' => ['subaccount_code' => $code, 'active' => true, 'currency' => 'GHS'],
+        ]);
+    }
+
+    Http::fake($stubs);
+}
+
+/**
+ * Every zone of the organisation has a payout subaccount verified under the suite's (test) key, stored the same
+ * way saving a code in the admin does. Checkout reads that stored verification and never calls Paystack.
+ */
+function make_zones_payable(App\Models\Organization $organization): void
+{
+    $codes = [];
+
+    foreach (App\Models\Subdivision::query()->where('organization_id', $organization->id)->get() as $zone) {
+        if (blank($zone->paystack_subaccount_code)) {
+            $zone->update(['paystack_subaccount_code' => 'ACCT_' . strtolower(Illuminate\Support\Str::random(12))]);
+        }
+
+        $codes[] = (string) $zone->paystack_subaccount_code;
+        app(App\Services\Payment\PaystackSubaccountResolver::class)->markVerified($zone->refresh());
+    }
+
+    paystack_accepts_subaccounts(...$codes);
+}
+
+/**
+ * A zone that can take payments: created with a subaccount code Paystack recognises.
+ */
+function payable_zone(App\Models\Organization $organization, string $name = 'Main Zone'): App\Models\Subdivision
+{
+    $zone = App\Models\Subdivision::factory()->create([
+        'organization_id' => $organization->id,
+        'name' => $name,
+        'paystack_subaccount_code' => 'ACCT_' . strtolower(Illuminate\Support\Str::random(12)),
+    ]);
+
+    paystack_accepts_subaccounts((string) $zone->paystack_subaccount_code);
+    app(App\Services\Payment\PaystackSubaccountResolver::class)->markVerified($zone);
+
+    return $zone->refresh();
+}
+
+/**
+ * The routing part of a successful Paystack charge for this order: settled into the zone subaccount that
+ * checkout recorded, with the zone's share equal to the ticket value. Empty for unrouted (free or legacy) orders.
+ *
+ * @return array<string, mixed>
+ */
+function paystack_routing(App\Models\Order $order): array
+{
+    $code = $order->fresh()?->payout_subaccount_code;
+
+    return (
+        $code === null
+            ? []
+            : [
+                'subaccount' => ['subaccount_code' => $code],
+                'fees_split' => ['subaccount' => App\Services\PaystackFeeCalculator::toPesewas($order->net_amount)],
+            ]
+    );
+}

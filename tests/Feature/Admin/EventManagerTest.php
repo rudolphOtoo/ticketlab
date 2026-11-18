@@ -42,7 +42,9 @@ test('admin creates an event with an auto-generated slug and uploaded banner', f
     expect($event)
         ->organization_id->toBe($this->org->id)
         ->status->toBe('published')
-        ->is_public->toBeFalse()->and($event->banner_path)->toStartWith("events/{$this->org->id}/banners/");
+        ->is_public->toBeFalse()->and($event->banner_path)->toStartWith(
+            "orgs/{$this->org->id}/events/{$event->id}/banners/",
+        );
 
     Storage::disk('public')->assertExists($event->banner_path);
     expect(session(ActiveEvent::SESSION_KEY))->toBe($event->id);

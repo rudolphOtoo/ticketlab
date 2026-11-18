@@ -105,8 +105,21 @@ class Event extends Model
         return $this->hasMany(EventFormField::class)->orderBy('sort_order');
     }
 
-    public function bannerUrl(): ?string
+    /**
+     * Per-zone venue and schedule for this event.
+     *
+     * @return HasMany<EventZone, $this>
+     */
+    public function zones(): HasMany
     {
-        return MediaUrl::resolve($this->banner_path);
+        return $this->hasMany(EventZone::class);
+    }
+
+    /**
+     * The banner at the given WebP size once generated ("large" for heroes, "medium" for cards), else the original.
+     */
+    public function bannerUrl(string $size = 'large'): ?string
+    {
+        return MediaUrl::resolve($this->banner_path, $size);
     }
 }

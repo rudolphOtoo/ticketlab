@@ -94,7 +94,7 @@ class MarketingStudio extends Component
     {
         $user = $this->authorizedUser();
 
-        $this->validate(['backgroundImage' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120']]);
+        $this->validate(['backgroundImage' => ['required', ...MediaUrl::UPLOAD_RULES]]);
 
         $upload = $this->backgroundImage;
 
@@ -103,9 +103,11 @@ class MarketingStudio extends Component
         }
 
         $event = $this->event();
-        $directory = $event !== null
-            ? MediaUrl::eventDirectory($event->id, 'flyers')
-            : 'flyers/' . ($user->organization_id ?? 'platform');
+        $directory = match (true) {
+            $event !== null => MediaUrl::eventDirectory($event->organization_id, $event->id, 'flyers'),
+            $user->organization_id !== null => MediaUrl::organizationDirectory($user->organization_id, 'flyers'),
+            default => 'platform/flyers',
+        };
 
         $this->removeBackground();
         $this->backgroundPath = MediaUrl::store($upload, $directory);

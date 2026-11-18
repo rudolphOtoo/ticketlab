@@ -75,9 +75,13 @@ class ZonePayouts extends Component
         $code = trim($this->subaccountCode);
 
         if ($code === '') {
-            $zone->forceFill(['paystack_subaccount_code' => null])->save();
+            $zone->forceFill([
+                'paystack_subaccount_code' => null,
+                'payout_verified_code' => null,
+                'payout_verified_mode' => null,
+            ])->save();
             unset($this->checks[$zone->id]);
-            $this->flashMessage = "{$zone->name} is disconnected; its sales now settle to the main account.";
+            $this->flashMessage = "{$zone->name} is disconnected and can no longer sell paid tickets.";
             $this->cancelEdit();
 
             return;
@@ -97,6 +101,8 @@ class ZonePayouts extends Component
         }
 
         $zone->forceFill(['paystack_subaccount_code' => $code])->save();
+        // Stored, so checkout trusts this confirmation without asking Paystack again.
+        $subaccounts->markVerified($zone);
         $this->checks[$zone->id] = $check;
         $this->flashMessage = "{$zone->name} now settles to {$check['name']} ({$check['bank']}).";
         $this->cancelEdit();
@@ -107,7 +113,13 @@ class ZonePayouts extends Component
         $zone = $this->zone($zoneId);
 
         if ($zone?->paystack_subaccount_code !== null) {
-            $this->checks[$zone->id] = $this->check($subaccounts, $zone->paystack_subaccount_code);
+            // Re-checks with Paystack now and stores the outcome (an unreachable Paystack keeps the last verdict).
+            $result = $subaccounts->verify($zone);
+            $this->checks[$zone->id] = [
+                ...$this->summary($result['details']),
+                'recognised' => $result['recognised'],
+                'message' => $subaccounts->rejectionReason($result),
+            ];
         }
     }
 
@@ -202,17 +214,12 @@ class ZonePayouts extends Component
     {
         $organizationId = $this->organizationId();
         $organization = Organization::query()->findOrFail($organizationId);
-        $settings = $organization->settings ?? [];
 
         return view('livewire.admin.zone-payouts', [
             'organization' => $organization,
             'zones' => $this->zones(),
             'ledger' => $this->ledger($organizationId),
-            'splitsEnabled' =>
-                (bool) config('services.paystack.split_payments')
-                    && ($settings['paystack_split_payments'] ?? true) !== false,
             'mode' => $subaccounts->mode(),
-            'policy' => config('services.paystack.unrouted_zone_policy') === 'block' ? 'block' : 'fallback',
             'subaccounts' => $subaccounts,
         ]);
     }

@@ -36,7 +36,8 @@ test('authenticated usher can view scanner terminal with telemetry and viewfinde
         ->actingAs($user)
         ->get(route('ops.scanner'))
         ->assertOk()
-        ->assertSee('Gate 04 · Door Scanner')
+        ->assertSee('Door Scanner')
+        ->assertDontSee('Gate 04')
         ->assertSee('Optical Viewfinder Ready');
 });
 

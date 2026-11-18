@@ -18,6 +18,18 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | Worker Queues (priority order)
+     |--------------------------------------------------------------------------
+     |
+     | Every queue a job is dispatched onto must be listed here, or the scheduled
+     | worker never runs it. Paid buyers' ticket emails ("transactional") go first.
+     |
+     */
+
+    'worker_queues' => ['transactional', 'emails', 'broadcasts', 'default'],
+
+    /*
+     |--------------------------------------------------------------------------
      | Queue Connections
      |--------------------------------------------------------------------------
      |

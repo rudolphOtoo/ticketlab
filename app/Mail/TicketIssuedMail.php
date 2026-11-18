@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\Order;
+use App\Support\ZoneVenue;
 use Illuminate\Mail\Attachment;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -27,6 +28,7 @@ class TicketIssuedMail extends Mailable
         return new Content(view: 'mail.ticket-issued', with: [
             'order' => $this->order,
             'eventTitle' => $this->eventTitle(),
+            'venue' => $this->venue(),
             'ticketUrl' => route('public.tickets.show', ['order' => $this->order->reference]),
         ]);
     }
@@ -41,6 +43,16 @@ class TicketIssuedMail extends Mailable
                 'application/pdf',
             ),
         ];
+    }
+
+    /**
+     * The buyer's zone venue and time, so a Cape Coast buyer is never sent to the Kumasi hall.
+     */
+    private function venue(): ?ZoneVenue
+    {
+        $event = $this->order->attendees->first()?->ticketType->event;
+
+        return $event === null ? null : ZoneVenue::for($event, $this->order->subdivision);
     }
 
     private function eventTitle(): string

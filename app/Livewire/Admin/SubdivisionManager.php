@@ -68,6 +68,8 @@ class SubdivisionManager extends Component
     public function editSubdivision(int $id): void
     {
         $actor = $this->actor();
+        // Renaming a zone or changing its payout account is an organisation-wide decision.
+        $this->requireOrganizationWide($actor);
         $sub = $this->zones($actor)->whereKey($id)->first();
 
         if ($sub === null) {
@@ -92,6 +94,7 @@ class SubdivisionManager extends Component
     public function save(PaystackSubaccountResolver $subaccounts): void
     {
         $actor = $this->actor();
+        $this->requireOrganizationWide($actor);
         $orgId = (int) $actor->organization_id;
 
         $this->validate([
@@ -120,8 +123,9 @@ class SubdivisionManager extends Component
         }
 
         $code = filled($this->paystackSubaccountCode) ? trim($this->paystackSubaccountCode) : null;
+        $codeChanged = $code !== $sub->paystack_subaccount_code;
 
-        if ($code !== $sub->paystack_subaccount_code) {
+        if ($codeChanged) {
             $this->authorizePayoutChange($actor, $code, $subaccounts);
         }
 
@@ -131,9 +135,14 @@ class SubdivisionManager extends Component
             'paystack_subaccount_code' => $code,
         ])->save();
 
+        // authorizePayoutChange() has just confirmed the new code with Paystack; store that for checkout.
+        if ($codeChanged && $code !== null) {
+            $subaccounts->markVerified($sub);
+        }
+
         $this->flashMessage = $sub->wasRecentlyCreated
-            ? "Subdivision '{$this->name}' was created successfully."
-            : "Subdivision '{$this->name}' was updated.";
+            ? $actor->zoneLabel() . " '{$this->name}' was created successfully."
+            : $actor->zoneLabel() . " '{$this->name}' was updated.";
 
         $this->closeModal();
     }
@@ -169,7 +178,7 @@ class SubdivisionManager extends Component
         $name = $sub->name;
         $sub->delete();
 
-        $this->flashMessage = "Subdivision '{$name}' was deleted.";
+        $this->flashMessage = $this->actor()->zoneLabel() . " '{$name}' was deleted.";
     }
 
     /**
@@ -197,7 +206,10 @@ class SubdivisionManager extends Component
     private function requireOrganizationWide(User $actor): void
     {
         if ($actor->subdivision_id !== null) {
-            abort(403, 'Only organization-wide admins can create or delete subdivisions.');
+            abort(
+                403,
+                'Only organisation-wide admins can create, edit or delete ' . strtolower($actor->zonesLabel()) . '.',
+            );
         }
     }
 
@@ -210,7 +222,7 @@ class SubdivisionManager extends Component
         }
 
         if ($user->organization_id === null || !$user->isAdmin()) {
-            abort(403, 'Only organization admins can manage subdivisions.');
+            abort(403, 'Only organisation admins can manage ' . strtolower($user->zonesLabel()) . '.');
         }
 
         return $user;

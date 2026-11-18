@@ -106,7 +106,7 @@ class DataExportCentral extends Component
         $fileName = 'attendees_' . ($event !== null ? $event->slug : 'all') . '_' . now()->format('Y_m_d_His');
 
         // Zone-bound admins always have a zone; everyone else exports every zone.
-        $zoneName = $user?->subdivision->name ?? 'All zones';
+        $zoneName = $user?->subdivision->name ?? 'All ' . strtolower($user?->zonesLabel() ?? 'Zones');
         $scope = implode(' · ', [
             $event !== null ? $event->title : 'All events',
             $zoneName,

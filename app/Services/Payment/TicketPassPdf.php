@@ -6,6 +6,7 @@ namespace App\Services\Payment;
 
 use App\Models\Attendee;
 use App\Models\Order;
+use App\Support\ZoneVenue;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdf;
 
@@ -25,7 +26,7 @@ class TicketPassPdf
 
     public function render(Order $order): DomPdf
     {
-        $order->loadMissing(['organization', 'attendees.ticketType.event', 'attendees.subdivision']);
+        $order->loadMissing(['organization', 'attendees.ticketType.event.zones', 'attendees.subdivision']);
 
         $event = $order->attendees->first()?->ticketType?->event;
         $customization = is_array($event?->customization) ? $event->customization : [];
@@ -35,6 +36,10 @@ class TicketPassPdf
             'event' => $event,
             'organization' => $order->organization,
             'accent' => self::accent($customization['accent_hex'] ?? null),
+            // Each pass shows its own zone's venue and time, never another zone's hall.
+            'venues' => $order->attendees->mapWithKeys(static fn(Attendee $attendee): array => [
+                $attendee->id => ZoneVenue::for($attendee->ticketType->event, $attendee->subdivision),
+            ]),
             'qrCodes' => $order->attendees->mapWithKeys(fn(Attendee $attendee): array => [
                 $attendee->id => $this->qrDataUri($attendee),
             ]),

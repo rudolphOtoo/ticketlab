@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Opens the Paystack transaction for a pending order on the server, with the zone payout split fixed there.
  *
- * When the order belongs to a zone with a verified subaccount, the zone receives exactly the ticket value:
+ * Every paid order belongs to a zone with a verified subaccount (otherwise checkout is refused). The zone receives exactly the ticket value:
  * the main account keeps a flat transaction_charge of (platform fee + processing fee) and bears Paystack's fee,
  * which the buyer already covered through the gross-up. This overrides whatever percentage the subaccount was
  * created with, so payouts never depend on dashboard settings.
@@ -132,28 +132,42 @@ class PaystackCheckout
         throw new PaystackCheckoutException('We could not start this payment. Please try again shortly.');
     }
 
+    /**
+     * Every paid order settles into its zone's own verified Paystack subaccount. There is no fallback to the
+     * platform's main account: an order without a zone, or whose zone cannot take payments, is refused and logged.
+     */
     private function payoutSubaccount(Order $order, ?Subdivision $zone): ?string
     {
+        // Free orders move no money, so there is nothing to route.
+        if ($order->gross_pesewas <= 0) {
+            return null;
+        }
+
         $subaccount = $this->subaccounts->forSubdivision($zone);
 
-        if ($subaccount !== null || !$this->subaccounts->routingRequired($zone)) {
+        if ($subaccount !== null) {
             return $subaccount;
         }
 
-        Log::warning('Zone sale has no verified payout subaccount.', [
+        Log::warning('Checkout refused: the order has no zone with a verified payout subaccount.', [
             'order_reference' => $order->reference,
             'organization_id' => $order->organization_id,
             'subdivision_id' => $zone?->id,
-            'policy' => config('services.paystack.unrouted_zone_policy'),
+            'subaccount' => $zone?->paystack_subaccount_code,
+            'paystack_mode' => $this->subaccounts->mode(),
         ]);
 
-        if (config('services.paystack.unrouted_zone_policy') === 'block') {
-            throw new PaystackCheckoutException(
-                'Online sales for ' . ($zone->name ?? 'this zone') . ' are not open yet. Please contact the organiser.',
-            );
-        }
+        throw new PaystackCheckoutException(self::unpayableZoneMessage($zone));
+    }
 
-        return null;
+    /**
+     * What the buyer is told when their zone cannot be paid (no zone, no verified subaccount, or Paystack unreachable).
+     */
+    public static function unpayableZoneMessage(?Subdivision $zone): string
+    {
+        return $zone === null
+            ? 'Online payments are not open for this event yet. Please contact the organisers.'
+            : "Online payments for {$zone->name} are unavailable right now. Please try again later or contact the organisers.";
     }
 
     /**

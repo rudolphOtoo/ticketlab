@@ -11,6 +11,7 @@ use App\Models\Organization;
 use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Services\Payment\PaystackSubaccountResolver;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -21,11 +22,7 @@ use Livewire\Livewire;
 const ZONE_SUBACCOUNT = 'ACCT_2qlhkjrzdd16h0m';
 
 beforeEach(function (): void {
-    config([
-        'services.paystack.split_payments' => true,
-        'services.paystack.unrouted_zone_policy' => 'fallback',
-        'services.paystack.secret_key' => 'sk_test_zones',
-    ]);
+    config(['services.paystack.secret_key' => 'sk_test_zones']);
 
     // A platform fee of GHS 2: GHS 50 ticket + 2 grossed up for the 1.95% processing fee = GHS 53.04.
     $this->org = Organization::factory()->create(['settings' => ['platform_fee' => 2]]);
@@ -40,6 +37,8 @@ beforeEach(function (): void {
         'name' => 'Zone B',
         'paystack_subaccount_code' => ZONE_SUBACCOUNT,
     ]);
+    // Verified when it was saved in the admin; checkout reads that stored result.
+    app(PaystackSubaccountResolver::class)->markVerified($this->zone);
 
     // Paystack only knows the subaccounts created on this test account.
     $known = [
@@ -210,28 +209,21 @@ test('a transaction paystack refuses surfaces a payment error to the buyer', fun
         ->once();
 });
 
-test('a block policy refuses checkout for a zone without a verified subaccount', function (): void {
-    config(['services.paystack.unrouted_zone_policy' => 'block']);
-    $this->zone->update(['paystack_subaccount_code' => null]);
-
-    buy_ticket($this, $this->zone)->assertHasErrors('payment');
-
-    expect(initializations())->toBe([]);
-});
-
-test('the fallback policy collects centrally and flags the sale as owed to the zone', function (): void {
+test('a zone without a verified subaccount is refused at checkout and never collected centrally', function (): void {
     $this->zone->update(['paystack_subaccount_code' => null]);
     Log::spy();
 
-    buy_ticket($this, $this->zone)->assertHasNoErrors();
+    buy_ticket($this, $this->zone)->assertHasErrors('payment');
 
-    expect(initializations()[0])
-        ->not
-        ->toHaveKey('subaccount')
-        ->and(Order::query()->sole()->payout_subaccount_code)
-        ->toBeNull();
+    expect(initializations())->toBe([])->and(Order::query()->count())->toBe(0);
     Log::shouldHaveReceived('warning')
-        ->withArgs(static fn(string $message): bool => str_contains($message, 'no verified payout subaccount'))
+        ->withArgs(
+            static fn(string $message, array $context): bool => (
+                str_contains($message, 'no verified payout subaccount')
+                && $context['subdivision_id'] === test()->zone->id
+                && $context['organization_id'] === test()->org->id
+            ),
+        )
         ->once();
 });
 
@@ -268,10 +260,13 @@ test('payments that did not settle to the expected zone account are held for rev
     'zone short-changed' => [['fees_split' => ['paystack' => 103, 'integration' => 1201, 'subaccount' => 4000]]],
 ]);
 
-test('an unrouted order paid into a subaccount is held for review', function (): void {
-    $this->zone->update(['paystack_subaccount_code' => null]);
-    buy_ticket($this, $this->zone);
-    $order = Order::query()->sole();
+test('a legacy unrouted order paid into a subaccount is held for review', function (): void {
+    // Orders collected centrally before the split was mandatory: checkout can no longer create one.
+    $order = Order::factory()->create([
+        'organization_id' => $this->org->id,
+        'subdivision_id' => $this->zone->id,
+        'payout_subaccount_code' => null,
+    ]);
 
     post_webhook($this, settled_payment($order))->assertStatus(409);
 
@@ -361,16 +356,12 @@ test('a stale paystack session is not resumed', function (): void {
     ]);
 });
 
-test('subaccounts paystack cannot settle into are not routed', function (string $code): void {
+test('subaccounts paystack cannot settle into refuse checkout', function (string $code): void {
     $this->zone->update(['paystack_subaccount_code' => $code]);
 
-    buy_ticket($this, $this->zone)->assertHasNoErrors();
+    buy_ticket($this, $this->zone)->assertHasErrors('payment');
 
-    expect(initializations()[0])
-        ->not
-        ->toHaveKey('subaccount')
-        ->and(Order::query()->sole()->payout_subaccount_code)
-        ->toBeNull();
+    expect(initializations())->toBe([])->and(Order::query()->count())->toBe(0);
 })->with(['deactivated' => ['ACCT_deactivated1'], 'wrong currency' => ['ACCT_nairazone001']]);
 
 /*

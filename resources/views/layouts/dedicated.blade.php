@@ -8,21 +8,6 @@
 @php
     $custom = is_array($event?->customization) ? $event->customization : [];
     $accentHex = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($custom['accent_hex'] ?? '')) === 1 ? $custom['accent_hex'] : '#d97706';
-    $navUser = auth()->user();
-    $staffHome = $navUser?->staffHomeUrl();
-    $isMultiTenant = !App\Models\PlatformSetting::isDedicatedMode();
-    $homeUrl = $isMultiTenant ? url('/' . $organization->slug) : url('/');
-    $siteLinks = [
-        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'about']) : route('dedicated.about'), 'label' => 'About', 'active' => request()->is('*/page/about') || request()->routeIs('dedicated.about')],
-        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'speakers']) : route('dedicated.speakers'), 'label' => 'Speakers', 'active' => request()->is('*/page/speakers') || request()->routeIs('dedicated.speakers')],
-        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'packages']) : route('dedicated.packages'), 'label' => 'Packages', 'active' => request()->is('*/page/packages') || request()->routeIs('dedicated.packages')],
-        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'highlights']) : route('dedicated.highlights'), 'label' => 'Highlights', 'active' => request()->is('*/page/highlights') || request()->routeIs('dedicated.highlights')],
-        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'faq']) : route('dedicated.faq'), 'label' => 'FAQs', 'active' => request()->is('*/page/faq') || request()->routeIs('dedicated.faq')],
-        ['url' => $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'contact']) : route('dedicated.contact'), 'label' => 'Contact', 'active' => request()->is('*/page/contact') || request()->routeIs('dedicated.contact')],
-    ];
-    $checkoutUrl = $event !== null
-        ? route('public.event.show', ['org_slug' => $organization->slug, 'event_slug' => $event->slug])
-        : null;
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -68,8 +53,8 @@
             <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
                 <div>© {{ date('Y') }} {{ $organization->name }}. All rights reserved.</div>
                 <div class="flex flex-wrap items-center justify-center gap-4">
-                    <a href="{{ $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'partnership']) : route('dedicated.partnership') }}" class="transition hover:text-[var(--text-primary)]">Partnership</a>
-                    <a href="{{ $isMultiTenant ? route('public.tenant.page', ['org_slug' => $organization->slug, 'page' => 'contact']) : route('dedicated.contact') }}" class="transition hover:text-[var(--text-primary)]">Contact</a>
+                    <a href="{{ $organization->pageUrl('partnership') }}" class="transition hover:text-[var(--text-primary)]">Partnership</a>
+                    <a href="{{ $organization->pageUrl('contact') }}" class="transition hover:text-[var(--text-primary)]">Contact</a>
                     <span>{{ $organization->contactEmail() }}</span>
                 </div>
             </div>

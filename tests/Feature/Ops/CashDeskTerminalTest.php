@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Livewire\Ops\CashDeskTerminal;
 use App\Models\Event;
 use App\Models\Organization;
+use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -59,6 +60,7 @@ test('cash desk terminal calculates total and issues pass with change', function
         'name' => 'Accra Summit Org',
         'slug' => 'accra-summit-' . uniqid(),
     ]);
+    $zone = Subdivision::factory()->create(['organization_id' => $org->id, 'name' => 'Accra']);
 
     $user = User::factory()->create([
         'name' => 'Usher John',
@@ -91,6 +93,7 @@ test('cash desk terminal calculates total and issues pass with change', function
         ->set('quantity', 2)
         ->set('cashTendered', '300.00')
         ->set('attendeeName', 'Kwesi Arthur')
+        ->set('saleZoneId', $zone->id)
         ->call('processCashSale')
         ->assertHasNoErrors()
         ->assertDispatched('pass-issued')
@@ -104,6 +107,7 @@ test('cash desk terminal calculates total and issues pass with change', function
 
     $this->assertDatabaseHas('orders', [
         'organization_id' => $org->id,
+        'subdivision_id' => $zone->id,
         'customer_name' => 'Kwesi Arthur',
         'gross_amount' => 240.00,
         'payment_method' => 'cash',
@@ -118,6 +122,7 @@ test('cash desk terminal rejects sale when requested quantity exceeds available 
         'name' => 'Accra Summit Org',
         'slug' => 'accra-summit-' . uniqid(),
     ]);
+    $zone = Subdivision::factory()->create(['organization_id' => $org->id, 'name' => 'Accra']);
 
     $user = User::factory()->create([
         'name' => 'Usher John',
@@ -150,6 +155,7 @@ test('cash desk terminal rejects sale when requested quantity exceeds available 
         ->set('quantity', 2)
         ->set('cashTendered', '300.00')
         ->set('attendeeName', 'Late Guest')
+        ->set('saleZoneId', $zone->id)
         ->call('processCashSale')
         ->assertHasErrors(['tier']);
 
@@ -163,6 +169,7 @@ test('cash desk terminal rejects non-positive or excessive ticket quantities', f
         'name' => 'Accra Summit Org',
         'slug' => 'accra-summit-' . uniqid(),
     ]);
+    $zone = Subdivision::factory()->create(['organization_id' => $org->id, 'name' => 'Accra']);
 
     $user = User::factory()->create([
         'name' => 'Usher John',
@@ -194,6 +201,7 @@ test('cash desk terminal rejects non-positive or excessive ticket quantities', f
         ->call('selectTier', $tier->id)
         ->set('quantity', 0)
         ->set('cashTendered', '300.00')
+        ->set('saleZoneId', $zone->id)
         ->call('processCashSale')
         ->assertHasErrors(['quantity']);
 });

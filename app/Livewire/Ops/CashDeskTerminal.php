@@ -8,9 +8,11 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Models\Event;
 use App\Models\Order;
+use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
 use App\Services\Payment\AttendeeIssuer;
+use App\Services\Reservation\ZoneCapacity;
 use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -28,6 +30,9 @@ class CashDeskTerminal extends Component
     public ?int $eventId = null;
 
     public ?int $selectedTierId = null;
+
+    /** Zone the sale belongs to. Zone staff are always pinned to their own zone; org admins must choose one. */
+    public ?int $saleZoneId = null;
 
     public int $quantity = 1;
 
@@ -50,6 +55,7 @@ class CashDeskTerminal extends Component
     public function mount(?int $eventId = null): void
     {
         $this->eventId = $eventId;
+        $this->saleZoneId = auth()->user()?->subdivision_id;
 
         $event = $this->getActiveEvent();
         if ($event) {
@@ -146,35 +152,16 @@ class CashDeskTerminal extends Component
 
     public function processCashSale(AttendeeIssuer $issuer): void
     {
-        $total = $this->calculateTotal();
         $tendered = (float) $this->cashTendered;
+        $context = $this->saleIsValid($tendered) ? $this->saleContext() : null;
 
-        if ($this->selectedTierId === null) {
-            $this->addError('tier', 'Please select a ticket tier.');
-
+        if ($context === null) {
             return;
         }
 
-        if ($this->quantity < 1 || $this->quantity > 100) {
-            $this->addError('quantity', 'Quantity must be between 1 and 100 tickets.');
+        [$event, $zone] = $context;
 
-            return;
-        }
-
-        if ($tendered < $total) {
-            $this->addError('cashTendered', 'Tendered amount is less than total price.');
-
-            return;
-        }
-
-        $event = $this->getActiveEvent();
-        if (!$event) {
-            $this->addError('tier', 'No active event found.');
-
-            return;
-        }
-
-        $result = DB::transaction(function () use ($event, $tendered, $issuer): array {
+        $result = DB::transaction(function () use ($event, $tendered, $issuer, $zone): array {
             // Pin the tier to the active event so a tampered tier id cannot sell another tenant's stock.
             $tier = TicketType::query()
                 ->whereKey($this->selectedTierId)
@@ -182,10 +169,11 @@ class CashDeskTerminal extends Component
                 ->lockForUpdate()
                 ->first();
 
-            if (!$tier || $tier->available_quantity < $this->quantity) {
+            // Still under the tier's row lock: the zone's own seats run out independently of the other zones.
+            if (!$tier || $this->zoneCapacity()->sellable($tier, $zone->id) < $this->quantity) {
                 return [
                     'success' => false,
-                    'error' => 'Selected tier does not have enough remaining capacity.',
+                    'error' => "Not enough {$zone->name} seats left in this tier.",
                 ];
             }
 
@@ -198,7 +186,7 @@ class CashDeskTerminal extends Component
 
             $tier->decrement('available_quantity', $this->quantity);
 
-            $order = $this->createCashOrder($event, $total);
+            $order = $this->createCashOrder($event, $total, $zone->id);
             $firstPass = $issuer->issue($order, $tier, $this->quantity, [])->firstOrFail();
 
             return [
@@ -239,14 +227,14 @@ class CashDeskTerminal extends Component
         $this->resetErrorBag();
     }
 
-    private function createCashOrder(Event $event, float $total): Order
+    private function createCashOrder(Event $event, float $total, int $zoneId): Order
     {
         $customerName = trim($this->attendeeName);
         $customerPhone = trim($this->attendeePhone);
 
         return Order::query()->create([
             'organization_id' => $event->organization_id,
-            'subdivision_id' => auth()->user()?->subdivision_id,
+            'subdivision_id' => $zoneId,
             'reference' => 'TL-ORD-CASH-' . strtoupper(bin2hex(random_bytes(8))),
             'customer_name' => $customerName !== '' ? $customerName : 'Walk-In Guest',
             'customer_email' => 'walkin_' . bin2hex(random_bytes(4)) . '@cashdesk.local',
@@ -258,6 +246,75 @@ class CashDeskTerminal extends Component
             'payment_status' => OrderStatus::Paid,
             'paid_at' => now(),
         ]);
+    }
+
+    /**
+     * Form checks that need no database: a tier, a sane quantity, and enough cash tendered.
+     */
+    private function saleIsValid(float $tendered): bool
+    {
+        $error = match (true) {
+            $this->selectedTierId === null => ['tier', 'Please select a ticket tier.'],
+            $this->quantity < 1 || $this->quantity > 100 => ['quantity', 'Quantity must be between 1 and 100 tickets.'],
+            $tendered < $this->calculateTotal() => ['cashTendered', 'Tendered amount is less than total price.'],
+            default => null,
+        };
+
+        if ($error !== null) {
+            $this->addError(...$error);
+        }
+
+        return $error === null;
+    }
+
+    /**
+     * The event and zone the sale belongs to, or null (with an error shown) when either is missing.
+     *
+     * @return array{Event, Subdivision}|null
+     */
+    private function saleContext(): ?array
+    {
+        $event = $this->getActiveEvent();
+
+        if ($event === null) {
+            $this->addError('tier', 'No active event found.');
+
+            return null;
+        }
+
+        $zoneId = $this->saleZoneId();
+        $zone = $zoneId === null
+            ? null
+            : Subdivision::query()->where('organization_id', $event->organization_id)->whereKey($zoneId)->first();
+
+        if ($zone === null) {
+            $user = auth()->user();
+            $label = $user instanceof User ? $user->zoneLabel() : 'Zone';
+            $this->addError('zone', 'Choose the ' . strtolower($label) . ' this sale belongs to.');
+
+            return null;
+        }
+
+        return [$event, $zone];
+    }
+
+    /**
+     * Zone staff can never sell for another zone, whatever the request says; organisation admins choose one.
+     */
+    private function saleZoneId(): ?int
+    {
+        $user = auth()->user();
+
+        if ($user instanceof User && $user->subdivision_id !== null) {
+            return $user->subdivision_id;
+        }
+
+        return $this->saleZoneId;
+    }
+
+    private function zoneCapacity(): ZoneCapacity
+    {
+        return app(ZoneCapacity::class);
     }
 
     private function getActiveEvent(): ?Event
@@ -284,7 +341,21 @@ class CashDeskTerminal extends Component
         $selectedTier = $tiers->firstWhere('id', $this->selectedTierId);
         $total = $selectedTier === null ? 0.00 : (float) $selectedTier->price * $this->quantity;
 
+        $user = auth()->user();
+        $zoneId = $this->saleZoneId();
+
         return view('livewire.ops.cash-desk-terminal', [
+            'zones' => $event === null
+                ? collect()
+                : Subdivision::query()
+                    ->where('organization_id', $event->organization_id)
+                    ->orderBy('name')
+                    ->get(['id', 'name']),
+            'zonePinned' => $user?->subdivision_id !== null,
+            'zoneLabel' => $user?->zoneLabel() ?? 'Zone',
+            'seatsLeft' => $tiers->mapWithKeys(fn(TicketType $tier): array => [
+                $tier->id => $this->zoneCapacity()->sellable($tier, $zoneId),
+            ]),
             'event' => $event,
             'tiers' => $tiers,
             'total' => $total,

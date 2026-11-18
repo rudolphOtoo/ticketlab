@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Payment\PayoutReadiness;
 use App\Support\ActiveEvent;
 use App\Support\DedicatedSite;
 use App\Support\MediaUrl;
@@ -29,6 +31,7 @@ use Throwable;
 #[Title('Event Lifecycle Manager')]
 class EventManager extends Component
 {
+    use RequiresOrganizationWideAdmin;
     use WithFileUploads;
 
     public bool $isModalOpen = false;
@@ -160,7 +163,7 @@ class EventManager extends Component
                 'end_at' => ['required', 'date', 'after_or_equal:start_at'],
                 'status' => ['required', Rule::in(['draft', 'published'])],
                 'is_public' => ['boolean'],
-                'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+                'banner' => ['nullable', ...MediaUrl::UPLOAD_RULES],
                 'bannerUrlInput' => ['nullable', 'url', 'max:2048'],
             ]);
         } catch (UnableToRetrieveMetadata) {
@@ -194,6 +197,10 @@ class EventManager extends Component
             'is_public' => $this->is_public,
         ];
 
+        if ($this->publishBlocked($event)) {
+            return;
+        }
+
         $event->fill($attributes)->save();
 
         // Stored after saving so a new event's banner is filed under its own id.
@@ -211,6 +218,24 @@ class EventManager extends Component
             : "'{$event->title}' was updated.";
 
         $this->closeModal();
+    }
+
+    /**
+     * A published event with paid tickets must be able to pay every zone; drafts can be prepared freely.
+     */
+    private function publishBlocked(Event $event): bool
+    {
+        if ($this->status !== 'published' || !$event->exists) {
+            return false;
+        }
+
+        $reason = app(PayoutReadiness::class)->blockingReason($event);
+
+        if ($reason !== null) {
+            $this->addError('status', $reason);
+        }
+
+        return $reason !== null;
     }
 
     public function activate(int $eventId): void
@@ -251,6 +276,16 @@ class EventManager extends Component
 
         if ($event === null) {
             return;
+        }
+
+        if ($event->status !== 'published') {
+            $reason = app(PayoutReadiness::class)->blockingReason($event);
+
+            if ($reason !== null) {
+                $this->flashMessage = $reason;
+
+                return;
+            }
         }
 
         $event->update(['status' => $event->status === 'published' ? 'draft' : 'published']);
@@ -295,8 +330,11 @@ class EventManager extends Component
         if ($this->banner === null) {
             $url = trim($this->bannerUrlInput ?? '');
 
-            if ($url !== '') {
+            if ($url !== '' && $url !== $event->banner_path) {
+                // Switching from an uploaded banner to a pasted link deletes the old upload and its WebP copies.
+                $previousBanner = $event->banner_path;
                 $event->update(['banner_path' => $url]);
+                MediaUrl::deleteStored($previousBanner);
             }
 
             return true;
@@ -306,7 +344,7 @@ class EventManager extends Component
             $previousBanner = $event->banner_path;
             $event->update(['banner_path' => MediaUrl::store(
                 $this->banner,
-                MediaUrl::eventDirectory($event->id, 'banners'),
+                MediaUrl::eventDirectory($event->organization_id, $event->id, 'banners'),
             )]);
             MediaUrl::deleteStored($previousBanner);
         } catch (Throwable $e) {

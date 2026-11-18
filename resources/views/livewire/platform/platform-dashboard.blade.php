@@ -321,16 +321,15 @@
                                     >
                                         <span>Inspect</span>
                                     </button>
-
-                                    <button
-                                        type="button"
-                                        wire:click="jumpToTenantAdmin({{ $tenant->id }})"
+                                    <a
+                                        href="{{ route('platform.organizations.edit', $tenant) }}"
+                                        wire:navigate
                                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition active:scale-[0.97] cursor-pointer"
-                                        title="Jump into Tenant Admin Console"
+                                        title="Edit organisation"
                                     >
-                                        <span>Admin</span>
+                                        <span>Edit</span>
                                         <span>→</span>
-                                    </button>
+                                    </a>
                                 </div>
                             </td>
                         </tr>
@@ -448,14 +447,14 @@
                 </div>
 
                 <div class="pt-4 border-t border-[var(--border-hairline)] flex items-center justify-between">
-                    <button
-                        type="button"
-                        wire:click="jumpToTenantAdmin({{ $selectedTenant->id }})"
+                    <a
+                        href="{{ route('platform.organizations.edit', $selectedTenant) }}"
+                        wire:navigate
                         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold hover:opacity-95 transition active:scale-[0.97] cursor-pointer"
                     >
-                        <span>Access Admin Dashboard</span>
+                        <span>Edit organisation</span>
                         <span>→</span>
-                    </button>
+                    </a>
 
                     <button
                         type="button"

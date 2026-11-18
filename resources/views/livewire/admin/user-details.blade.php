@@ -1,4 +1,8 @@
 @php
+    $zl = auth()->user()?->zoneLabel() ?? 'Zone';
+    $zls = auth()->user()?->zonesLabel() ?? 'Zones';
+@endphp
+@php
     $inputClass = 'w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3.5 py-2 text-xs font-medium text-[var(--text-primary)] shadow-[var(--shadow-inset)] focus:border-[var(--border-focused)] focus:outline-hidden focus:ring-2 focus:ring-[var(--border-focused)]/20 disabled:opacity-60';
     $cardClass = 'rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-xs sm:p-5';
     $labelClass = 'text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]';
@@ -19,7 +23,7 @@
 
         <div class="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
             <span class="rounded-full bg-[var(--bg-subtle)] px-2.5 py-1 text-[var(--text-primary)]">{{ $roleLabel }}</span>
-            <span class="rounded-full bg-[var(--bg-subtle)] px-2.5 py-1 text-[var(--text-secondary)]">{{ $member->subdivision?->name ?? 'All zones' }}</span>
+            <span class="rounded-full bg-[var(--bg-subtle)] px-2.5 py-1 text-[var(--text-secondary)]">{{ $member->subdivision?->name ?? 'All ' . strtolower($zls) }}</span>
         </div>
     </div>
 
@@ -79,7 +83,7 @@
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <h2 class="text-sm font-semibold">Access &amp; permissions</h2>
-                        <p class="mt-0.5 text-xs text-[var(--text-secondary)]">Role decides which screens they can open; the zone limits which records they see.</p>
+                        <p class="mt-0.5 text-xs text-[var(--text-secondary)]">Role decides which screens they can open; the {{ strtolower($zl) }} limits which records they see.</p>
                     </div>
                 </div>
 
@@ -96,10 +100,10 @@
                         </div>
 
                         <div class="space-y-1.5">
-                            <label for="subdivisionId" class="{{ $labelClass }}">Zone</label>
+                            <label for="subdivisionId" class="{{ $labelClass }}">{{ $zl }}</label>
                             <select id="subdivisionId" wire:model="subdivisionId" class="{{ $inputClass }}" @disabled($actor->subdivision_id !== null)>
                                 @if ($actor->subdivision_id === null)
-                                    <option value="">All zones (organization-wide)</option>
+                                    <option value="">All {{ strtolower($zls) }} (organisation-wide)</option>
                                 @endif
                                 @foreach ($zones as $zone)
                                     <option value="{{ $zone->id }}">{{ $zone->name }}</option>
@@ -121,12 +125,12 @@
                             <dd class="mt-1 font-medium">{{ $roleLabel }}</dd>
                         </div>
                         <div>
-                            <dt class="{{ $labelClass }}">Zone</dt>
-                            <dd class="mt-1 font-medium">{{ $member->subdivision?->name ?? 'All zones' }}</dd>
+                            <dt class="{{ $labelClass }}">{{ $zl }}</dt>
+                            <dd class="mt-1 font-medium">{{ $member->subdivision?->name ?? 'All ' . strtolower($zls) }}</dd>
                         </div>
                     </dl>
                     <p class="mt-4 rounded-xl bg-[var(--bg-subtle)] px-3.5 py-2.5 text-[11px] text-[var(--text-secondary)]">
-                        {{ $isSelf ? 'You cannot change your own role or zone. Ask another admin to do it.' : 'This account cannot be managed from your team screen.' }}
+                        {{ $isSelf ? 'You cannot change your own role or ' . strtolower($zl) . '. Ask another admin to do it.' : 'This account cannot be managed from your team screen.' }}
                     </p>
                 @endif
             </section>
@@ -141,7 +145,7 @@
                         <div wire:key="check-in-{{ $checkIn->id }}" class="flex items-center justify-between gap-3 py-2.5">
                             <div class="min-w-0">
                                 <p class="truncate font-medium">{{ $checkIn->name }}</p>
-                                <p class="truncate text-[10px] text-[var(--text-tertiary)]">{{ $checkIn->subdivision?->name ?? 'No zone' }} · {{ $checkIn->ticketType?->name ?? 'Pass' }}</p>
+                                <p class="truncate text-[10px] text-[var(--text-tertiary)]">{{ $checkIn->subdivision?->name ?? 'No ' . strtolower($zl) }} · {{ $checkIn->ticketType?->name ?? 'Pass' }}</p>
                             </div>
                             <span class="shrink-0 text-[10px] text-[var(--text-tertiary)]">{{ $checkIn->checked_in_at?->diffForHumans() }}</span>
                         </div>

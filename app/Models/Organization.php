@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,6 +32,42 @@ class Organization extends Model
     {
         return OrganizationFactory::new();
     }
+
+    /**
+     * First URL segments the platform itself uses. An organisation slug can never be one of these, or its public
+     * site at /{slug} would be unreachable; routes/public.php builds its pattern from this list.
+     */
+    public const array RESERVED_SLUGS = [
+        'ops',
+        'admin',
+        'api',
+        'livewire',
+        'up',
+        'dashboard',
+        'settings',
+        'tickets',
+        'events',
+        'platform',
+        'login',
+        'logout',
+        'register',
+        'invitations',
+        'forgot-password',
+        'reset-password',
+        'two-factor-challenge',
+        'user',
+        'email',
+        'storage',
+        'build',
+        'about-us',
+        'speakers',
+        'conference-packages',
+        'highlights',
+        'gallery',
+        'partnership',
+        'faq',
+        'contact',
+    ];
 
     protected $fillable = [
         'name',
@@ -93,6 +130,25 @@ class Organization extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * The logo's URL: an uploaded logo (as a WebP copy of the given size once generated), or a pasted https or
+     * same-site link. Anything else (javascript:, data:, protocol-relative) is never rendered.
+     */
+    public function logoUrl(string $size = 'thumb'): ?string
+    {
+        $logo = $this->logo_url;
+
+        if (!is_string($logo) || trim($logo) === '') {
+            return null;
+        }
+
+        if (MediaUrl::isExternal($logo)) {
+            return preg_match('#^(https://|/(?!/))#i', $logo) === 1 ? $logo : null;
+        }
+
+        return MediaUrl::resolve($logo, $size);
     }
 
     /**
@@ -180,13 +236,42 @@ class Organization extends Model
     }
 
     /**
+     * True only for the one organisation the dedicated site serves at "/". Every other organisation keeps its
+     * own /{org_slug} URLs even in dedicated mode, so its pages never link into the home organisation's site.
+     */
+    public function isDedicatedHome(): bool
+    {
+        return PlatformSetting::isDedicatedMode() && PlatformSetting::getHomeOrgSlug() === $this->slug;
+    }
+
+    /**
+     * This organisation's public home page.
+     */
+    public function homeUrl(): string
+    {
+        return $this->isDedicatedHome() ? url('/') : route('public.tenant.home', ['org_slug' => $this->slug]);
+    }
+
+    /**
+     * One of this organisation's marketing sub-pages (about, speakers, packages, highlights, gallery, partnership,
+     * faq, contact).
+     */
+    public function pageUrl(string $page): string
+    {
+        return (
+            $this->isDedicatedHome() && Route::has('dedicated.' . $page)
+                ? route('dedicated.' . $page)
+                : route('public.tenant.page', ['org_slug' => $this->slug, 'page' => $page])
+        );
+    }
+
+    /**
      * Resolves the navigation links based on bespoke CMS configuration.
      *
      * @return list<array{key: string, label: string, url: string, active: bool}>
      */
     public function bespokeNavLinks(): array
     {
-        $isDedicated = PlatformSetting::isDedicatedMode();
         $settings = $this->bespokeSettings();
         $navConfig = (array) ($settings['nav'] ?? []);
         $links = [];
@@ -197,11 +282,7 @@ class Organization extends Model
             }
 
             $label = (string) ($item['label'] ?? ucfirst($key));
-            $url = match (true) {
-                !$isDedicated => route('public.tenant.page', ['org_slug' => $this->slug, 'page' => $key]),
-                Route::has('dedicated.' . $key) => route('dedicated.' . $key),
-                default => url('/' . $key),
-            };
+            $url = $this->pageUrl((string) $key);
 
             $links[] = [
                 'key' => $key,

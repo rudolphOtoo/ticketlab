@@ -13,14 +13,10 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2 text-[11px]">
-        <x-ui.badge :color="$splitsEnabled ? 'emerald' : 'zinc'" pill size="sm">Split payments {{ $splitsEnabled ? 'on' : 'off' }}</x-ui.badge>
         <x-ui.badge :color="$mode === 'live' ? 'red' : 'amber'" pill size="sm">Paystack {{ $mode }} keys</x-ui.badge>
-        <span class="text-[var(--text-secondary)]">
-            @if ($policy === 'block')
-                Checkout is refused for {{ strtolower(\Illuminate\Support\Str::plural($label)) }} without a verified subaccount.
-            @else
-                Sales for unconnected {{ strtolower(\Illuminate\Support\Str::plural($label)) }} settle to the main account and are listed as owed below.
-            @endif
+        <span class="text-[var(--text-secondary)]" data-payout-policy>
+            Every paid ticket settles straight to its {{ strtolower($label) }}'s subaccount. A {{ strtolower($label) }} without a verified subaccount cannot sell paid tickets, and paid events cannot be published until every {{ strtolower($label) }} has one.
+            Amounts listed as owed below are older sales that settled to the main account.
         </span>
     </div>
 
@@ -64,7 +60,8 @@
                             $row = $ledger->get((string) $zone->id);
                             $code = $zone->paystack_subaccount_code;
                             $check = $checks[$zone->id] ?? null;
-                            $verdict = $check['recognised'] ?? ($code !== null ? $subaccounts->cachedVerdict($code) : null);
+                            // Stored verification (what checkout uses), not a live Paystack call.
+                            $payable = $subaccounts->forSubdivision($zone) !== null;
                         @endphp
                         <tr wire:key="zone-{{ $zone->id }}" class="align-top">
                             <td class="px-4 py-3 font-semibold">{{ $zone->name }}</td>
@@ -89,14 +86,23 @@
                                 @else
                                     <div class="flex flex-wrap items-center gap-2">
                                         <span class="font-mono text-[11px]">{{ $code }}</span>
-                                        @if ($verdict === true)
+                                        @if ($payable)
                                             <x-ui.badge color="emerald" pill size="sm">Verified</x-ui.badge>
-                                        @elseif ($verdict === false)
-                                            <x-ui.badge color="red" pill size="sm">Rejected</x-ui.badge>
+                                        @elseif ($zone->payout_check_error !== null)
+                                            <x-ui.badge color="red" pill size="sm">Not accepted</x-ui.badge>
                                         @else
-                                            <x-ui.badge color="zinc" pill size="sm">Not checked</x-ui.badge>
+                                            <x-ui.badge color="zinc" pill size="sm">Not verified</x-ui.badge>
                                         @endif
                                     </div>
+                                    <p class="mt-1 text-[11px] text-[var(--text-tertiary)]" data-payout-status>
+                                        @if ($payable)
+                                            Verified {{ $zone->payout_verified_at?->diffForHumans() }}@if ($zone->payout_check_error) · last check: {{ $zone->payout_check_error }}@endif
+                                        @elseif ($zone->payout_check_error !== null)
+                                            {{ $zone->payout_check_error }} Paid sales for {{ $zone->name }} are paused.
+                                        @else
+                                            Not verified for the {{ $mode }} keys. Click Verify. Paid sales are paused until it is.
+                                        @endif
+                                    </p>
                                     @if ($check !== null)
                                         <p class="mt-1 text-[11px] text-[var(--text-secondary)]">
                                             {{ $check['message'] ?? trim(($check['name'] ?? '') . ' · ' . ($check['bank'] ?? '') . ' ' . ($check['account'] ?? ''), ' ·') }}

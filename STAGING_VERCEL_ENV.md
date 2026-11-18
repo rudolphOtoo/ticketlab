@@ -24,18 +24,19 @@ In your Vercel Project Dashboard (**Settings -> Environment Variables**), set th
 | `APP_NAME` | `TicketLab` | App title |
 | `APP_ENV` | `staging` | Or `production` |
 | `APP_KEY` | *(Generate via `php artisan key:generate --show`)* | 32-char base64 key |
-| `APP_DEBUG` | `true` | Set to `false` once staging checks pass |
+| `APP_DEBUG` | `false` | Never `true` on a public URL: debug pages expose environment values |
 | `APP_URL` | `https://<your-vercel-app>.vercel.app` | Your Vercel domain |
 | `LOG_CHANNEL` | `stderr` | **Critical**: Vercel has read-only filesystem; outputs to Vercel log stream |
-| `LOG_LEVEL` | `debug` | |
+| `LOG_LEVEL` | `info` | |
 | `DB_CONNECTION` | `pgsql` | Enables PostgreSQL driver |
 | `DATABASE_URL` | `postgresql://...neon.tech/neondb?sslmode=require` | Your Neon pooled connection string |
 | `DB_SSLMODE` | `require` | Required for Neon |
 | `SESSION_DRIVER` | `cookie` | `cookie` or `database` (file driver fails on serverless) |
 | `CACHE_STORE` | `database` | `database` or `array` |
 | `QUEUE_CONNECTION` | `database` | Stores jobs in database |
-| `FILESYSTEM_DISK` | `local` | Uploads use `/tmp` or cloud S3/Cloudinary |
-| `SCHEDULER_TOKEN` | `<random-secret-token>` | Protects `/api/run-scheduler` & `/api/run-migrate` |
+| `MEDIA_DISK` / `PRIVATE_DISK` | `r2` / `r2-private` | Uploads go to Cloudflare R2 (Vercel's disk is temporary). See README "Media storage" for the `R2_*` and `MEDIA_URL` variables |
+| `SCHEDULER_LOCK_STORE` | `database` | Shared lock store for scheduled tasks; never `file` |
+| `SCHEDULER_TOKEN` | `<random-secret-token>` | Protects `/api/run-scheduler` & `/api/run-migrate`; sent as `Authorization: Bearer <token>` |
 | `PAYSTACK_PUBLIC_KEY` | `pk_test_...` | Test public key |
 | `PAYSTACK_SECRET_KEY` | `sk_test_...` | Test secret key |
 | `PAYSTACK_BASE_URL` | `https://api.paystack.co` | |
@@ -53,17 +54,16 @@ Run this command once from your local development machine:
 ```bash
 DATABASE_URL="postgresql://user:pass@ep-xyz.region.aws.neon.tech/neondb?sslmode=require" DB_CONNECTION=pgsql php artisan migrate --force
 ```
-*(Optional) Seed default test data:*
-```bash
-DATABASE_URL="postgresql://user:pass@ep-xyz.region.aws.neon.tech/neondb?sslmode=require" DB_CONNECTION=pgsql php artisan db:seed --force
-```
+> **Never seed production.** `php artisan db:seed` creates fictional demo churches whose logins all use the
+> published password `password`, so the seeder refuses to run when `APP_ENV=production`. Seed only a separate,
+> throwaway staging database (with `APP_ENV=staging`). Real organisations are onboarded by the platform super admin.
 
 ### Option B: Via Web Endpoint
-Open in your browser:
-```text
-https://<your-vercel-app>.vercel.app/api/run-migrate?token=<your-SCHEDULER_TOKEN>
+```bash
+curl -H "Authorization: Bearer <your-SCHEDULER_TOKEN>" https://<your-vercel-app>.vercel.app/api/run-migrate
 ```
-This triggers `php artisan migrate --force` directly inside the Vercel serverless function and returns JSON output.
+This triggers `php artisan migrate --force` inside the Vercel function (limited to 60 seconds) and returns JSON output.
+Option A is preferred.
 
 ---
 
@@ -71,13 +71,15 @@ This triggers `php artisan migrate --force` directly inside the Vercel serverles
 
 Because Vercel serverless functions shut down when idle, background workers (`php artisan queue:work`) cannot run 24/7.
 Instead, TicketLab has:
-1. `routes/console.php` configured to run `queue:work --stop-when-empty --max-time=55` on every schedule run.
-2. An automated trigger endpoint at `GET /api/run-scheduler?token=<your-SCHEDULER_TOKEN>`.
+1. `routes/console.php`, which runs every scheduled task bounded to fit Vercel's 60-second request (see README
+   "Scheduler on Vercel"), including the queue worker (`--stop-when-empty --max-time=15 --max-jobs=50`).
+2. A trigger endpoint, `GET /api/run-scheduler`, with the header `Authorization: Bearer <your-SCHEDULER_TOKEN>`.
 
 ### Setting up 1-minute Cron (Free)
-Use [cron-job.org](https://cron-job.org) or Vercel Crons:
-- **URL**: `https://<your-vercel-app>.vercel.app/api/run-scheduler?token=<your-SCHEDULER_TOKEN>`
-- **Schedule**: Every 1 minute (`* * * * *`)
+Vercel Hobby only allows daily crons, so use [cron-job.org](https://cron-job.org):
+- **URL**: `https://<your-vercel-app>.vercel.app/api/run-scheduler`
+- **Header**: `Authorization: Bearer <your-SCHEDULER_TOKEN>` (the `?token=` query form is deprecated)
+- **Schedule**: every 1 minute (`* * * * *`)
 
 ---
 

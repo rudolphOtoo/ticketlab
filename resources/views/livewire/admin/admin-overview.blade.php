@@ -1,5 +1,10 @@
 @php
+    $zl = auth()->user()?->zoneLabel() ?? 'Zone';
+    $zls = auth()->user()?->zonesLabel() ?? 'Zones';
+@endphp
+@php
     $turnout = $stats['sold'] > 0 ? (int) round(($stats['checked_in'] / $stats['sold']) * 100) : 0;
+    $orgWideLinks = ['admin.events', 'admin.tickets', 'admin.studio'];
     $quickLinks = [
         ['route' => 'admin.events', 'title' => 'Events', 'body' => 'Create events, upload banners, and set ticket visibility.'],
         ['route' => 'admin.tickets', 'title' => 'Tickets & Pricing', 'body' => 'Set up ticket tiers, capacities, and prices.'],
@@ -8,6 +13,9 @@
         ['route' => 'admin.sessions', 'title' => 'Financial Ledger', 'body' => 'Review cash and mobile money collections.'],
         ['route' => 'admin.studio', 'title' => 'Event Page Settings', 'body' => 'Update event branding, speakers, and schedule.'],
     ];
+    if ($user?->subdivision_id !== null) {
+        $quickLinks = array_values(array_filter($quickLinks, static fn(array $link): bool => !in_array($link['route'], $orgWideLinks, true)));
+    }
 @endphp
 
 <div class="flex flex-col gap-5 sm:gap-6">
@@ -19,7 +27,7 @@
             <div class="flex flex-col gap-0.5">
                 <h1 class="text-base font-bold tracking-tight sm:text-lg md:text-xl">Welcome back, {{ $user?->name }}</h1>
                 <p class="text-xs text-[var(--text-secondary)]">
-                    {{ $event?->title ?? 'No event yet' }} · {{ $user?->subdivision ? 'Scoped to ' . $user->subdivision->name : 'All subdivisions' }}
+                    {{ $event?->title ?? 'No event yet' }} · {{ $user?->subdivision ? 'Scoped to ' . $user->subdivision->name : 'All ' . strtolower($zls) }}
                 </p>
             </div>
         </div>
@@ -53,6 +61,46 @@
                 </div>
             @endforeach
         </div>
+
+        @if ($zoneRows !== [])
+            @php
+                $totals = [
+                    'sold' => array_sum(array_column($zoneRows, 'sold')),
+                    'checked_in' => array_sum(array_column($zoneRows, 'checked_in')),
+                    'revenue' => array_sum(array_column($zoneRows, 'revenue')),
+                ];
+            @endphp
+            <div class="overflow-x-auto rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xs" data-zone-breakdown>
+                <table class="w-full text-left text-xs">
+                    <thead class="border-b border-[var(--border-hairline)] text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold">{{ $zl }}</th>
+                            <th class="px-4 py-3 text-right font-semibold">Passes</th>
+                            <th class="px-4 py-3 text-right font-semibold">Checked in</th>
+                            <th class="px-4 py-3 text-right font-semibold">Paid revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[var(--border-hairline)] font-mono tabular-nums">
+                        @foreach ($zoneRows as $zoneRow)
+                            <tr data-zone-row="{{ $zoneRow['name'] }}">
+                                <td class="px-4 py-2.5 font-sans font-medium">{{ $zoneRow['name'] === 'No zone' ? 'No ' . strtolower($zl) : $zoneRow['name'] }}</td>
+                                <td class="px-4 py-2.5 text-right">{{ number_format($zoneRow['sold']) }}</td>
+                                <td class="px-4 py-2.5 text-right">{{ number_format($zoneRow['checked_in']) }}</td>
+                                <td class="px-4 py-2.5 text-right">GHS {{ number_format($zoneRow['revenue'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot class="border-t border-[var(--border-hairline)] font-mono font-bold tabular-nums">
+                        <tr data-zone-total>
+                            <td class="px-4 py-2.5 font-sans">Total</td>
+                            <td class="px-4 py-2.5 text-right">{{ number_format($totals['sold']) }}</td>
+                            <td class="px-4 py-2.5 text-right">{{ number_format($totals['checked_in']) }}</td>
+                            <td class="px-4 py-2.5 text-right">GHS {{ number_format($totals['revenue'], 2) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        @endif
     @endif
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

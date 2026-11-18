@@ -17,6 +17,29 @@
 
 ---
 
+## 🟢 Done: Multi-church zones release (branch `fix/tenant-branding-isolation`, see AUDIT.md)
+
+- [x] Tenant branding isolation (no other organisation or demo identity on any page, pass, email or PDF)
+- [x] Queue worker runs every dispatched queue; fictional zoned demo seed that never seeds production
+- [x] Zone gates refuse other zones' passes; per-zone venues; zone admins locked to their zone; org per-zone totals
+- [x] Zoneless paid passes: admin assignment, buyer one-time choice, settlement report, audit trail
+- [x] Super admin onboarding and editing of organisations; public sign-up creates attendees only
+- [x] Zone-required checkout, per-zone capacity, mandatory zone payout split, publish gate, stored subaccount verification with a daily re-check
+- [x] `tenancy:move-event` for events filed under the wrong organisation
+- [x] README and production deploy runbook (`docs/runbooks/production-deploy.md`)
+- [x] Maintenance hooks take `Authorization: Bearer` (E-2); `payments:reconcile-pending` (B-3); PayZephyr route removed (B-7)
+- [x] Scheduled tasks bounded to Vercel's 60 s request (batches, time budgets, short shared locks)
+- [x] Cloudflare R2 media and private storage with WebP sizes and signed links (C-1)
+
+### 🔜 Follow-up PR (from AUDIT.md)
+- [ ] **B-2** Paystack `refund.processed` webhook: mark the order refunded and void its passes, so the gate refuses them
+- [ ] **E-1** Policies with `authorize()` on every admin and ops action (defence in depth beyond the current scoping and guards)
+- [ ] **B-5** Ghana phone validation at checkout and cash desk (normalise to +233, check network prefixes)
+- [ ] **D-2** Open Graph and WhatsApp previews per organisation and event (name, title, banner), and a single `<title>`
+- [ ] Remove the deprecated `?token=` scheduler fallback after one release (E-2 follow-through)
+
+---
+
 ## 🎯 To Do (Universal Event Platform Roadmap)
 
 ### 📦 Milestone 1: Core CMS Schema & Scoped Models
