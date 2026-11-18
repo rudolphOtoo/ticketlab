@@ -83,8 +83,8 @@ class EventSpeaker extends Model
         return $this->belongsTo(Event::class);
     }
 
-    public function photoUrl(): ?string
+    public function photoUrl(string $size = 'medium'): ?string
     {
-        return MediaUrl::resolve($this->photo_path);
+        return MediaUrl::resolve($this->photo_path, $size);
     }
 }

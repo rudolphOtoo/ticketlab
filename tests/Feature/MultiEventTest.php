@@ -174,9 +174,9 @@ test('banners and speaker photos are filed under the event that owns them', func
         ->assertHasNoErrors();
 
     expect($second->fresh()->banner_path)
-        ->toStartWith("events/{$second->id}/banners/")
+        ->toStartWith("orgs/{$this->org->id}/events/{$second->id}/banners/")
         ->and(EventSpeaker::query()->sole()->photo_path)
-        ->toStartWith("events/{$first->id}/speakers/");
+        ->toStartWith("orgs/{$this->org->id}/events/{$first->id}/speakers/");
 });
 
 test('gallery images are filed under the active event and filtered by it', function (): void {
@@ -205,11 +205,11 @@ test('gallery images are filed under the active event and filtered by it', funct
     expect($images['First Keynote']['event_id'])
         ->toBe($first->id)
         ->and($images['First Keynote']['url'])
-        ->toStartWith("events/{$first->id}/gallery/")
+        ->toStartWith("orgs/{$this->org->id}/events/{$first->id}/gallery/")
         ->and($images['Second Keynote']['event_id'])
         ->toBe($second->id)
         ->and($images['Second Keynote']['url'])
-        ->toStartWith("events/{$second->id}/gallery/");
+        ->toStartWith("orgs/{$this->org->id}/events/{$second->id}/gallery/");
 
     // The admin grid follows the active event unless "All events" is chosen.
     Livewire::actingAs($this->admin)
@@ -294,14 +294,19 @@ test('uploaded banners and speaker photos render on the public event page from s
 
     Storage::disk('public')->assertExists([$banner, $photo]);
 
+    // The queued job made WebP copies, so pages serve those (large banner, medium speaker photo).
+    $bannerWebp = App\Support\MediaUrl::variantPath($banner, 'large');
+    $photoWebp = App\Support\MediaUrl::variantPath($photo, 'medium');
+    Storage::disk('public')->assertExists([$bannerWebp, $photoWebp]);
+
     $this
         ->get(route('public.event.show', ['org_slug' => 'summit-org', 'event_slug' => $event->slug]))
         ->assertOk()
-        ->assertSee('src="/storage/' . $banner . '"', false)
-        ->assertSee('src="/storage/' . $photo . '"', false);
+        ->assertSee('src="/storage/' . $bannerWebp . '"', false)
+        ->assertSee('src="/storage/' . $photoWebp . '"', false);
 
     $this->get(route('public.tenant.home', ['org_slug' => 'summit-org']))->assertOk()->assertSee(
-        '/storage/' . $banner,
+        '/storage/' . $bannerWebp,
         false,
     );
 });

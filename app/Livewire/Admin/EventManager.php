@@ -163,7 +163,7 @@ class EventManager extends Component
                 'end_at' => ['required', 'date', 'after_or_equal:start_at'],
                 'status' => ['required', Rule::in(['draft', 'published'])],
                 'is_public' => ['boolean'],
-                'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+                'banner' => ['nullable', ...MediaUrl::UPLOAD_RULES],
                 'bannerUrlInput' => ['nullable', 'url', 'max:2048'],
             ]);
         } catch (UnableToRetrieveMetadata) {
@@ -330,8 +330,11 @@ class EventManager extends Component
         if ($this->banner === null) {
             $url = trim($this->bannerUrlInput ?? '');
 
-            if ($url !== '') {
+            if ($url !== '' && $url !== $event->banner_path) {
+                // Switching from an uploaded banner to a pasted link deletes the old upload and its WebP copies.
+                $previousBanner = $event->banner_path;
                 $event->update(['banner_path' => $url]);
+                MediaUrl::deleteStored($previousBanner);
             }
 
             return true;
@@ -341,7 +344,7 @@ class EventManager extends Component
             $previousBanner = $event->banner_path;
             $event->update(['banner_path' => MediaUrl::store(
                 $this->banner,
-                MediaUrl::eventDirectory($event->id, 'banners'),
+                MediaUrl::eventDirectory($event->organization_id, $event->id, 'banners'),
             )]);
             MediaUrl::deleteStored($previousBanner);
         } catch (Throwable $e) {

@@ -43,7 +43,7 @@ final class EventGallery
                 continue;
             }
 
-            $items[] = [...$item, 'src' => (string) MediaUrl::resolve($item['url'])];
+            $items[] = [...$item, 'src' => (string) MediaUrl::resolve($item['url'], 'large')];
         }
 
         return $items;

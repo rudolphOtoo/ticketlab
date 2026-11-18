@@ -115,8 +115,11 @@ class Event extends Model
         return $this->hasMany(EventZone::class);
     }
 
-    public function bannerUrl(): ?string
+    /**
+     * The banner at the given WebP size once generated ("large" for heroes, "medium" for cards), else the original.
+     */
+    public function bannerUrl(string $size = 'large'): ?string
     {
-        return MediaUrl::resolve($this->banner_path);
+        return MediaUrl::resolve($this->banner_path, $size);
     }
 }
