@@ -266,3 +266,80 @@ test('a webhook that confirms payment while reconcile is releasing the order win
         ->and($this->tier->fresh()->available_quantity)
         ->toBe(8);
 });
+
+/**
+ * Extra pending orders of the same buyer flow, created directly (each with its own seat hold).
+ */
+function more_pending_orders(object $test, int $count): void
+{
+    foreach (range(1, $count) as $n) {
+        $hold = App\Models\Reservation::factory()->create([
+            'organization_id' => $test->org->id,
+            'ticket_type_id' => $test->tier->id,
+            'subdivision_id' => $test->zone->id,
+            'expires_at' => now()->addMinutes(15),
+        ]);
+        Order::factory()->create([
+            'organization_id' => $test->org->id,
+            'subdivision_id' => $test->zone->id,
+            'reservation_id' => $hold->id,
+            'created_at' => now()->addSeconds($n),
+        ]);
+    }
+}
+
+test('one run handles at most the configured batch, oldest first; the rest wait for the next run', function (): void {
+    config(['scheduler.reconcile.batch_size' => 2]);
+    more_pending_orders($this, 2);
+    $this->travel(30)->minutes();
+    Http::fake(['api.paystack.co/transaction/verify/*' => Http::response([
+        'status' => true,
+        'data' => ['status' => 'ongoing'],
+    ])]);
+
+    $this->artisan('payments:reconcile-pending', ['--execute' => true])->assertSuccessful();
+
+    expect(verify_calls())->toBe(2);
+    Http::assertSent(fn(Request $request): bool => str_ends_with(
+        $request->url(),
+        rawurlencode($this->order->gatewayReference()),
+    ));
+});
+
+test('a run stops when its time budget is used up and leaves the rest for the next run', function (): void {
+    config(['scheduler.reconcile.time_budget_seconds' => 15]);
+    more_pending_orders($this, 3);
+    $this->travel(30)->minutes();
+
+    // Each Paystack answer takes 10 seconds: two orders fit in 15 s, the remaining two wait.
+    Http::fake(['api.paystack.co/transaction/verify/*' => function () {
+        $this->travel(10)->seconds();
+
+        return Http::response(['status' => true, 'data' => ['status' => 'ongoing']]);
+    }]);
+
+    $this
+        ->artisan('payments:reconcile-pending', ['--execute' => true])
+        ->expectsOutputToContain('Time budget reached; 2 order(s) wait for the next run.')
+        ->assertSuccessful();
+
+    expect(verify_calls())->toBe(2);
+});
+
+test('a run is skipped while another holds the reconciliation lock', function (): void {
+    $this->travel(11)->minutes();
+    paystack_verifies($this->order, 'success');
+    $lock = Illuminate\Support\Facades\Cache::store('database')->lock('payments:reconcile-pending', 600);
+    expect($lock->get())->toBeTrue();
+
+    $this
+        ->artisan('payments:reconcile-pending', ['--execute' => true])
+        ->expectsOutputToContain('Another reconciliation run is in progress')
+        ->assertSuccessful();
+
+    expect(verify_calls())->toBe(0)->and($this->order->fresh()->payment_status)->toBe(OrderStatus::Pending);
+
+    $lock->release();
+    $this->artisan('payments:reconcile-pending', ['--execute' => true])->assertSuccessful();
+    expect($this->order->fresh()->payment_status)->toBe(OrderStatus::Paid);
+});
