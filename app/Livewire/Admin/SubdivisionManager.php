@@ -123,8 +123,9 @@ class SubdivisionManager extends Component
         }
 
         $code = filled($this->paystackSubaccountCode) ? trim($this->paystackSubaccountCode) : null;
+        $codeChanged = $code !== $sub->paystack_subaccount_code;
 
-        if ($code !== $sub->paystack_subaccount_code) {
+        if ($codeChanged) {
             $this->authorizePayoutChange($actor, $code, $subaccounts);
         }
 
@@ -133,6 +134,11 @@ class SubdivisionManager extends Component
             'slug' => Str::slug($this->slug),
             'paystack_subaccount_code' => $code,
         ])->save();
+
+        // authorizePayoutChange() has just confirmed the new code with Paystack; store that for checkout.
+        if ($codeChanged && $code !== null) {
+            $subaccounts->markVerified($sub);
+        }
 
         $this->flashMessage = $sub->wasRecentlyCreated
             ? $actor->zoneLabel() . " '{$this->name}' was created successfully."

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Payment;
 
 use App\Models\Subdivision;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -13,57 +12,98 @@ use Throwable;
 /**
  * Decides whether a checkout may route funds to a zone's Paystack subaccount.
  *
- * Paystack refuses the entire transaction ("Invalid Subaccount") when the code is unknown to the account
- * behind the active key, and test keys cannot see live subaccounts (or vice versa). Every code is therefore
- * verified against the active key (cached per key) before a transaction is initialised with it.
+ * Paystack refuses the entire transaction ("Invalid Subaccount") when the code is unknown to the account behind
+ * the active key, and test keys cannot see live subaccounts (or vice versa). Codes are therefore verified with
+ * Paystack when they are saved (and re-checked daily by payouts:recheck-subaccounts), and the result is stored on
+ * the zone. Checkout only ever reads that stored result: it never calls Paystack's subaccount API.
  */
 class PaystackSubaccountResolver
 {
     private const string CODE_PATTERN = '/^ACCT_[a-z0-9]+$/i';
 
-    private const int VERIFIED_TTL_SECONDS = 21_600;
-
-    private const int REJECTED_TTL_SECONDS = 600;
-
     private const string SETTLEMENT_CURRENCY = 'GHS';
 
+    private const string MALFORMED_CODE = 'This is not a Paystack subaccount code.';
+
+    /**
+     * The zone's subaccount code when its stored verification covers this exact code under the active key's mode,
+     * else null. Reads the database only.
+     */
     public function forSubdivision(?Subdivision $subdivision): ?string
     {
         $code = $subdivision?->paystack_subaccount_code;
 
-        if ($subdivision === null || $code === null || trim($code) === '') {
+        if (
+            $subdivision === null
+            || $code === null
+            || trim($code) === ''
+            || preg_match(self::CODE_PATTERN, $code) !== 1
+        ) {
             return null;
         }
 
-        $context = [
-            'organization_id' => $subdivision->organization_id,
-            'subdivision_id' => $subdivision->id,
-            'subaccount' => $code,
-            'paystack_mode' => $this->mode(),
-        ];
-
-        if (preg_match(self::CODE_PATTERN, $code) !== 1) {
-            Log::warning('Paystack subaccount omitted: the code is not a valid Paystack subaccount code.', $context);
-
-            return null;
-        }
-
-        return $this->existsForActiveKey($code, $context) ? $code : null;
+        return $subdivision->payout_verified_code === $code && $subdivision->payout_verified_mode === $this->mode()
+            ? $code
+            : null;
     }
 
     /**
-     * Cached verdict for a code under the active key, without calling Paystack: true, false, or null when unchecked.
+     * Ask Paystack about the zone's current code now and store the outcome. A definitive rejection stops the zone
+     * taking payments; an unreachable Paystack leaves the last stored verdict in place.
+     *
+     * @return array{recognised: bool|null, message: string|null, details: array<array-key, mixed>}
      */
-    public function cachedVerdict(string $code): ?bool
+    public function verify(Subdivision $zone): array
     {
-        $secretKey = $this->secretKey();
-        $cached = $secretKey === '' ? null : Cache::get($this->cacheKey($secretKey, $code));
+        $code = trim((string) $zone->paystack_subaccount_code);
+        $inspection = $code === ''
+            ? ['recognised' => false, 'message' => 'No subaccount code is set.', 'details' => []]
+            : $this->inspect($code);
 
-        return is_bool($cached) ? $cached : null;
+        $this->recordInspection($zone, $inspection);
+
+        return $inspection;
     }
 
     /**
-     * Ask Paystack about a code right now (refreshing the cache), returning what it knows for admin onboarding.
+     * Store an inspection that the caller has just made for the zone's current code (no second Paystack call).
+     *
+     * @param array{recognised: bool|null, message: string|null, details: array<array-key, mixed>} $inspection
+     */
+    public function recordInspection(Subdivision $zone, array $inspection): void
+    {
+        match ($inspection['recognised']) {
+            true => $this->markVerified($zone),
+            false => $zone->forceFill([
+                'payout_verified_code' => null,
+                'payout_verified_mode' => null,
+                'payout_checked_at' => now(),
+                'payout_check_error' => mb_substr((string) $this->rejectionReason($inspection), 0, 255),
+            ])->save(),
+            // Paystack unreachable: keep whatever was verified before, so a network error never blocks sales.
+            null => $zone->forceFill([
+                'payout_checked_at' => now(),
+                'payout_check_error' => mb_substr($inspection['message'] ?? 'Paystack could not be reached.', 0, 255),
+            ])->save(),
+        };
+    }
+
+    /**
+     * The zone's current code was just confirmed with Paystack under the active key.
+     */
+    public function markVerified(Subdivision $zone): void
+    {
+        $zone->forceFill([
+            'payout_verified_code' => $zone->paystack_subaccount_code,
+            'payout_verified_mode' => $this->mode(),
+            'payout_verified_at' => now(),
+            'payout_checked_at' => now(),
+            'payout_check_error' => null,
+        ])->save();
+    }
+
+    /**
+     * Ask Paystack about a code right now, returning what it knows for admin onboarding.
      *
      * @return array{recognised: bool|null, message: string|null, details: array<array-key, mixed>}
      */
@@ -72,17 +112,14 @@ class PaystackSubaccountResolver
         $secretKey = $this->secretKey();
 
         if (preg_match(self::CODE_PATTERN, $code) !== 1) {
-            return ['recognised' => false, 'message' => 'This is not a Paystack subaccount code.', 'details' => []];
+            return ['recognised' => false, 'message' => self::MALFORMED_CODE, 'details' => []];
         }
 
         if ($secretKey === '') {
             return ['recognised' => null, 'message' => 'No Paystack secret key is configured.', 'details' => []];
         }
 
-        $result = $this->lookup($secretKey, $code, ['subaccount' => $code, 'paystack_mode' => $this->mode()]);
-        $this->remember($secretKey, $code, $result['recognised']);
-
-        return $result;
+        return $this->lookup($secretKey, $code, ['subaccount' => $code, 'paystack_mode' => $this->mode()]);
     }
 
     /**
@@ -94,6 +131,7 @@ class PaystackSubaccountResolver
     {
         return match (true) {
             $inspection['recognised'] === true => null,
+            $inspection['message'] === self::MALFORMED_CODE => self::MALFORMED_CODE,
             // Known to Paystack but unusable (deactivated, wrong currency): the message already says why.
             $inspection['details'] !== [] => $inspection['message'],
             $inspection['recognised'] === false => 'Paystack does not recognise this subaccount for the '
@@ -110,53 +148,6 @@ class PaystackSubaccountResolver
             str_starts_with($this->secretKey(), 'sk_live_') => 'live',
             default => 'unknown',
         };
-    }
-
-    /**
-     * @param array<string, mixed> $context
-     */
-    private function existsForActiveKey(string $code, array $context): bool
-    {
-        $secretKey = $this->secretKey();
-
-        if ($secretKey === '') {
-            Log::warning('Paystack subaccount omitted: no secret key is configured to verify it.', $context);
-
-            return false;
-        }
-
-        $cached = $this->cachedVerdict($code);
-
-        if ($cached !== null) {
-            return $cached;
-        }
-
-        $recognised = $this->lookup($secretKey, $code, $context)['recognised'];
-        $this->remember($secretKey, $code, $recognised);
-
-        return $recognised === true;
-    }
-
-    /**
-     * Only a definitive answer from Paystack is cached; unreachable lookups are retried on the next checkout.
-     */
-    private function remember(string $secretKey, string $code, ?bool $recognised): void
-    {
-        if ($recognised !== null) {
-            Cache::put(
-                $this->cacheKey($secretKey, $code),
-                $recognised,
-                $recognised ? self::VERIFIED_TTL_SECONDS : self::REJECTED_TTL_SECONDS,
-            );
-        }
-    }
-
-    /**
-     * Keyed by the secret key fingerprint, so switching between test and live keys re-verifies every code.
-     */
-    private function cacheKey(string $secretKey, string $code): string
-    {
-        return 'paystack:subaccount:' . sha1($secretKey) . ':' . $code;
     }
 
     /**

@@ -160,12 +160,17 @@ class OnboardOrganization extends Component
         ]);
 
         foreach ($this->zones as $zone) {
-            Subdivision::query()->create([
+            $created = Subdivision::query()->create([
                 'organization_id' => $organization->id,
                 'name' => trim($zone['name']),
                 'slug' => Str::slug($zone['name']),
                 'paystack_subaccount_code' => trim($zone['subaccount']) !== '' ? trim($zone['subaccount']) : null,
             ]);
+
+            // verifySubaccounts() confirmed every code with Paystack before this transaction started.
+            if ($created->paystack_subaccount_code !== null) {
+                app(PaystackSubaccountResolver::class)->markVerified($created);
+            }
         }
 
         // No password: the invitation link sets one. Privileges only ever via assignMembership().

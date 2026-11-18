@@ -45,7 +45,7 @@ final readonly class PayoutReadiness
             return "Add at least one {$label} with a Paystack payout account before publishing an event with paid tickets.";
         }
 
-        // forSubdivision() verifies each code with Paystack (cached), so an unknown or rejected code also blocks.
+        // Stored verification only (no Paystack call): an unverified, rejected or wrong-mode code also blocks.
         $missing = $zones
             ->filter(fn(Subdivision $zone): bool => $this->subaccounts->forSubdivision($zone) === null)
             ->pluck('name');

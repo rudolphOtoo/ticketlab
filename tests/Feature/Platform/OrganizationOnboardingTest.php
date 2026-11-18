@@ -90,6 +90,11 @@ test('a super admin onboards an organisation with zones, verified subaccounts an
         ->toBeNull();
 
     Notification::assertSentTo($admin, OrganizationAdminInvitation::class);
+    // Codes confirmed during onboarding are stored as verified for checkout; the blank one is not.
+    expect($org->subdivisions()->whereNotNull('payout_verified_code')->orderBy('name')->pluck('name')->all())->toBe([
+        'Accra',
+        'Kumasi',
+    ]);
     expect(AuditLog::query()->where('action', 'organization.onboarded')->sole()->user_id)->toBe($this->superAdmin->id);
 });
 
@@ -176,11 +181,12 @@ test('the organisation list shows event counts, zones missing a payout account a
         'slug' => 'gmsu',
         'subdivision_label' => 'Zone',
     ]);
-    Subdivision::factory()->create([
+    // Verified when it was saved: the list reads the stored result and never calls Paystack.
+    app(App\Services\Payment\PaystackSubaccountResolver::class)->markVerified(Subdivision::factory()->create([
         'organization_id' => $org->id,
         'name' => 'Accra',
         'paystack_subaccount_code' => 'ACCT_accra1',
-    ]);
+    ]));
     Subdivision::factory()->create([
         'organization_id' => $org->id,
         'name' => 'Cape Coast',

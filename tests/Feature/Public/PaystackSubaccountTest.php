@@ -84,21 +84,29 @@ function subaccount_lookups(): int
     return Http::recorded(static fn(Request $request): bool => str_contains($request->url(), '/subaccount/'))->count();
 }
 
-test('a subaccount verified for the active key is attached to the checkout', function (): void {
+test('a code verified when saved is used at checkout, and checkout never calls paystack itself', function (): void {
     Http::fake(['api.paystack.co/subaccount/*' => Http::response([
         'status' => true,
         'data' => ['subaccount_code' => REAL_SUBACCOUNT],
     ])]);
+    $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
 
-    checkout_with_zone($this, zone_with_code($this->org, REAL_SUBACCOUNT))
-        ->assertHasNoErrors()
-        ->assertDispatched('open-paystack');
-
-    initialized_with(REAL_SUBACCOUNT);
+    // Saving the code in the admin verifies it once, with the active key, and stores the outcome.
+    app(PaystackSubaccountResolver::class)->verify($zone);
     Http::assertSent(
         static fn(Request $request): bool => $request->url() === 'https://api.paystack.co/subaccount/' . REAL_SUBACCOUNT
         && $request->hasHeader('Authorization', 'Bearer sk_test_abc123'),
     );
+    expect(subaccount_lookups())
+        ->toBe(1)
+        ->and($zone->fresh())
+        ->payout_verified_code->toBe(REAL_SUBACCOUNT)
+        ->payout_verified_mode->toBe('test');
+
+    checkout_with_zone($this, $zone->fresh())->assertHasNoErrors()->assertDispatched('open-paystack');
+
+    initialized_with(REAL_SUBACCOUNT);
+    expect(subaccount_lookups())->toBe(1);
 });
 
 test('checkout is refused when the zone has no subaccount', function (?string $code): void {
@@ -127,16 +135,21 @@ test('an organisation without any zone cannot take paid online orders', function
     expect($checkout->errors()->first('payment'))->toContain('Online payments are not open for this event yet');
 });
 
-test('a subaccount unknown to the active key environment refuses checkout and is logged', function (): void {
+test('a code paystack rejects on save is stored with its reason and refuses checkout without a further lookup', function (): void {
     // e.g. a live subaccount while running on sk_test_ keys: Paystack answers 404 for the test account.
     Http::fake(['api.paystack.co/subaccount/*' => Http::response([
         'status' => false,
         'message' => 'Subaccount not found',
     ], 404)]);
     Log::spy();
+    $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
 
-    refused_without_hold(checkout_with_zone($this, zone_with_code($this->org, REAL_SUBACCOUNT)));
+    app(PaystackSubaccountResolver::class)->verify($zone);
 
+    expect($zone->fresh()->payout_verified_code)
+        ->toBeNull()
+        ->and($zone->fresh()->payout_check_error)
+        ->toBe('Paystack does not recognise this subaccount for the test keys.');
     Log::shouldHaveReceived('error')
         ->withArgs(
             static fn(string $message, array $context): bool => (
@@ -147,75 +160,103 @@ test('a subaccount unknown to the active key environment refuses checkout and is
             ),
         )
         ->once();
+
+    refused_without_hold(checkout_with_zone($this, $zone->fresh()));
+    expect(subaccount_lookups())->toBe(1);
 });
 
-test('malformed or placeholder codes are never sent to paystack', function (): void {
-    Log::spy();
+test('malformed or placeholder codes are never sent to paystack and cannot take payments', function (): void {
+    $zone = zone_with_code($this->org, 'ACCT_accra_001');
 
-    refused_without_hold(checkout_with_zone($this, zone_with_code($this->org, 'ACCT_accra_001')));
+    app(PaystackSubaccountResolver::class)->verify($zone);
 
-    expect(subaccount_lookups())->toBe(0);
-    Log::shouldHaveReceived('warning')
-        ->withArgs(static fn(string $message): bool => str_contains($message, 'not a valid'))
-        ->once();
+    expect(subaccount_lookups())
+        ->toBe(0)
+        ->and($zone->fresh()->payout_check_error)
+        ->toBe('This is not a Paystack subaccount code.');
+    refused_without_hold(checkout_with_zone($this, $zone->fresh()));
 });
 
-test('a subaccount lookup that cannot reach paystack refuses checkout instead of collecting centrally', function (): void {
+test('an unreachable paystack never blocks a zone that was already verified', function (): void {
+    $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
+    app(PaystackSubaccountResolver::class)->markVerified($zone);
     Http::fake(['api.paystack.co/subaccount/*' => static fn() => throw new ConnectionException('timed out')]);
     Log::spy();
 
-    refused_without_hold(checkout_with_zone($this, zone_with_code($this->org, REAL_SUBACCOUNT)));
+    app(PaystackSubaccountResolver::class)->verify($zone);
 
+    expect($zone->fresh())
+        ->payout_verified_code->toBe(REAL_SUBACCOUNT)
+        ->payout_check_error->toBe('Paystack could not be reached.');
     Log::shouldHaveReceived('error')
         ->withArgs(static fn(string $message): bool => str_contains($message, 'request failed'))
         ->once();
+
+    checkout_with_zone($this, $zone->fresh())->assertHasNoErrors()->assertDispatched('open-paystack');
+    initialized_with(REAL_SUBACCOUNT);
+});
+
+test('a code that was never verified is refused even when paystack is unreachable', function (): void {
+    Http::fake(['api.paystack.co/subaccount/*' => static fn() => throw new ConnectionException('timed out')]);
+    $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
+
+    app(PaystackSubaccountResolver::class)->verify($zone);
+
+    refused_without_hold(checkout_with_zone($this, $zone->fresh()));
 });
 
 test('the zone split cannot be switched off: an old opt-out setting is ignored', function (): void {
-    Http::fake(['api.paystack.co/subaccount/*' => Http::response(['status' => true])]);
     $this->org->update(['settings' => ['paystack_split_payments' => false]]);
     config(['services.paystack.split_payments' => false]);
+    $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
+    app(PaystackSubaccountResolver::class)->markVerified($zone);
 
-    checkout_with_zone($this, zone_with_code($this->org, REAL_SUBACCOUNT))
-        ->assertHasNoErrors()
-        ->assertDispatched('open-paystack');
+    checkout_with_zone($this, $zone->fresh())->assertHasNoErrors()->assertDispatched('open-paystack');
 
     initialized_with(REAL_SUBACCOUNT);
 });
 
-test('verification is cached per api key so switching test and live keys re-verifies', function (): void {
+test('a code verified under test keys is not used with live keys until it is verified again', function (): void {
     Http::fake(['api.paystack.co/subaccount/*' => Http::response(['status' => true])]);
     $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
     $resolver = app(PaystackSubaccountResolver::class);
 
-    expect($resolver->forSubdivision($zone))
-        ->toBe(REAL_SUBACCOUNT)
-        ->and($resolver->forSubdivision($zone))
-        ->toBe(REAL_SUBACCOUNT);
-    expect(subaccount_lookups())->toBe(1);
+    $resolver->verify($zone);
+    expect($resolver->forSubdivision($zone->fresh()))->toBe(REAL_SUBACCOUNT);
 
     config(['services.paystack.secret_key' => 'sk_live_xyz789']);
+    expect($resolver->forSubdivision($zone->fresh()))->toBeNull();
 
-    expect($resolver->forSubdivision($zone))->toBe(REAL_SUBACCOUNT);
-    expect(subaccount_lookups())->toBe(2);
+    $resolver->verify($zone->fresh());
+    expect($resolver->forSubdivision($zone->fresh()))->toBe(REAL_SUBACCOUNT)->and(subaccount_lookups())->toBe(2);
+});
+
+test('changing the code after verification stops payments until the new code is verified', function (): void {
+    $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
+    app(PaystackSubaccountResolver::class)->markVerified($zone);
+
+    $zone->update(['paystack_subaccount_code' => 'ACCT_someotherzone1']);
+
+    expect(app(PaystackSubaccountResolver::class)->forSubdivision($zone->fresh()))->toBeNull();
 });
 
 test('without a secret key subaccounts cannot be verified and are omitted', function (): void {
     config(['services.paystack.secret_key' => '']);
+    $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
 
-    expect(app(PaystackSubaccountResolver::class)->forSubdivision(zone_with_code(
-        $this->org,
-        REAL_SUBACCOUNT,
-    )))->toBeNull();
+    app(PaystackSubaccountResolver::class)->verify($zone);
 
-    expect(subaccount_lookups())->toBe(0);
+    expect(app(PaystackSubaccountResolver::class)->forSubdivision($zone->fresh()))
+        ->toBeNull()
+        ->and(subaccount_lookups())
+        ->toBe(0);
 });
 
 test('the order records which subaccount its revenue was routed to', function (): void {
-    Http::fake(['api.paystack.co/subaccount/*' => Http::response(['status' => true])]);
     $zone = zone_with_code($this->org, REAL_SUBACCOUNT);
+    app(PaystackSubaccountResolver::class)->markVerified($zone);
 
-    checkout_with_zone($this, $zone);
+    checkout_with_zone($this, $zone->fresh());
 
     expect(Order::query()->sole()->payout_subaccount_code)->toBe(REAL_SUBACCOUNT);
 });
