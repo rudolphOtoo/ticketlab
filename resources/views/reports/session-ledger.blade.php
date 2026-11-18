@@ -1,3 +1,7 @@
+@php
+    $zl = auth()->user()?->zoneLabel() ?? 'Zone';
+    $zls = auth()->user()?->zonesLabel() ?? 'Zones';
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -213,11 +217,11 @@
     </table>
 
     @if(!empty($zoneBreakdown))
-        <h3 style="margin: 20px 0 8px 0; font-size: 12px; text-transform: uppercase; color: #334155;">Subdivision Throughput Breakdown</h3>
+        <h3 style="margin: 20px 0 8px 0; font-size: 12px; text-transform: uppercase; color: #334155;">{{ $zl }} Throughput Breakdown</h3>
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Subdivision</th>
+                    <th>{{ $zl }}</th>
                     <th>Code</th>
                     <th class="text-right">Admitted Count</th>
                 </tr>

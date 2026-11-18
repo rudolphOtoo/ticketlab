@@ -390,19 +390,20 @@ class AttendeeRoster extends Component
     {
         $user = auth()->user();
         $fileName = 'attendee_roster_' . now()->format('Y_m_d_His') . '.csv';
+        $zoneColumn = $user?->zoneLabel() ?? 'Zone';
 
         return response()->streamDownload(
-            function () use ($user) {
+            function () use ($user, $zoneColumn) {
                 $writer = CsvWriter::toOutput();
 
-                $this->buildQuery($user)->chunk(500, static function ($attendees) use ($writer) {
+                $this->buildQuery($user)->chunk(500, static function ($attendees) use ($writer, $zoneColumn) {
                     foreach ($attendees as $att) {
                         $writer->addRow([
                             'ID' => $att->id,
                             'Name' => self::orNa($att->name),
                             'Email' => self::orNa($att->email),
                             'Phone' => self::orNa($att->phone),
-                            'Subdivision' => $att->subdivision ? $att->subdivision->name : 'General',
+                            $zoneColumn => $att->subdivision ? $att->subdivision->name : 'None',
                             'Ticket Tier' => $att->ticketType->name,
                             'QR Code' => $att->qr_code_hash,
                             'Checked In At' => $att->checked_in_at?->format('Y-m-d H:i:s') ?? 'Pending',

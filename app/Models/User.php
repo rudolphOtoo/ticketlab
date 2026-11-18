@@ -134,6 +134,24 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * The organisation's own word for a zone ("Zone", "Branch", "Campus"…), for every staff-facing label.
+     */
+    public function zoneLabel(): string
+    {
+        $label = $this->organization?->subdivision_label;
+
+        return is_string($label) && trim($label) !== '' ? trim($label) : 'Zone';
+    }
+
+    /**
+     * Plural of zoneLabel(): "Zones", "Branches", "Campuses".
+     */
+    public function zonesLabel(): string
+    {
+        return Str::plural($this->zoneLabel());
+    }
+
+    /**
      * The internal surface this account works from, or null for attendees (public surface only).
      */
     public function staffHomeUrl(): ?string

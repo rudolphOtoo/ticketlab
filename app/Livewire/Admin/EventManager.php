@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Organization;
@@ -29,6 +30,7 @@ use Throwable;
 #[Title('Event Lifecycle Manager')]
 class EventManager extends Component
 {
+    use RequiresOrganizationWideAdmin;
     use WithFileUploads;
 
     public bool $isModalOpen = false;

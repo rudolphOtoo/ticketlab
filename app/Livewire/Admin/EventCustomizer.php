@@ -8,6 +8,7 @@ use App\Livewire\Admin\Concerns\ManagesEventFaqs;
 use App\Livewire\Admin\Concerns\ManagesEventFormFields;
 use App\Livewire\Admin\Concerns\ManagesEventSchedules;
 use App\Livewire\Admin\Concerns\ManagesEventSpeakers;
+use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Models\Event;
 use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
@@ -22,6 +23,7 @@ use Livewire\Component;
 #[Title('Event Customizer Studio')]
 class EventCustomizer extends Component
 {
+    use RequiresOrganizationWideAdmin;
     use ManagesEventFaqs;
     use ManagesEventFormFields;
     use ManagesEventSchedules;

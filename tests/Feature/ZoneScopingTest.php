@@ -249,14 +249,21 @@ test('broadcast history only shows broadcasts sent from the zone admin\'s zone',
 });
 
 test('zone admins only manage their own zone and cannot create or delete zones', function (): void {
-    $manager = Livewire::actingAs($this->zoneAdmin)
+    Livewire::actingAs($this->zoneAdmin)
         ->test(SubdivisionManager::class)
         ->assertSee('Zone Alpha')
         ->assertDontSee('Zone Bravo')
         ->call('editSubdivision', $this->zoneB->id)
-        ->assertSet('editingSubdivisionId', null);
+        ->assertForbidden();
 
-    $manager->call('deleteSubdivision', $this->zoneB->id)->assertForbidden();
+    Livewire::actingAs($this->zoneAdmin)
+        ->test(SubdivisionManager::class)
+        ->call('editSubdivision', $this->zoneA->id)
+        ->assertForbidden();
+    Livewire::actingAs($this->zoneAdmin)
+        ->test(SubdivisionManager::class)
+        ->call('deleteSubdivision', $this->zoneB->id)
+        ->assertForbidden();
     Livewire::actingAs($this->zoneAdmin)->test(SubdivisionManager::class)->call('openCreateModal')->assertForbidden();
 
     expect(Subdivision::query()->whereKey($this->zoneB->id)->exists())->toBeTrue();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Models\Event;
 use App\Models\TicketType;
 use App\Support\ActiveEvent;
@@ -20,6 +21,8 @@ use Livewire\Component;
 #[Title('Ticket Tiers & Price Manager')]
 class TicketManager extends Component
 {
+    use RequiresOrganizationWideAdmin;
+
     #[Locked]
     public ?int $organizationId = null;
 

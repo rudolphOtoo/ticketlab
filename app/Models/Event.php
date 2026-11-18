@@ -105,6 +105,16 @@ class Event extends Model
         return $this->hasMany(EventFormField::class)->orderBy('sort_order');
     }
 
+    /**
+     * Per-zone venue and schedule for this event.
+     *
+     * @return HasMany<EventZone, $this>
+     */
+    public function zones(): HasMany
+    {
+        return $this->hasMany(EventZone::class);
+    }
+
     public function bannerUrl(): ?string
     {
         return MediaUrl::resolve($this->banner_path);

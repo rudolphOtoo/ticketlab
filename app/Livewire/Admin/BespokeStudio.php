@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
+use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\PlatformSetting;
@@ -25,6 +26,7 @@ use Livewire\WithFileUploads;
 #[Title('Bespoke Portal CMS & Navigation')]
 class BespokeStudio extends Component
 {
+    use RequiresOrganizationWideAdmin;
     use WithFileUploads;
 
     #[Locked]

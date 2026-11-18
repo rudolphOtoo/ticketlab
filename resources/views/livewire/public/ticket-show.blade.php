@@ -30,9 +30,15 @@
                 <h1 class="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{{ $event?->title ?? 'Event ticket' }}</h1>
                 @if ($event)
                     <p class="mt-2 text-sm text-zinc-300">
-                        {{ $event->start_at->format('D, j M Y · g:i A') }}
-                        @if ($event->venue)
-                            · {{ $event->venue }}
+                        {{ $venue->startAt->format('D, j M Y · g:i A') }}
+                        @if ($venue->place())
+                            · {{ $venue->place() }}
+                        @endif
+                        @if ($venue->zone)
+                            · {{ $organization->subdivision_label }}: {{ $venue->zone->name }}
+                        @endif
+                        @if ($venue->mapUrl)
+                            · <a href="{{ $venue->mapUrl }}" target="_blank" rel="noopener noreferrer" class="underline">Map</a>
                         @endif
                     </p>
                 @endif

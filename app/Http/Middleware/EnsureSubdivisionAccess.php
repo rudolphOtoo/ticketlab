@@ -38,7 +38,7 @@ class EnsureSubdivisionAccess
 
         // Tier 1: Superadmin clearance check
         if ($tier === 'superadmin' && $user->subdivision_id !== null && !$user->isSuperadmin()) {
-            abort(403, 'Cross-subdivision superadmin clearance required.');
+            abort(403, 'Platform super admin access required.');
         }
 
         // Tier 2: Subdivision Admin boundary check
@@ -48,7 +48,7 @@ class EnsureSubdivisionAccess
                 ? $requestedSubdivisionId->id
                 : (int) $requestedSubdivisionId;
             if ($user->subdivision_id !== $requestedId) {
-                abort(403, 'You are only authorized to access records within your assigned subdivision.');
+                abort(403, 'You can only access records within your own ' . strtolower($user->zoneLabel()) . '.');
             }
         }
 
