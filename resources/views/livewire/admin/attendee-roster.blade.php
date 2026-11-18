@@ -142,6 +142,7 @@
                 <select wire:model.live="zoneFilter"
                         class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-hidden cursor-pointer">
                     <option value="">All {{ $zls }}</option>
+                    <option value="none">No {{ strtolower($zl) }} yet</option>
                     @foreach($subdivisions as $sub)
                         <option value="{{ $sub->id }}">{{ $sub->name }}</option>
                     @endforeach
@@ -150,12 +151,39 @@
         </div>
     </div>
 
+    @if ($canAssignZones && ($zonelessCount > 0 || $selectedAttendeeIds !== []))
+        <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-900 dark:text-amber-200 space-y-3" data-zoneless-panel>
+            <p>
+                <strong>{{ $zonelessCount }} paid {{ $zonelessCount === 1 ? 'pass has' : 'passes have' }} no {{ strtolower($zl) }}.</strong>
+                Every {{ strtolower($zl) }} gate refuses them until they get one. Filter by "No {{ strtolower($zl) }} yet", tick passes, then assign.
+            </p>
+            <p class="opacity-80">
+                Assigning a {{ strtolower($zl) }} after payment does not move money already settled to the main account.
+                See <a href="{{ route('admin.zone-reassignments') }}" wire:navigate class="underline font-semibold">{{ $zl }} reassignments</a> for the amounts to settle between {{ strtolower($zls) }}.
+            </p>
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="font-semibold">{{ count($selectedAttendeeIds) }} selected →</span>
+                <select wire:model="assignZoneId" aria-label="{{ $zl }} to assign" class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)]">
+                    <option value="">Choose {{ strtolower($zl) }}…</option>
+                    @foreach ($subdivisions as $sub)
+                        <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                    @endforeach
+                </select>
+                <button type="button" wire:click="assignZoneToSelected" @disabled($selectedAttendeeIds === []) class="cursor-pointer rounded-xl bg-[var(--text-primary)] px-3 py-1.5 font-semibold text-[var(--bg-canvas)] disabled:cursor-not-allowed disabled:opacity-40">Assign {{ strtolower($zl) }}</button>
+                @error('assignZoneId') <span class="text-rose-600">{{ $message }}</span> @enderror
+            </div>
+        </div>
+    @endif
+
     <!-- Attendee Table View -->
     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-hidden shadow-xs">
         <div class="overflow-x-auto table-scrollbar">
             <table class="w-full text-left text-xs min-w-[940px]">
                 <thead class="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                     <tr>
+                        @if ($canAssignZones)
+                            <th class="py-3 pl-4 w-8"><span class="sr-only">Select</span></th>
+                        @endif
                         <th class="py-3 px-4 min-w-[220px]">Attendee Credentials</th>
                         <th class="py-3 px-4 min-w-[120px]">{{ $zl }}</th>
                         <th class="py-3 px-4 min-w-[120px]">Pass Tier</th>
@@ -171,6 +199,13 @@
                             $tags = (array) ($custom['tags'] ?? []);
                         @endphp
                         <tr class="hover:bg-[var(--bg-subtle)]/40 transition">
+                            @if ($canAssignZones)
+                                <td class="py-3 pl-4">
+                                    @if ($att->subdivision_id === null)
+                                        <input type="checkbox" wire:model.live="selectedAttendeeIds" value="{{ $att->id }}" aria-label="Select {{ $att->name }}" class="cursor-pointer rounded" />
+                                    @endif
+                                </td>
+                            @endif
                             <!-- Attendee Profile & Tags -->
                             <td class="py-3 px-4">
                                 <div class="flex items-center gap-2.5">
@@ -499,6 +534,19 @@
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] uppercase font-semibold text-[var(--text-tertiary)]">{{ $zl }}</span>
                         <span class="font-medium text-[var(--text-primary)]">{{ $selectedAttendee->subdivision ? $selectedAttendee->subdivision->name : 'No ' . strtolower($zl) }}</span>
+                        @if ($canAssignZones && $selectedAttendee->subdivision_id === null)
+                            <div class="mt-1 flex items-center gap-1.5" data-assign-zone>
+                                <select wire:model="assignZoneId" aria-label="{{ $zl }} to assign" class="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px]">
+                                    <option value="">Choose…</option>
+                                    @foreach ($subdivisions as $sub)
+                                        <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" wire:click="assignZoneToAttendee({{ $selectedAttendee->id }})" class="cursor-pointer rounded-lg bg-[var(--text-primary)] px-2 py-1 text-[11px] font-semibold text-[var(--bg-canvas)]">Assign</button>
+                            </div>
+                        @elseif ($selectedAttendee->zone_assigned_at)
+                            <span class="text-[10px] text-[var(--text-tertiary)]">Assigned {{ $selectedAttendee->zone_assigned_at->format('j M Y') }} by {{ $selectedAttendee->zone_assigned_via === 'buyer' ? 'the buyer' : 'an admin' }}</span>
+                        @endif
                     </div>
 
                     <div class="flex flex-col gap-0.5">
