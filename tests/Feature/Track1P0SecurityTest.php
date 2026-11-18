@@ -241,3 +241,12 @@ test('public event routes cannot shadow operations admin or api routes', functio
     $this->get('/admin/p0-probe')->assertOk()->assertSee('admin route');
     $this->get('/api/p0-probe')->assertOk()->assertSee('api route');
 });
+
+test('the retired PayZephyr webhook endpoint no longer exists', function () {
+    $this->postJson('/api/payzephyr/webhook', ['event' => 'charge.success'])->assertNotFound();
+
+    expect(Illuminate\Support\Facades\Route::has('public.payzephyr.webhook'))
+        ->toBeFalse()
+        ->and(Illuminate\Support\Facades\Route::has('public.paystack.webhook'))
+        ->toBeTrue();
+});
