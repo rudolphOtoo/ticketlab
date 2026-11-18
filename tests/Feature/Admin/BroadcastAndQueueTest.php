@@ -23,6 +23,7 @@ use Livewire\Livewire;
 
 beforeEach(function (): void {
     $this->org = Organization::factory()->create();
+    $this->zone = payable_zone($this->org);
     $this->admin = User::factory()->create()->assignMembership('admin', $this->org->id);
     $this->event = Event::factory()->create(['organization_id' => $this->org->id, 'title' => 'Summit 2027']);
     $this->tier = TicketType::factory()->create(['event_id' => $this->event->id]);
@@ -214,6 +215,7 @@ test('paying for an order queues the ticket email exactly once', function (): vo
         ->set('customerName', 'Kofi Boateng')
         ->set('customerEmail', 'kofi@example.com')
         ->set('customerPhone', '0244998877')
+        ->set('subdivisionId', $this->zone->id)
         ->call('startCheckout')
         ->assertHasNoErrors();
 
@@ -224,6 +226,7 @@ test('paying for an order queues the ticket email exactly once', function (): vo
         'amount' => $order->gross_pesewas,
         'currency' => 'GHS',
         'channel' => 'mobile_money',
+        ...paystack_routing($order),
     ];
 
     $fulfillment = app(App\Services\Payment\OrderFulfillmentService::class);

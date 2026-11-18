@@ -13,14 +13,10 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-2 text-[11px]">
-        <x-ui.badge :color="$splitsEnabled ? 'emerald' : 'zinc'" pill size="sm">Split payments {{ $splitsEnabled ? 'on' : 'off' }}</x-ui.badge>
         <x-ui.badge :color="$mode === 'live' ? 'red' : 'amber'" pill size="sm">Paystack {{ $mode }} keys</x-ui.badge>
-        <span class="text-[var(--text-secondary)]">
-            @if ($policy === 'block')
-                Checkout is refused for {{ strtolower(\Illuminate\Support\Str::plural($label)) }} without a verified subaccount.
-            @else
-                Sales for unconnected {{ strtolower(\Illuminate\Support\Str::plural($label)) }} settle to the main account and are listed as owed below.
-            @endif
+        <span class="text-[var(--text-secondary)]" data-payout-policy>
+            Every paid ticket settles straight to its {{ strtolower($label) }}'s subaccount. A {{ strtolower($label) }} without a verified subaccount cannot sell paid tickets, and paid events cannot be published until every {{ strtolower($label) }} has one.
+            Amounts listed as owed below are older sales that settled to the main account.
         </span>
     </div>
 

@@ -15,10 +15,12 @@ use App\Services\Payment\OrderFulfillmentService;
 use App\Services\Payment\PaystackCheckout;
 use App\Services\Payment\PaystackCheckoutException;
 use App\Services\Payment\PaystackGateway;
+use App\Services\Payment\PaystackSubaccountResolver;
 use App\Services\Payment\PendingOrderService;
 use App\Services\PaystackFeeCalculator;
 use App\Services\Reservation\TicketReservationService;
 use App\Services\Reservation\TicketSoldOutException;
+use App\Services\Reservation\ZoneCapacity;
 use App\Support\ZoneVenue;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -113,7 +115,8 @@ class EventShow extends Component
             ->first();
 
         $this->ticketTypeId = $defaultTicket?->id;
-        $this->subdivisionId = $organization->subdivisions()->orderBy('name')->value('id');
+        // No zone is pre-selected: the buyer must choose the zone they attend (and whose account is paid).
+        $this->subdivisionId = null;
     }
 
     public function selectTicketType(int $ticketTypeId): void
@@ -126,7 +129,7 @@ class EventShow extends Component
 
         $this->ticketTypeId = $ticketType->id;
 
-        $available = $ticketType->available_quantity;
+        $available = $this->seatsLeft($ticketType);
         if ($available > 0 && $this->quantity > $available) {
             $this->quantity = min(20, $available);
         }
@@ -137,7 +140,7 @@ class EventShow extends Component
     public function incrementQuantity(): void
     {
         $ticketType = $this->selectedTicketType();
-        $maximum = $ticketType === null ? 20 : $ticketType->available_quantity;
+        $maximum = $ticketType === null ? 20 : $this->seatsLeft($ticketType);
         $maximum = max(1, min(20, $maximum));
 
         if ($this->quantity < $maximum) {
@@ -156,7 +159,7 @@ class EventShow extends Component
     {
         $quantity = (int) $value;
         $ticketType = $this->selectedTicketType();
-        $maximum = $ticketType->available_quantity ?? 20;
+        $maximum = $ticketType === null ? 20 : $this->seatsLeft($ticketType);
         $maximum = max(1, min(20, $maximum));
 
         $this->quantity = max(1, min($quantity, $maximum));
@@ -189,7 +192,7 @@ class EventShow extends Component
         // Only the questions the buyer was shown: a switched-off required field must never block checkout.
         $formFields = $event->formFields->where('is_active', true)->values();
 
-        $validated = $this->validate(...$this->checkoutRules($formFields));
+        $validated = $this->validate(...$this->checkoutRules($formFields, $organization));
 
         if ($this->checkoutThrottled()) {
             $this->addError('payment', 'Too many checkout attempts. Please wait a few minutes and try again.');
@@ -201,21 +204,13 @@ class EventShow extends Component
         $ticketType = $this->checkoutTicketType($event, (int) $validated['ticketTypeId']);
         $subdivision = $this->checkoutSubdivision($organization, $validated['subdivisionId'] ?? null);
 
-        try {
-            $reservation = $reservations->holdOrReuse(
-                $ticketType,
-                $quantity,
-                $this->checkoutSessionId(),
-                $subdivision?->id,
-            );
-        } catch (TicketSoldOutException $exception) {
-            $this->addError('quantity', $exception->getMessage());
-            $this->dispatch('ticket-hold-failed');
-
+        if ($this->zoneCannotBePaid($ticketType, $subdivision)) {
             return;
-        } catch (InvalidArgumentException $exception) {
-            $this->addError('subdivisionId', $exception->getMessage());
+        }
 
+        $reservation = $this->holdSeats($reservations, $ticketType, $quantity, $subdivision);
+
+        if ($reservation === null) {
             return;
         }
 
@@ -281,13 +276,35 @@ class EventShow extends Component
             return $ticketType->sales_start_at?->isFuture() === true ? 'Coming Soon' : 'Sales Closed';
         }
 
-        if ($ticketType->available_quantity <= 0) {
+        $seatsLeft = $this->seatsLeft($ticketType);
+
+        if ($seatsLeft <= 0) {
             return 'Sold Out';
         }
 
         $limitedThreshold = max(10, (int) ceil($ticketType->total_capacity * 0.2));
 
-        return $ticketType->available_quantity <= $limitedThreshold ? 'Limited' : 'Available';
+        return $seatsLeft <= $limitedThreshold ? 'Limited' : 'Available';
+    }
+
+    /**
+     * Seats the buyer can get in this tier for the zone they picked: the tier's own stock, narrowed by that zone's
+     * remaining seats (each zone sells out on its own).
+     */
+    public function seatsLeft(TicketType $ticketType): int
+    {
+        return app(ZoneCapacity::class)->sellable($ticketType, $this->subdivisionId);
+    }
+
+    public function updatedSubdivisionId(): void
+    {
+        $ticketType = $this->selectedTicketType();
+
+        if ($ticketType !== null) {
+            $this->quantity = max(1, min($this->quantity, $this->seatsLeft($ticketType)));
+        }
+
+        $this->resetValidation(['subdivisionId', 'quantity']);
     }
 
     public function availabilityBadgeClass(TicketType $ticketType): string
@@ -378,6 +395,47 @@ class EventShow extends Component
     }
 
     /**
+     * Holds the seats for 15 minutes; null (with the reason shown to the buyer) when the tier or zone is sold out.
+     */
+    private function holdSeats(
+        TicketReservationService $reservations,
+        TicketType $ticketType,
+        int $quantity,
+        ?Subdivision $zone,
+    ): ?Reservation {
+        try {
+            return $reservations->holdOrReuse($ticketType, $quantity, $this->checkoutSessionId(), $zone?->id);
+        } catch (TicketSoldOutException $exception) {
+            $this->addError('quantity', $exception->getMessage());
+            $this->dispatch('ticket-hold-failed');
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('subdivisionId', $exception->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Refuses before any seats are held or an order is created: a zone that cannot be paid must never lock stock,
+     * and there is no fallback to the platform's main account.
+     */
+    private function zoneCannotBePaid(TicketType $ticketType, ?Subdivision $zone): bool
+    {
+        if ((float) $ticketType->price <= 0 || app(PaystackSubaccountResolver::class)->forSubdivision($zone) !== null) {
+            return false;
+        }
+
+        Log::warning('Checkout refused before hold: no verified payout subaccount for the zone.', [
+            'organization_id' => $this->organizationId,
+            'event_id' => $this->eventId,
+            'subdivision_id' => $zone?->id,
+        ]);
+        $this->addError('payment', PaystackCheckout::unpayableZoneMessage($zone));
+
+        return true;
+    }
+
+    /**
      * Online sales honour the tier's pause switch and sales window set in Tickets & Pricing.
      */
     private function checkoutTicketType(Event $event, int $ticketTypeId): TicketType
@@ -422,7 +480,7 @@ class EventShow extends Component
      *
      * @return array{array<string, list<mixed>>, array<string, string>}
      */
-    private function checkoutRules(Collection $formFields): array
+    private function checkoutRules(Collection $formFields, Organization $organization): array
     {
         // Support both formResponses and customFieldResponses conventions
         $useFormResponses = count($this->formResponses) > 0 && count($this->customFieldResponses) === 0;
@@ -436,13 +494,18 @@ class EventShow extends Component
             [
                 'ticketTypeId' => ['required', 'integer'],
                 'quantity' => ['required', 'integer', 'min:1', 'max:20'],
-                'subdivisionId' => ['nullable', 'integer'],
+                // When the organisation has zones, every order belongs to one: it decides the gate and the payout.
+                'subdivisionId' => [$organization->subdivisions->isNotEmpty() ? 'required' : 'nullable', 'integer'],
                 'customerName' => ['required', 'string', 'max:255'],
                 'customerEmail' => ['required', 'string', 'email', 'max:255'],
                 'customerPhone' => ['required', 'string', 'max:50'],
                 ...$fieldRules,
             ],
-            $messages,
+            [
+                ...$messages,
+                'subdivisionId.required' =>
+                    'Choose your ' . strtolower($organization->subdivision_label) . ' to continue.',
+            ],
         ];
     }
 

@@ -150,7 +150,7 @@
                     <div class="grid gap-3 sm:grid-cols-2">
                         @foreach ($ticketTypes as $ticketType)
                             @php
-                                $isSoldOut = (int) ($ticketType->available_quantity ?? 0) <= 0 || ! $ticketType->isOnSale();
+                                $isSoldOut = $this->seatsLeft($ticketType) <= 0 || ! $ticketType->isOnSale();
                                 $isSelected = $ticketTypeId === $ticketType->id;
                             @endphp
                             <div
@@ -208,7 +208,7 @@
                                         ])
                                         :class="selectedId === {{ $ticketType->id }} ? 'text-[var(--color-primary-fg)]/80' : 'text-[var(--text-secondary)]'"
                                     >
-                                        {{ $ticketType->available_quantity }} left
+                                        {{ $this->seatsLeft($ticketType) }} left
                                     </span>
                                 </div>
                             </div>
@@ -229,7 +229,7 @@
                                 wire:model.live="subdivisionId"
                                 class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3 py-2 text-xs shadow-xs focus:border-[var(--border-focused)] focus:outline-hidden"
                             >
-                                <option value="">No {{ strtolower($organization->subdivision_label) }} / general admission</option>
+                                <option value="" disabled>Choose your {{ strtolower($organization->subdivision_label) }}…</option>
                                 @foreach ($subdivisions as $subdivision)
                                     <option value="{{ $subdivision->id }}">{{ $subdivision->name }}</option>
                                 @endforeach
@@ -585,10 +585,10 @@
                             </label>
                             <select
                                 id="subdivisionId"
-                                wire:model="subdivisionId"
+                                wire:model.live="subdivisionId"
                                 class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3.5 py-2 text-xs shadow-xs focus:border-[var(--border-focused)] focus:outline-hidden"
                             >
-                                <option value="">-- Select an option --</option>
+                                <option value="" disabled>Choose your {{ strtolower($organization->subdivision_label) }}…</option>
                                 @foreach ($subdivisions as $sub)
                                     <option value="{{ $sub->id }}">{{ $sub->name }}</option>
                                 @endforeach

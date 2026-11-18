@@ -30,15 +30,17 @@ beforeEach(function () {
         'organization_id' => $this->organization->id,
         'name' => 'Zone A · Kumasi',
         'slug' => 'zone-a-kumasi',
-        'paystack_subaccount_code' => 'ACCT_ZONE_A',
+        'paystack_subaccount_code' => 'ACCT_zonea',
     ]);
 
     $this->zoneB = Subdivision::factory()->create([
         'organization_id' => $this->organization->id,
         'name' => 'Zone B · Accra',
         'slug' => 'zone-b-accra',
-        'paystack_subaccount_code' => 'ACCT_ZONE_B',
+        'paystack_subaccount_code' => 'ACCT_zoneb',
     ]);
+
+    make_zones_payable($this->organization);
 
     $this->event = Event::factory()->create([
         'organization_id' => $this->organization->id,
