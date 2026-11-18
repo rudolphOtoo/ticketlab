@@ -183,7 +183,7 @@ class UserManagement extends Component
                 ],
             ],
             [],
-            ['subdivisionId' => 'subdivision'],
+            ['subdivisionId' => strtolower($actor->zoneLabel())],
         );
 
         $member = DB::transaction(function () use ($actor, $organizationId): User {
@@ -273,7 +273,12 @@ class UserManagement extends Component
             ->first();
 
         if (!$member instanceof User) {
-            abort(403, 'You can only manage team members inside your organization and zone.');
+            abort(
+                403,
+                'You can only manage team members inside your organisation and '
+                . strtolower($actor->zoneLabel())
+                . '.',
+            );
         }
 
         return $member;

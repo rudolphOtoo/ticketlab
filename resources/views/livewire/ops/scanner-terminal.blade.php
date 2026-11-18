@@ -103,8 +103,8 @@
         <div class="flex items-center gap-2.5">
             <span class="size-2 rounded-full bg-[var(--status-success)] animate-pulse"></span>
             <div class="flex flex-col">
-                <span class="text-xs font-semibold text-[var(--text-primary)]">Gate 04 · Door Scanner</span>
-                <span class="text-[10px] text-[var(--text-secondary)]">{{ $activeSubdivision?->name ?? 'Main Entrance' }}</span>
+                <span class="text-xs font-semibold text-[var(--text-primary)]">Door Scanner</span>
+                <span class="text-[10px] text-[var(--text-secondary)]" data-gate-zone>{{ $activeSubdivision !== null ? $zoneLabel . ': ' . $activeSubdivision->name : 'All ' . \Illuminate\Support\Str::plural($zoneLabel) }}</span>
             </div>
         </div>
 
@@ -161,7 +161,7 @@
         <div class="w-full rounded-2xl border p-5 shadow-sm transition-all duration-200
             {{ $scanState === 'success' ? 'border-[var(--status-success)] bg-[var(--status-success-bg)] text-[var(--status-success)]' : '' }}
             {{ $scanState === 'duplicate' ? 'border-[var(--status-warning)] bg-[var(--status-warning-bg)] text-[var(--status-warning)]' : '' }}
-            {{ $scanState === 'invalid' ? 'border-[var(--status-danger)] bg-[var(--status-danger-bg)] text-[var(--status-danger)]' : '' }}
+            {{ in_array($scanState, ['invalid', 'wrong_zone'], true) ? 'border-[var(--status-danger)] bg-[var(--status-danger-bg)] text-[var(--status-danger)]' : '' }}
         ">
             <div class="flex items-center justify-between pb-3 border-b border-current/15">
                 <span class="inline-flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase">
@@ -171,6 +171,9 @@
                     @elseif ($scanState === 'duplicate')
                         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         [ DUPLICATE SCAN ]
+                    @elseif ($scanState === 'wrong_zone')
+                        <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        [ WRONG {{ strtoupper($zoneLabel) }} ]
                     @else
                         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         [ INVALID CREDENTIAL ]
@@ -189,9 +192,12 @@
                         <span class="rounded-md bg-white/70 dark:bg-black/40 px-2 py-0.5 font-medium border border-current/20">
                             {{ $scanResult['tier'] }}
                         </span>
-                        <span class="text-[var(--text-secondary)]">Subdivision: {{ $scanResult['subdivision'] ?? $scanResult['zone'] }}</span>
+                        <span class="text-[var(--text-secondary)]" data-pass-zone>{{ $zoneLabel }}: {{ $scanResult['zone'] }}</span>
                         <span class="ml-auto font-mono text-[11px] text-[var(--text-tertiary)]">{{ $scanResult['scanned_at'] }}</span>
                     </div>
+                    @if (!empty($scanResult['venue']))
+                        <p class="text-[11px] text-[var(--text-secondary)]" data-pass-venue>📍 {{ $scanResult['venue'] }}</p>
+                    @endif
                 @endif
                 <p class="text-xs opacity-90 pt-1">{{ $scanResult['message'] }}</p>
             </div>

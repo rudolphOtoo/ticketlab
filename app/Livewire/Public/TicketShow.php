@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Models\Attendee;
 use App\Models\Order;
 use App\Services\Payment\QrCodeService;
+use App\Support\ZoneVenue;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -29,7 +30,7 @@ class TicketShow extends Component
     public function render(): View
     {
         $order = Order::query()
-            ->with(['organization', 'attendees.ticketType.event', 'attendees.subdivision', 'subdivision'])
+            ->with(['organization', 'attendees.ticketType.event.zones', 'attendees.subdivision', 'subdivision'])
             ->findOrFail($this->orderId);
 
         $organization = $order->organization;
@@ -47,6 +48,9 @@ class TicketShow extends Component
             'attendees' => $attendees,
             'qrCodes' => $qrCodes,
             'isPaid' => $order->payment_status === OrderStatus::Paid,
+            'venue' => ($event = $attendees->first()?->ticketType->event) === null
+                ? null
+                : ZoneVenue::for($event, $order->subdivision),
         ]);
     }
 }

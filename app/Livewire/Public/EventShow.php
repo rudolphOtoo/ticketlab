@@ -19,6 +19,7 @@ use App\Services\Payment\PendingOrderService;
 use App\Services\PaystackFeeCalculator;
 use App\Services\Reservation\TicketReservationService;
 use App\Services\Reservation\TicketSoldOutException;
+use App\Support\ZoneVenue;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -312,6 +313,7 @@ class EventShow extends Component
         $subtotal = $selectedTicketType === null ? 0.0 : round((float) $selectedTicketType->price * $this->quantity, 2);
 
         $breakdown = PaystackFeeCalculator::breakdown($subtotal, $this->platformFee($organization));
+        $subdivisions = $organization->subdivisions->sortBy('name')->values();
 
         $speakers = $event->speakers;
         $schedules = $event->schedules;
@@ -341,7 +343,11 @@ class EventShow extends Component
             'organization' => $organization,
             'event' => $event,
             'ticketTypes' => $ticketTypes,
-            'subdivisions' => $organization->subdivisions->sortBy('name')->values(),
+            'subdivisions' => $subdivisions,
+            // Each zone meets at its own venue (and possibly date), so buyers see them all before choosing.
+            'zoneVenues' => $subdivisions->mapWithKeys(static fn(Subdivision $zone): array => [
+                $zone->id => ZoneVenue::for($event, $zone),
+            ]),
             'selectedTicketType' => $selectedTicketType,
             'subtotal' => $subtotal,
             'breakdown' => $breakdown,
@@ -583,6 +589,7 @@ class EventShow extends Component
             return $this->resolvedEvent = $this->mountedEvent->loadMissing([
                 'organization.subdivisions',
                 'ticketTypes',
+                'zones',
                 'speakers' => static fn($q) => $q->orderBy('sort_order'),
                 'schedules' => static fn($q) => $q->orderBy('sort_order'),
                 'faqs' => static fn($q) => $q->where('is_published', true)->orderBy('sort_order'),
@@ -595,6 +602,7 @@ class EventShow extends Component
             ->with([
                 'organization.subdivisions',
                 'ticketTypes',
+                'zones',
                 'speakers' => static fn($q) => $q->orderBy('sort_order'),
                 'schedules' => static fn($q) => $q->orderBy('sort_order'),
                 'faqs' => static fn($q) => $q->where('is_published', true)->orderBy('sort_order'),

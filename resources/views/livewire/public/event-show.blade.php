@@ -237,6 +237,34 @@
                             @error('subdivisionId')
                                 <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
                             @enderror
+
+                            @if ($zoneVenues->isNotEmpty())
+                                <ul class="mt-3 grid gap-2" data-zone-venues>
+                                    @foreach ($subdivisions as $zone)
+                                        @php $zv = $zoneVenues[$zone->id]; @endphp
+                                        <li>
+                                            <button
+                                                type="button"
+                                                wire:click="$set('subdivisionId', {{ $zone->id }})"
+                                                @class([
+                                                    'w-full cursor-pointer rounded-xl border px-3 py-2 text-left text-xs transition',
+                                                    'border-[var(--border-focused)] bg-[var(--bg-subtle)]' => (int) $subdivisionId === $zone->id,
+                                                    'border-[var(--border-hairline)] hover:bg-[var(--bg-subtle)]' => (int) $subdivisionId !== $zone->id,
+                                                ])
+                                            >
+                                                <span class="block font-semibold text-[var(--text-primary)]">{{ $zone->name }}</span>
+                                                <span class="block text-[var(--text-secondary)]">{{ $zv->startAt->format('D, j M Y · g:i A') }}</span>
+                                                @if ($zv->place())
+                                                    <span class="block text-[var(--text-secondary)]">📍 {{ $zv->place() }}</span>
+                                                @endif
+                                            </button>
+                                            @if ($zv->mapUrl)
+                                                <a href="{{ $zv->mapUrl }}" target="_blank" rel="noopener noreferrer" class="mt-0.5 inline-block pl-3 text-[11px] font-semibold underline text-[var(--text-secondary)]">Open map</a>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </div>
                     @endif
 
@@ -553,7 +581,7 @@
                     @if ($subdivisions->isNotEmpty())
                         <div>
                             <label for="subdivisionId" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                                {{ $organization->subdivision_label ?: 'Campus / Branch' }}
+                                {{ $organization->subdivision_label }}
                             </label>
                             <select
                                 id="subdivisionId"
@@ -566,6 +594,11 @@
                                 @endforeach
                             </select>
                             @error('subdivisionId') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            @if ($subdivisionId !== null && ($chosen = $zoneVenues[(int) $subdivisionId] ?? null) !== null)
+                                <p class="mt-1 text-[11px] text-[var(--text-secondary)]" data-chosen-zone-venue>
+                                    {{ $chosen->startAt->format('D, j M Y · g:i A') }}@if ($chosen->place()) · 📍 {{ $chosen->place() }}@endif
+                                </p>
+                            @endif
                         </div>
                     @endif
 

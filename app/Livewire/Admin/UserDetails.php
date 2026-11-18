@@ -76,7 +76,7 @@ class UserDetails extends Component
                 ],
             ],
             [],
-            ['subdivisionId' => 'zone'],
+            ['subdivisionId' => strtolower($actor->zoneLabel())],
         );
 
         DB::transaction(function () use ($member): void {
@@ -167,7 +167,12 @@ class UserDetails extends Component
             ->find($id ?? $this->userId);
 
         if (!$member instanceof User) {
-            abort(403, 'You can only inspect accounts inside your organization and zone.');
+            abort(
+                403,
+                'You can only inspect accounts inside your organisation and '
+                . strtolower($this->actor()->zoneLabel())
+                . '.',
+            );
         }
 
         return $member;

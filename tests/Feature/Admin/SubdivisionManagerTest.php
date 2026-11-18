@@ -94,7 +94,7 @@ class SubdivisionManagerTest extends TestCase
         expect(Subdivision::query()->where('slug', 'tema-campus')->exists())->toBeFalse();
     }
 
-    public function test_zone_scoped_admins_can_rename_but_not_redirect_payouts(): void
+    public function test_zone_scoped_admins_can_neither_rename_their_zone_nor_redirect_payouts(): void
     {
         $sub = Subdivision::create([
             'organization_id' => $this->org->id,
@@ -104,16 +104,14 @@ class SubdivisionManagerTest extends TestCase
         ]);
         $zoneAdmin = User::factory()->create()->assignMembership('admin', $this->org->id, $sub->id);
 
-        $component = Livewire::actingAs($zoneAdmin)->test(SubdivisionManager::class)->call('editSubdivision', $sub->id);
-
-        $component->set('name', 'Kumasi Central')->call('save')->assertHasNoErrors();
-        $component
+        // Zone names and payout accounts are organisation-wide decisions; zone admins edit only their venue details.
+        Livewire::actingAs($zoneAdmin)
+            ->test(SubdivisionManager::class)
             ->call('editSubdivision', $sub->id)
-            ->set('paystackSubaccountCode', '')
-            ->call('save')
-            ->assertHasErrors('paystackSubaccountCode');
+            ->assertForbidden();
+        Livewire::actingAs($zoneAdmin)->test(SubdivisionManager::class)->call('save')->assertForbidden();
 
-        expect($sub->fresh())->name->toBe('Kumasi Central')->paystack_subaccount_code->toBe('ACCT_legon123');
+        expect($sub->fresh())->name->toBe('Kumasi')->paystack_subaccount_code->toBe('ACCT_legon123');
     }
 
     public function test_admin_can_edit_subdivision(): void

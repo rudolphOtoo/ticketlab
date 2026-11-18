@@ -1,3 +1,7 @@
+@php
+    $zl = auth()->user()?->zoneLabel() ?? 'Zone';
+    $zls = auth()->user()?->zonesLabel() ?? 'Zones';
+@endphp
 <div class="flex flex-col gap-4 sm:gap-5">
     <!-- Page Header & Actions -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -113,7 +117,7 @@
         <div class="lg:col-span-2 flex flex-col gap-3.5 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 sm:p-5 shadow-xs">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex flex-col">
-                    <h2 class="text-base font-semibold text-[var(--text-primary)]">Subdivision Financials & Gate Throughput</h2>
+                    <h2 class="text-base font-semibold text-[var(--text-primary)]">{{ $zl }} Financials & Gate Throughput</h2>
                     <p class="text-xs text-[var(--text-secondary)]">Real-time terminal collections segmented by regional entry perimeter</p>
                 </div>
 
@@ -125,7 +129,7 @@
                 <table class="w-full text-left text-xs">
                     <thead>
                         <tr class="border-b border-[var(--border-hairline)] text-[var(--text-tertiary)] uppercase text-[10px] tracking-wider">
-                            <th class="pb-3 font-semibold">Subdivision</th>
+                            <th class="pb-3 font-semibold">{{ $zl }}</th>
                             <th class="pb-3 text-right font-semibold">Online Momo</th>
                             <th class="pb-3 text-right font-semibold">Cash Collected</th>
                             <th class="pb-3 text-center font-semibold">Turnout Rate</th>
@@ -159,7 +163,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="py-6 text-center text-xs text-[var(--text-tertiary)]">No zones set up yet.</td>
+                                <td colspan="5" class="py-6 text-center text-xs text-[var(--text-tertiary)]">No {{ strtolower($zls) }} set up yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

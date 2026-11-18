@@ -1,3 +1,7 @@
+@php
+    $zl = auth()->user()?->zoneLabel() ?? 'Zone';
+    $zls = auth()->user()?->zonesLabel() ?? 'Zones';
+@endphp
 <div class="flex flex-col gap-4 sm:gap-5">
 
     <!-- Flash Alert -->
@@ -137,7 +141,7 @@
             @if(!$isUserScoped && $subdivisions->count() > 0)
                 <select wire:model.live="zoneFilter"
                         class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-hidden cursor-pointer">
-                    <option value="">All Subdivisions</option>
+                    <option value="">All {{ $zls }}</option>
                     @foreach($subdivisions as $sub)
                         <option value="{{ $sub->id }}">{{ $sub->name }}</option>
                     @endforeach
@@ -153,7 +157,7 @@
                 <thead class="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                     <tr>
                         <th class="py-3 px-4 min-w-[220px]">Attendee Credentials</th>
-                        <th class="py-3 px-4 min-w-[120px]">Subdivision</th>
+                        <th class="py-3 px-4 min-w-[120px]">{{ $zl }}</th>
                         <th class="py-3 px-4 min-w-[120px]">Pass Tier</th>
                         <th class="py-3 px-4 min-w-[130px]">Digital Pass Hash</th>
                         <th class="py-3 px-4 text-center min-w-[100px]">Status</th>
@@ -190,7 +194,7 @@
                             <!-- Subdivision -->
                             <td class="py-3 px-4 text-[var(--text-secondary)]">
                                 <span class="inline-flex items-center gap-1 rounded-md bg-[var(--bg-subtle)] border border-[var(--border-hairline)] px-2 py-0.5 text-[10px]">
-                                    {{ $att->subdivision ? $att->subdivision->name : 'All Subdivisions' }}
+                                    {{ $att->subdivision ? $att->subdivision->name : 'No ' . strtolower($zl) }}
                                 </span>
                             </td>
 
@@ -339,9 +343,9 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold text-[var(--text-primary)] mb-1">Subdivision (Optional)</label>
+                            <label class="block text-xs font-semibold text-[var(--text-primary)] mb-1">{{ $zl }}</label>
                             <select wire:model="manual_subdivision_id" class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-hidden cursor-pointer">
-                                <option value="">General / All Zones</option>
+                                <option value="">No {{ strtolower($zl) }}</option>
                                 @foreach($subdivisions as $sub)
                                     <option value="{{ $sub->id }}">{{ $sub->name }}</option>
                                 @endforeach
@@ -493,8 +497,8 @@
                     </div>
 
                     <div class="flex flex-col gap-0.5">
-                        <span class="text-[10px] uppercase font-semibold text-[var(--text-tertiary)]">Subdivision</span>
-                        <span class="font-medium text-[var(--text-primary)]">{{ $selectedAttendee->subdivision ? $selectedAttendee->subdivision->name : 'All Subdivisions' }}</span>
+                        <span class="text-[10px] uppercase font-semibold text-[var(--text-tertiary)]">{{ $zl }}</span>
+                        <span class="font-medium text-[var(--text-primary)]">{{ $selectedAttendee->subdivision ? $selectedAttendee->subdivision->name : 'No ' . strtolower($zl) }}</span>
                     </div>
 
                     <div class="flex flex-col gap-0.5">

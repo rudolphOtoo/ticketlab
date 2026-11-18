@@ -1,20 +1,24 @@
 @php
+    $zl = auth()->user()?->zoneLabel() ?? 'Zone';
+    $zls = auth()->user()?->zonesLabel() ?? 'Zones';
+@endphp
+@php
     $inputClass = 'w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3.5 py-2 text-xs font-medium text-[var(--text-primary)] shadow-[var(--shadow-inset)] focus:border-[var(--border-focused)] focus:outline-hidden focus:ring-2 focus:ring-[var(--border-focused)]/20';
 @endphp
 
 <div class="space-y-6">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-xl font-bold tracking-tight sm:text-2xl">Subdivisions</h1>
+            <h1 class="text-xl font-bold tracking-tight sm:text-2xl">{{ $zls }}</h1>
             <p class="mt-0.5 text-xs text-[var(--text-secondary)] sm:text-sm">
-                Manage operational regional subdivisions, campuses, or zones for {{ $actor->organization?->name ?? 'your organization' }}.
+                Manage the {{ strtolower($zls) }} of {{ $actor->organization?->name ?? 'your organization' }}.
             </p>
         </div>
 
         @if ($actor->subdivision_id === null)
         <button type="button" wire:click="openCreateModal" class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs transition hover:opacity-95 press-scale">
             <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 4v16m8-8H4" /></svg>
-            <span>Add Subdivision</span>
+            <span>Add {{ $zl }}</span>
         </button>
         @endif
     </div>
@@ -29,7 +33,7 @@
     <input
         type="search"
         wire:model.live.debounce.250ms="search"
-        placeholder="Search subdivisions..."
+        placeholder="Search {{ strtolower($zls) }}..."
         class="w-full max-w-sm rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs shadow-xs placeholder-[var(--text-tertiary)] focus:border-[var(--text-primary)] focus:outline-hidden"
     />
 
@@ -37,7 +41,7 @@
         <table class="w-full min-w-[640px] text-left text-xs">
             <thead class="border-b border-[var(--border-hairline)] text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
                 <tr>
-                    <th class="px-4 py-3 font-semibold">Subdivision Name</th>
+                    <th class="px-4 py-3 font-semibold">{{ $zl }} Name</th>
                     <th class="px-4 py-3 font-semibold">Slug Identifier</th>
                     <th class="px-4 py-3 font-semibold">Paystack Subaccount</th>
                     <th class="px-4 py-3 font-semibold">Registered Passes</th>
@@ -61,12 +65,12 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1.5">
-                                <button type="button" wire:click="editSubdivision({{ $sub->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">Edit</button>
                                 @if ($actor->subdivision_id === null)
+                                <button type="button" wire:click="editSubdivision({{ $sub->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">Edit</button>
                                 <button
                                     type="button"
                                     wire:click="deleteSubdivision({{ $sub->id }})"
-                                    wire:confirm="Delete subdivision '{{ $sub->name }}'? Staff assigned to it will be unassigned."
+                                    wire:confirm="Delete {{ strtolower($zl) }} '{{ $sub->name }}'? Staff assigned to it will be unassigned."
                                     class="cursor-pointer rounded-lg px-2.5 py-1 font-semibold text-rose-600 hover:bg-rose-500/10"
                                 >Delete</button>
                                 @endif
@@ -76,7 +80,7 @@
                 @empty
                     <tr>
                         <td colspan="5" class="px-4 py-12 text-center text-[var(--text-secondary)]">
-                            {{ $search !== '' ? 'No subdivisions match your search.' : 'No subdivisions created yet. Add your first subdivision.' }}
+                            {{ $search !== '' ? 'No ' . strtolower($zls) . ' match your search.' : 'No ' . strtolower($zls) . ' created yet. Add your first ' . strtolower($zl) . '.' }}
                         </td>
                     </tr>
                 @endforelse
@@ -91,8 +95,8 @@
             <div class="w-full max-w-md space-y-5 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-2xl animate-physical-modal sm:p-7">
                 <div class="flex items-center justify-between border-b border-[var(--border-hairline)] pb-3">
                     <div>
-                        <h2 class="text-base font-bold sm:text-lg">{{ $editingSubdivisionId ? 'Edit Subdivision' : 'Add Subdivision' }}</h2>
-                        <p class="mt-0.5 text-xs text-[var(--text-secondary)]">Create regional chapters, campuses or gate zones.</p>
+                        <h2 class="text-base font-bold sm:text-lg">{{ ($editingSubdivisionId ? 'Edit ' : 'Add ') . $zl }}</h2>
+                        <p class="mt-0.5 text-xs text-[var(--text-secondary)]">Each {{ strtolower($zl) }} sells tickets, receives its own payouts and runs its own gate.</p>
                     </div>
                     <button type="button" wire:click="closeModal" class="cursor-pointer rounded-lg p-1.5 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]" aria-label="Close modal">
                         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -101,7 +105,7 @@
 
                 <form wire:submit="save" class="space-y-4">
                     <div>
-                        <label for="sub-name" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Subdivision Name <span class="text-rose-500">*</span></label>
+                        <label for="sub-name" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">{{ $zl }} Name <span class="text-rose-500">*</span></label>
                         <input id="sub-name" type="text" wire:model.live.debounce.300ms="name" placeholder="e.g. Accra Central or Main Arena" class="{{ $inputClass }}" />
                         @error('name') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                     </div>
@@ -115,14 +119,14 @@
                     <div>
                         <label for="sub-paystack" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Paystack Subaccount Code <span class="text-[var(--text-tertiary)] font-normal">(Optional)</span></label>
                         <input id="sub-paystack" type="text" wire:model="paystackSubaccountCode" placeholder="ACCT_xxxxxxxxx" class="{{ $inputClass }}" />
-                        <p class="mt-1 text-[11px] text-[var(--text-tertiary)]">For automatic split payment settlement to this subdivision's bank account.</p>
+                        <p class="mt-1 text-[11px] text-[var(--text-tertiary)]">For automatic split payment settlement to this {{ strtolower($zl) }}'s bank account.</p>
                         @error('paystackSubaccountCode') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="flex items-center justify-end gap-3 border-t border-[var(--border-hairline)] pt-4">
                         <button type="button" wire:click="closeModal" class="cursor-pointer rounded-xl border border-[var(--border-hairline)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] press-scale">Cancel</button>
                         <button type="submit" class="cursor-pointer rounded-xl bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs press-scale">
-                            {{ $editingSubdivisionId ? 'Save Changes' : 'Create Subdivision' }}
+                            {{ $editingSubdivisionId ? 'Save Changes' : 'Create ' . $zl }}
                         </button>
                     </div>
                 </form>

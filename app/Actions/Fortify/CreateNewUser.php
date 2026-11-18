@@ -49,7 +49,7 @@ class CreateNewUser implements CreatesNewUsers
             $organization = Organization::create([
                 'name' => $orgName,
                 'slug' => $slug,
-                'subdivision_label' => 'Subdivision',
+                'subdivision_label' => 'Zone',
             ]);
 
             $user = new User([

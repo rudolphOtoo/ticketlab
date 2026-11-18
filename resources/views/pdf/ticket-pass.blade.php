@@ -34,7 +34,8 @@
         .holder { margin-top: 4px; font-size: 21px; font-weight: bold; color: #18181b; }
         .email { margin-top: 2px; font-size: 12px; color: #52525b; }
         .facts { margin-top: 18px; }
-        .facts td { padding-bottom: 14px; }
+        .facts { table-layout: fixed; width: 100%; }
+        .facts td { padding-bottom: 14px; padding-right: 16px; vertical-align: top; }
         .facts td.wide { width: 60%; }
         .label { font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: #71717a; }
         .value { margin-top: 3px; font-size: 12px; font-weight: bold; color: #18181b; }
@@ -49,6 +50,7 @@
 </head>
 <body>
     @foreach ($order->attendees as $attendee)
+        @php($venue = $venues[$attendee->id])
         <div class="page {{ $loop->last ? 'last' : '' }}">
             <div class="card">
                 <div class="brand">
@@ -68,8 +70,8 @@
                     <div class="kicker">You are in</div>
                     <h1>{{ $event?->title ?? 'Event ticket' }}</h1>
                     @if ($event)
-                        <div class="when">
-                            {{ $event->start_at->format('D, j M Y · g:i A') }}@if ($event->venue) · {{ $event->venue }}@endif
+                        <div class="when" data-zone-venue>
+                            {{ $venue->startAt->format('D, j M Y · g:i A') }}@if ($venue->place()) · {{ $venue->place() }}@endif
                         </div>
                     @endif
                     <div class="ref">{{ $order->reference }}</div>
@@ -96,7 +98,7 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td>
+                                        <td class="wide">
                                             <div class="label">Issued</div>
                                             <div class="value">{{ $order->paid_at?->format('j M Y · g:i A') ?? 'Pending' }}</div>
                                         </td>
