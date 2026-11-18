@@ -64,11 +64,11 @@ test('registration cannot smuggle a role or organization through the request', f
 
     $user = User::query()->where('email', 'sneaky@example.com')->firstOrFail();
 
+    // Public sign-up creates attendee accounts only, whatever the request carries.
     expect($user->role)
-        ->toBe('admin')
+        ->toBe('attendee')
         ->and($user->organization_id)
-        ->not
-        ->toBe($org->id)
+        ->toBeNull()
         ->and($user->isSuperAdmin())
         ->toBeFalse();
 });

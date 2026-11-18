@@ -32,6 +32,42 @@ class Organization extends Model
         return OrganizationFactory::new();
     }
 
+    /**
+     * First URL segments the platform itself uses. An organisation slug can never be one of these, or its public
+     * site at /{slug} would be unreachable; routes/public.php builds its pattern from this list.
+     */
+    public const array RESERVED_SLUGS = [
+        'ops',
+        'admin',
+        'api',
+        'livewire',
+        'up',
+        'dashboard',
+        'settings',
+        'tickets',
+        'events',
+        'platform',
+        'login',
+        'logout',
+        'register',
+        'invitations',
+        'forgot-password',
+        'reset-password',
+        'two-factor-challenge',
+        'user',
+        'email',
+        'storage',
+        'build',
+        'about-us',
+        'speakers',
+        'conference-packages',
+        'highlights',
+        'gallery',
+        'partnership',
+        'faq',
+        'contact',
+    ];
+
     protected $fillable = [
         'name',
         'slug',

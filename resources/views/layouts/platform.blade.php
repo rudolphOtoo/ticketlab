@@ -18,6 +18,7 @@
             </a>
 
             <div class="flex items-center gap-1.5">
+                <a href="{{ route('platform.organizations') }}" wire:navigate class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">Organisations</a>
                 <a href="{{ route('admin.queue-monitor') }}" wire:navigate class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">Queue Monitor</a>
                 <button type="button"
                         onclick="toggleStudioTheme(event, null, this)"
