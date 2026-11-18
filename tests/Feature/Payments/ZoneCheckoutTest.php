@@ -265,3 +265,75 @@ test('ticket types store a seat cap per zone and a blank field removes it', func
     $manager->call('editTicketType', $this->vip->id)->set("zoneCapacities.{$this->accra->id}", '')->call('save');
     expect(TicketTypeZoneCapacity::query()->pluck('subdivision_id')->all())->toBe([$this->kumasi->id]);
 });
+
+test('in the split payload the main account bears the Paystack fee and the zone receives exactly the ticket price', function (): void {
+    $this->vip->update(['price' => 75.50]);
+
+    buy_in_zone($this, $this->kumasi, 3)->assertHasNoErrors();
+
+    $payload = collect(Http::recorded())
+        ->map(static fn(array $pair) => $pair[0])
+        ->first(static fn(Request $request): bool => str_ends_with($request->url(), '/transaction/initialize'));
+    $ticketPrice = PaystackFeeCalculator::toPesewas(75.50 * 3);
+
+    expect($payload['subaccount'])
+        ->toBe($this->kumasi->paystack_subaccount_code)
+        // "account" = the main (platform) account bears Paystack's fee, out of its transaction_charge.
+        ->and($payload['bearer'])
+        ->toBe('account')
+        ->and($payload['amount'] - $payload['transaction_charge'])
+        ->toBe($ticketPrice)
+        ->and($payload['transaction_charge'])
+        ->toBe($payload['amount'] - $ticketPrice);
+});
+
+test('an order created before zones were required still confirms and issues its pass when the webhook arrives late', function (?array $subaccountField): void {
+    // In flight at deploy time: no zone, no payout subaccount, settling to the main account, seats still held.
+    $reservation = App\Models\Reservation::factory()->create([
+        'organization_id' => $this->org->id,
+        'ticket_type_id' => $this->vip->id,
+        'subdivision_id' => null,
+        'quantity' => 1,
+    ]);
+    $order = Order::factory()->create([
+        'organization_id' => $this->org->id,
+        'subdivision_id' => null,
+        'payout_subaccount_code' => null,
+        'reservation_id' => $reservation->id,
+        'gross_amount' => 102.0,
+        'net_amount' => 100.0,
+        'metadata' => ['reservation_id' => $reservation->id, 'ticket_type_id' => $this->vip->id, 'quantity' => 1],
+    ]);
+
+    $payment = [
+        'reference' => $order->reference,
+        'status' => 'success',
+        'amount' => $order->gross_pesewas,
+        'currency' => 'GHS',
+        'channel' => 'mobile_money',
+        ...($subaccountField === null ? [] : ['subaccount' => $subaccountField]),
+    ];
+    $body = (string) json_encode(['event' => 'charge.success', 'data' => $payment]);
+
+    $this
+        ->call(
+            'POST',
+            '/api/paystack/webhook',
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_X_PAYSTACK_SIGNATURE' => hash_hmac('sha512', $body, 'sk_test_suite'),
+            ],
+            $body,
+        )
+        ->assertOk()
+        ->assertJson(['status' => 'success']);
+
+    expect($order->fresh()->payment_status->value)->toBe('paid')->and($order->fresh()->attendees()->count())->toBe(1);
+})->with([
+    'no subaccount field' => [null],
+    // Paystack sends an empty subaccount object for unsplit transactions.
+    'empty subaccount object' => [[]],
+]);

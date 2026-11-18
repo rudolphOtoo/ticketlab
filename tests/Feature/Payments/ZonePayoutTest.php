@@ -11,6 +11,7 @@ use App\Models\Organization;
 use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Services\Payment\PaystackSubaccountResolver;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +37,8 @@ beforeEach(function (): void {
         'name' => 'Zone B',
         'paystack_subaccount_code' => ZONE_SUBACCOUNT,
     ]);
+    // Verified when it was saved in the admin; checkout reads that stored result.
+    app(PaystackSubaccountResolver::class)->markVerified($this->zone);
 
     // Paystack only knows the subaccounts created on this test account.
     $known = [

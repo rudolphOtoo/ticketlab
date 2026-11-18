@@ -17,6 +17,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property string $slug
  * @property string|null $paystack_subaccount_code
+ * @property string|null $payout_verified_code The code last confirmed with Paystack; payments need it to match.
+ * @property string|null $payout_verified_mode "test" or "live": the key mode the code was confirmed under.
+ * @property CarbonImmutable|null $payout_verified_at
+ * @property CarbonImmutable|null $payout_checked_at
+ * @property string|null $payout_check_error
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
@@ -33,6 +38,14 @@ class Subdivision extends Model
         'slug',
         'paystack_subaccount_code',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'payout_verified_at' => 'datetime',
+            'payout_checked_at' => 'datetime',
+        ];
+    }
 
     /**
      * @return HasMany<Order, $this>

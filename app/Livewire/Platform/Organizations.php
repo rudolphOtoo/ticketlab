@@ -78,7 +78,7 @@ class Organizations extends Component
                 ),
             ], 'gross_amount')
             ->with([
-                'subdivisions:id,organization_id,name,paystack_subaccount_code',
+                'subdivisions:id,organization_id,name,paystack_subaccount_code,payout_verified_code,payout_verified_mode',
                 'users' => static fn($users) => $users->where('role', 'admin')->whereNull('subdivision_id'),
             ])
             ->orderBy('name')
@@ -86,16 +86,11 @@ class Organizations extends Component
 
         return view('livewire.platform.organizations', [
             'organizations' => $organizations,
-            // Cached verdicts only: listing never calls Paystack. A code nobody has checked yet shows as unverified.
+            // Stored verification only: listing never calls Paystack.
             'missingSubaccounts' => $organizations->mapWithKeys(static fn(Organization $organization): array => [
                 $organization->id => $organization
                     ->subdivisions
-                    ->filter(
-                        static fn(Subdivision $zone): bool => (
-                            $zone->paystack_subaccount_code === null
-                            || $subaccounts->cachedVerdict($zone->paystack_subaccount_code) === false
-                        ),
-                    )
+                    ->filter(static fn(Subdivision $zone): bool => $subaccounts->forSubdivision($zone) === null)
                     ->pluck('name')
                     ->all(),
             ]),

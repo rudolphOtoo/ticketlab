@@ -84,7 +84,8 @@ function paystack_accepts_subaccounts(string ...$codes): void
 }
 
 /**
- * Every zone of the organisation has a verified payout subaccount (zones without a code get one).
+ * Every zone of the organisation has a payout subaccount verified under the suite's (test) key, stored the same
+ * way saving a code in the admin does. Checkout reads that stored verification and never calls Paystack.
  */
 function make_zones_payable(App\Models\Organization $organization): void
 {
@@ -96,6 +97,7 @@ function make_zones_payable(App\Models\Organization $organization): void
         }
 
         $codes[] = (string) $zone->paystack_subaccount_code;
+        app(App\Services\Payment\PaystackSubaccountResolver::class)->markVerified($zone->refresh());
     }
 
     paystack_accepts_subaccounts(...$codes);
@@ -113,8 +115,9 @@ function payable_zone(App\Models\Organization $organization, string $name = 'Mai
     ]);
 
     paystack_accepts_subaccounts((string) $zone->paystack_subaccount_code);
+    app(App\Services\Payment\PaystackSubaccountResolver::class)->markVerified($zone);
 
-    return $zone;
+    return $zone->refresh();
 }
 
 /**
