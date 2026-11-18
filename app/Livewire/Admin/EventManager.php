@@ -9,6 +9,7 @@ use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Payment\PayoutReadiness;
 use App\Support\ActiveEvent;
 use App\Support\DedicatedSite;
 use App\Support\MediaUrl;
@@ -196,6 +197,10 @@ class EventManager extends Component
             'is_public' => $this->is_public,
         ];
 
+        if ($this->publishBlocked($event)) {
+            return;
+        }
+
         $event->fill($attributes)->save();
 
         // Stored after saving so a new event's banner is filed under its own id.
@@ -213,6 +218,24 @@ class EventManager extends Component
             : "'{$event->title}' was updated.";
 
         $this->closeModal();
+    }
+
+    /**
+     * A published event with paid tickets must be able to pay every zone; drafts can be prepared freely.
+     */
+    private function publishBlocked(Event $event): bool
+    {
+        if ($this->status !== 'published' || !$event->exists) {
+            return false;
+        }
+
+        $reason = app(PayoutReadiness::class)->blockingReason($event);
+
+        if ($reason !== null) {
+            $this->addError('status', $reason);
+        }
+
+        return $reason !== null;
     }
 
     public function activate(int $eventId): void
@@ -253,6 +276,16 @@ class EventManager extends Component
 
         if ($event === null) {
             return;
+        }
+
+        if ($event->status !== 'published') {
+            $reason = app(PayoutReadiness::class)->blockingReason($event);
+
+            if ($reason !== null) {
+                $this->flashMessage = $reason;
+
+                return;
+            }
         }
 
         $event->update(['status' => $event->status === 'published' ? 'draft' : 'published']);

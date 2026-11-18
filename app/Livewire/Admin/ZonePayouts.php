@@ -202,17 +202,12 @@ class ZonePayouts extends Component
     {
         $organizationId = $this->organizationId();
         $organization = Organization::query()->findOrFail($organizationId);
-        $settings = $organization->settings ?? [];
 
         return view('livewire.admin.zone-payouts', [
             'organization' => $organization,
             'zones' => $this->zones(),
             'ledger' => $this->ledger($organizationId),
-            'splitsEnabled' =>
-                (bool) config('services.paystack.split_payments')
-                    && ($settings['paystack_split_payments'] ?? true) !== false,
             'mode' => $subaccounts->mode(),
-            'policy' => config('services.paystack.unrouted_zone_policy') === 'block' ? 'block' : 'fallback',
             'subaccounts' => $subaccounts,
         ]);
     }

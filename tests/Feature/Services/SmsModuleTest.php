@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Queue;
 
 beforeEach(function (): void {
     $this->org = Organization::factory()->create(['name' => 'Charis Ministries']);
+    $this->zone = payable_zone($this->org);
     $this->event = Event::factory()->create(['organization_id' => $this->org->id, 'title' => 'Praise Summit']);
     $this->tier = TicketType::factory()->create(['event_id' => $this->event->id]);
 });
@@ -79,6 +80,7 @@ test('fulfilling an order does NOT queue SendTicketSms when sms is disabled', fu
         ->set('customerName', 'Kofi Boateng')
         ->set('customerEmail', 'kofi@example.com')
         ->set('customerPhone', '0244998877')
+        ->set('subdivisionId', $this->zone->id)
         ->call('startCheckout')
         ->assertHasNoErrors();
 
@@ -89,6 +91,7 @@ test('fulfilling an order does NOT queue SendTicketSms when sms is disabled', fu
         'amount' => $order->gross_pesewas,
         'currency' => 'GHS',
         'channel' => 'mobile_money',
+        ...paystack_routing($order),
     ];
 
     app(OrderFulfillmentService::class)->fulfill($order, $payment);
@@ -112,6 +115,7 @@ test('fulfilling an order queues SendTicketSms when sms is enabled', function ()
         ->set('customerName', 'Kofi Boateng')
         ->set('customerEmail', 'kofi@example.com')
         ->set('customerPhone', '0244998877')
+        ->set('subdivisionId', $this->zone->id)
         ->call('startCheckout')
         ->assertHasNoErrors();
 
@@ -122,6 +126,7 @@ test('fulfilling an order queues SendTicketSms when sms is enabled', function ()
         'amount' => $order->gross_pesewas,
         'currency' => 'GHS',
         'channel' => 'mobile_money',
+        ...paystack_routing($order),
     ];
 
     app(OrderFulfillmentService::class)->fulfill($order, $payment);

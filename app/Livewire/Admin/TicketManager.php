@@ -6,7 +6,10 @@ namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Models\Event;
+use App\Models\Subdivision;
 use App\Models\TicketType;
+use App\Models\TicketTypeZoneCapacity;
+use App\Services\Payment\PayoutReadiness;
 use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -53,6 +56,9 @@ class TicketManager extends Component
 
     public string $newPerkInput = '';
 
+    /** @var array<int|string, int|string|null> Seats per zone for this tier, keyed by zone id; blank means no zone cap. */
+    public array $zoneCapacities = [];
+
     public string $search = '';
 
     public ?string $flashMessage = null;
@@ -95,6 +101,7 @@ class TicketManager extends Component
         $this->is_active = true;
         $this->perks = [];
         $this->newPerkInput = '';
+        $this->zoneCapacities = $this->zoneCapacityForm(null);
         $this->isModalOpen = true;
     }
 
@@ -107,17 +114,20 @@ class TicketManager extends Component
             return;
         }
 
-        $this->editingTicketTypeId = $ticketType->id;
-        $this->name = $ticketType->name;
-        $this->description = $ticketType->description ?? '';
-        $this->price = $ticketType->price;
-        $this->total_capacity = $ticketType->total_capacity;
-        $this->sales_start_at = $ticketType->sales_start_at?->format('Y-m-d\TH:i');
-        $this->sales_end_at = $ticketType->sales_end_at?->format('Y-m-d\TH:i');
-        $this->is_active = $ticketType->is_active;
-        $this->perks = $ticketType->perks ?? [];
-        $this->newPerkInput = '';
-        $this->isModalOpen = true;
+        $this->fill([
+            'editingTicketTypeId' => $ticketType->id,
+            'name' => $ticketType->name,
+            'description' => $ticketType->description ?? '',
+            'price' => $ticketType->price,
+            'total_capacity' => $ticketType->total_capacity,
+            'sales_start_at' => $ticketType->sales_start_at?->format('Y-m-d\TH:i'),
+            'sales_end_at' => $ticketType->sales_end_at?->format('Y-m-d\TH:i'),
+            'is_active' => $ticketType->is_active,
+            'perks' => $ticketType->perks ?? [],
+            'newPerkInput' => '',
+            'zoneCapacities' => $this->zoneCapacityForm($ticketType),
+            'isModalOpen' => true,
+        ]);
     }
 
     public function closeModal(): void
@@ -155,6 +165,16 @@ class TicketManager extends Component
             return;
         }
 
+        if (!$ticketType->is_active && (float) $ticketType->price > 0) {
+            $reason = $this->publishedPaidSalesBlocker($ticketType->event_id);
+
+            if ($reason !== null) {
+                $this->flashMessage = $reason;
+
+                return;
+            }
+        }
+
         $ticketType->is_active = !$ticketType->is_active;
         $ticketType->save();
 
@@ -174,6 +194,10 @@ class TicketManager extends Component
             'is_active' => ['boolean'],
             'perks' => ['array'],
             'perks.*' => ['string', 'max:120'],
+            'zoneCapacities' => ['array'],
+            'zoneCapacities.*' => ['nullable', 'integer', 'min:0', 'max:' . max(0, $this->total_capacity)],
+        ], [
+            'zoneCapacities.*.max' => 'A zone cannot have more seats than the tier total.',
         ]);
 
         $event = $this->getCurrentEvent();
@@ -184,9 +208,23 @@ class TicketManager extends Component
             ]);
         }
 
-        DB::transaction(fn() => $this->editingTicketTypeId === null
-            ? $this->createTicketType($event)
-            : $this->updateTicketType($this->editingTicketTypeId));
+        if ($this->is_active && (float) $this->price > 0) {
+            $reason = $this->publishedPaidSalesBlocker($event->id);
+
+            if ($reason !== null) {
+                throw ValidationException::withMessages(['price' => $reason]);
+            }
+        }
+
+        DB::transaction(function () use ($event): void {
+            $ticketType = $this->editingTicketTypeId === null
+                ? $this->createTicketType($event)
+                : $this->updateTicketType($this->editingTicketTypeId);
+
+            if ($ticketType !== null) {
+                $this->syncZoneCapacities($ticketType);
+            }
+        });
 
         $this->closeModal();
     }
@@ -210,7 +248,7 @@ class TicketManager extends Component
         ];
     }
 
-    private function createTicketType(Event $event): void
+    private function createTicketType(Event $event): TicketType
     {
         $ticketType = TicketType::create([
             ...$this->tierAttributes(),
@@ -219,12 +257,14 @@ class TicketManager extends Component
         ]);
 
         $this->flashMessage = "New ticket tier '{$ticketType->name}' created successfully.";
+
+        return $ticketType;
     }
 
     /**
      * Must run inside a transaction: the tier row is locked so concurrent sales cannot race the capacity maths.
      */
-    private function updateTicketType(int $ticketTypeId): void
+    private function updateTicketType(int $ticketTypeId): ?TicketType
     {
         $ticketType = TicketType::query()
             ->whereHas('event', function ($query): void {
@@ -235,7 +275,7 @@ class TicketManager extends Component
             ->first();
 
         if ($ticketType === null) {
-            return;
+            return null;
         }
 
         $soldTickets = max(0, $ticketType->total_capacity - $ticketType->available_quantity);
@@ -254,6 +294,71 @@ class TicketManager extends Component
         ]);
 
         $this->flashMessage = "Ticket tier '{$ticketType->name}' updated successfully.";
+
+        return $ticketType;
+    }
+
+    /**
+     * A paid tier may only go on sale on a published event when every zone can receive its money.
+     */
+    private function publishedPaidSalesBlocker(int $eventId): ?string
+    {
+        $event = Event::query()->where('organization_id', $this->organizationId)->whereKey($eventId)->first();
+
+        return $event === null || $event->status !== 'published'
+            ? null
+            : app(PayoutReadiness::class)->blockingReason($event, addsPaidTier: true);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function zoneCapacityForm(?TicketType $ticketType): array
+    {
+        $saved = $ticketType === null
+            ? collect()
+            : TicketTypeZoneCapacity::query()
+                ->where('ticket_type_id', $ticketType->id)
+                ->pluck('capacity', 'subdivision_id');
+
+        return $this
+            ->zones()
+            ->mapWithKeys(static fn(Subdivision $zone): array => [
+                $zone->id => $saved->has($zone->id) ? (string) $saved->get($zone->id) : '',
+            ])
+            ->all();
+    }
+
+    /**
+     * Saves the per-zone seat caps for this organisation's zones only; a blank field removes that zone's cap.
+     */
+    private function syncZoneCapacities(TicketType $ticketType): void
+    {
+        foreach ($this->zones() as $zone) {
+            $value = $this->zoneCapacities[$zone->id] ?? null;
+
+            if ($value === null || $value === '') {
+                TicketTypeZoneCapacity::query()
+                    ->where('ticket_type_id', $ticketType->id)
+                    ->where('subdivision_id', $zone->id)
+                    ->delete();
+
+                continue;
+            }
+
+            TicketTypeZoneCapacity::query()->updateOrCreate([
+                'ticket_type_id' => $ticketType->id,
+                'subdivision_id' => $zone->id,
+            ], ['organization_id' => $zone->organization_id, 'capacity' => (int) $value]);
+        }
+    }
+
+    /**
+     * @return Collection<int, Subdivision>
+     */
+    private function zones(): Collection
+    {
+        return Subdivision::query()->where('organization_id', $this->organizationId)->orderBy('name')->get();
     }
 
     public function deleteTicketType(int $id): void
@@ -325,6 +430,8 @@ class TicketManager extends Component
         }
 
         return view('livewire.admin.ticket-manager', [
+            'zoneNames' => $this->zones()->pluck('name', 'id'),
+            'zoneLabel' => auth()->user()?->zoneLabel() ?? 'Zone',
             'events' => $events,
             'currentEvent' => $currentEvent,
             'ticketTypes' => $ticketTypes,

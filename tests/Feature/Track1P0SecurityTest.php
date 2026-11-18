@@ -31,6 +31,7 @@ beforeEach(function () {
         'name' => 'Zone A · Kumasi',
         'slug' => 'zone-a-kumasi',
     ]);
+    make_zones_payable($this->organization);
 
     $this->event = Event::factory()->create([
         'organization_id' => $this->organization->id,

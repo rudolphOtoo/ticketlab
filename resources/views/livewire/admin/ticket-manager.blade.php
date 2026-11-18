@@ -330,6 +330,22 @@
                         </div>
                     </div>
 
+                    @if ($zoneNames->isNotEmpty())
+                        <!-- Seats per zone: each zone sells out on its own, within the tier total -->
+                        <div class="rounded-xl border border-[var(--border-hairline)] p-3 space-y-2" data-zone-capacities>
+                            <p class="text-xs font-semibold text-[var(--text-secondary)]">Seats per {{ strtolower($zoneLabel) }} <span class="font-normal text-[var(--text-tertiary)]">(blank = no separate limit; the total above still applies)</span></p>
+                            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                @foreach ($zoneNames as $zoneId => $zoneName)
+                                    <div wire:key="zone-cap-{{ $zoneId }}">
+                                        <label for="zone-cap-{{ $zoneId }}" class="block text-[11px] text-[var(--text-secondary)] mb-0.5">{{ $zoneName }}</label>
+                                        <input id="zone-cap-{{ $zoneId }}" type="number" min="0" wire:model="zoneCapacities.{{ $zoneId }}" class="w-full rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs font-mono" />
+                                        @error("zoneCapacities.{$zoneId}") <p class="mt-0.5 text-[11px] text-rose-500">{{ $message }}</p> @enderror
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
                     <!-- Sales Window Grid -->
                     <div class="grid grid-cols-2 gap-4">
                         <div>

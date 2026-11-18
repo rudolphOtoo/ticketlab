@@ -101,6 +101,7 @@ test('cash desk refuses a tampered tier that belongs to another event', function
 
     Livewire::actingAs($this->adminA)
         ->test(CashDeskTerminal::class, ['eventId' => $eventA->id])
+        ->set('saleZoneId', Subdivision::factory()->create(['organization_id' => $this->orgA->id])->id)
         ->set('selectedTierId', $foreignTier->id)
         ->set('cashTendered', '100.00')
         ->call('processCashSale')

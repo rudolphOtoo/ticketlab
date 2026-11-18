@@ -114,6 +114,7 @@ test('attendee can open and view speaker bio modal', function (): void {
 
 test('dynamic questionnaire validates required fields during checkout', function (): void {
     $org = Organization::factory()->create(['slug' => 'summit-hub']);
+    $zone = payable_zone($org);
 
     $event = Event::factory()->create([
         'organization_id' => $org->id,
@@ -157,6 +158,7 @@ test('dynamic questionnaire validates required fields during checkout', function
         ->set('customerName', 'Kwesi Arthur')
         ->set('customerEmail', 'kwesi@example.com')
         ->set('customerPhone', '0244112233')
+        ->set('subdivisionId', $zone->id)
         ->call('startCheckout')
         ->assertHasErrors(['customFieldResponses.t_shirt_size']);
 
@@ -168,12 +170,14 @@ test('dynamic questionnaire validates required fields during checkout', function
         ->set('customerEmail', 'kwesi@example.com')
         ->set('customerPhone', '0244112233')
         ->set('customFieldResponses.t_shirt_size', 'NonExistentSize')
+        ->set('subdivisionId', $zone->id)
         ->call('startCheckout')
         ->assertHasErrors(['customFieldResponses.t_shirt_size']);
 });
 
 test('dynamic questionnaire responses are persisted to attendees custom_fields upon order fulfillment', function (): void {
     $org = Organization::factory()->create(['slug' => 'summit-hub']);
+    $zone = payable_zone($org);
 
     $event = Event::factory()->create([
         'organization_id' => $org->id,
@@ -218,6 +222,7 @@ test('dynamic questionnaire responses are persisted to attendees custom_fields u
         ->set('customerPhone', '0244998877')
         ->set('customFieldResponses.t_shirt_size', 'Large')
         ->set('customFieldResponses.department', 'Media & IT')
+        ->set('subdivisionId', $zone->id)
         ->call('startCheckout')
         ->assertHasNoErrors();
 
@@ -238,6 +243,7 @@ test('dynamic questionnaire responses are persisted to attendees custom_fields u
         'amount' => $order->gross_pesewas,
         'currency' => 'GHS',
         'channel' => 'mobile_money',
+        ...paystack_routing($order),
     ];
 
     $fulfilledOrder = $fulfillment->fulfill($order, $paymentPayload);
@@ -251,6 +257,7 @@ test('dynamic questionnaire responses are persisted to attendees custom_fields u
 
 test('a sold-out race surfaces a friendly quantity error instead of crashing checkout', function (): void {
     $org = Organization::factory()->create();
+    $zone = payable_zone($org);
     $event = Event::factory()->create(['organization_id' => $org->id, 'status' => 'published']);
     $ticket = TicketType::factory()->create([
         'event_id' => $event->id,
@@ -269,11 +276,16 @@ test('a sold-out race surfaces a friendly quantity error instead of crashing che
     // Another buyer takes the last seat between page load and checkout.
     $ticket->update(['available_quantity' => 0]);
 
-    $component->call('startCheckout')->assertHasErrors(['quantity'])->assertSet('orderReference', null);
+    $component
+        ->set('subdivisionId', $zone->id)
+        ->call('startCheckout')
+        ->assertHasErrors(['quantity'])
+        ->assertSet('orderReference', null);
 });
 
 test('questionnaire options containing commas validate correctly', function (): void {
     $org = Organization::factory()->create();
+    $zone = payable_zone($org);
     $event = Event::factory()->create(['organization_id' => $org->id, 'status' => 'published']);
     $ticket = TicketType::factory()->create(['event_id' => $event->id, 'price' => 50, 'available_quantity' => 10]);
 
@@ -298,6 +310,7 @@ test('questionnaire options containing commas validate correctly', function (): 
         ->set('customerEmail', 'ama@example.com')
         ->set('customerPhone', '0244000000')
         ->set('customFieldResponses.city', $answer)
+        ->set('subdivisionId', $zone->id)
         ->call('startCheckout');
 
     $checkout('Accra, Greater Accra')->assertHasNoErrors();
@@ -306,6 +319,7 @@ test('questionnaire options containing commas validate correctly', function (): 
 
 test('switched-off required questionnaire fields are not displayed and do not block checkout', function (): void {
     $org = Organization::factory()->create();
+    $zone = payable_zone($org);
     $event = Event::factory()->create(['organization_id' => $org->id, 'status' => 'published']);
     $ticket = TicketType::factory()->create(['event_id' => $event->id, 'price' => 50, 'available_quantity' => 10]);
 
@@ -330,12 +344,14 @@ test('switched-off required questionnaire fields are not displayed and do not bl
         ->set('customerName', 'Abena Pokua')
         ->set('customerEmail', 'abena@example.com')
         ->set('customerPhone', '0244123456')
+        ->set('subdivisionId', $zone->id)
         ->call('startCheckout')
         ->assertHasNoErrors();
 });
 
 test('responses submitted for inactive questionnaire fields are stripped and never persisted to order metadata', function (): void {
     $org = Organization::factory()->create();
+    $zone = payable_zone($org);
     $event = Event::factory()->create(['organization_id' => $org->id, 'status' => 'published']);
     $ticket = TicketType::factory()->create(['event_id' => $event->id, 'price' => 50, 'available_quantity' => 10]);
 
@@ -372,6 +388,7 @@ test('responses submitted for inactive questionnaire fields are stripped and nev
         ->set('customerPhone', '0244111222')
         ->set('customFieldResponses.active_field', 'Valid Answer')
         ->set('customFieldResponses.hidden_field', 'Injected Inactive Payload')
+        ->set('subdivisionId', $zone->id)
         ->call('startCheckout')
         ->assertHasNoErrors();
 

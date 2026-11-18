@@ -31,7 +31,7 @@ class PaystackSubaccountResolver
     {
         $code = $subdivision?->paystack_subaccount_code;
 
-        if ($subdivision === null || $code === null || trim($code) === '' || !$this->splitsEnabledFor($subdivision)) {
+        if ($subdivision === null || $code === null || trim($code) === '') {
             return null;
         }
 
@@ -49,14 +49,6 @@ class PaystackSubaccountResolver
         }
 
         return $this->existsForActiveKey($code, $context) ? $code : null;
-    }
-
-    /**
-     * True when sales for this zone are expected to settle into its own subaccount.
-     */
-    public function routingRequired(?Subdivision $subdivision): bool
-    {
-        return $subdivision !== null && $this->splitsEnabledFor($subdivision);
     }
 
     /**
@@ -118,20 +110,6 @@ class PaystackSubaccountResolver
             str_starts_with($this->secretKey(), 'sk_live_') => 'live',
             default => 'unknown',
         };
-    }
-
-    /**
-     * Platform switch first, then the organisation's own opt-out in its settings.
-     */
-    private function splitsEnabledFor(Subdivision $subdivision): bool
-    {
-        if (!config('services.paystack.split_payments')) {
-            return false;
-        }
-
-        $settings = $subdivision->organization->settings ?? [];
-
-        return ($settings['paystack_split_payments'] ?? true) !== false;
     }
 
     /**

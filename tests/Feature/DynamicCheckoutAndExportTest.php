@@ -24,6 +24,7 @@ use Livewire\Livewire;
 
 beforeEach(function (): void {
     $this->org = Organization::factory()->create(['slug' => 'grace-hub']);
+    $this->zone = payable_zone($this->org);
     $this->admin = User::factory()->create()->assignMembership('admin', $this->org->id);
     $this->event = Event::factory()->create([
         'organization_id' => $this->org->id,
@@ -78,7 +79,8 @@ function checkout_with(object $test, array $answers): \Livewire\Features\Support
         ->set('quantity', 1)
         ->set('customerName', 'Kofi Boateng')
         ->set('customerEmail', 'kofi@example.com')
-        ->set('customerPhone', '0244998877');
+        ->set('customerPhone', '0244998877')
+        ->set('subdivisionId', $test->zone->id);
 
     foreach ($answers as $key => $value) {
         $component->set("customFieldResponses.{$key}", $value);
@@ -98,6 +100,7 @@ function paid_attendee(\Livewire\Features\SupportTesting\Testable $checkout): At
             'amount' => $order->gross_pesewas,
             'currency' => 'GHS',
             'channel' => 'mobile_money',
+            ...paystack_routing($order),
         ])
         ->attendees->firstOrFail();
 }

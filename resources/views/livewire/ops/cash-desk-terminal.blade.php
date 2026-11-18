@@ -66,6 +66,21 @@
                     <span class="text-[11px] text-[var(--text-secondary)]">Event: <strong class="text-[var(--text-primary)]">{{ $event?->title ?? 'No active event' }}</strong></span>
                 </div>
 
+                <div class="flex flex-wrap items-center gap-2 text-xs" data-sale-zone>
+                    <span class="font-semibold text-[var(--text-secondary)]">{{ $zoneLabel }}:</span>
+                    @if ($zonePinned)
+                        <strong>{{ $zones->firstWhere('id', $saleZoneId)?->name ?? '—' }}</strong>
+                    @else
+                        <select wire:model.live="saleZoneId" aria-label="{{ $zoneLabel }} for this sale" class="rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs">
+                            <option value="">Choose {{ strtolower($zoneLabel) }}…</option>
+                            @foreach ($zones as $zone)
+                                <option value="{{ $zone->id }}">{{ $zone->name }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+                    @error('zone') <span class="text-[var(--status-danger)]">{{ $message }}</span> @enderror
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     @forelse($tiers as $tier)
                         @php $isSelected = $selectedTierId === $tier->id; @endphp
@@ -84,7 +99,7 @@
 
                             <div class="mt-3 flex flex-col gap-0.5">
                                 <span class="text-base sm:text-lg font-bold font-mono tracking-tight text-[var(--text-primary)]">GHS {{ number_format((float) $tier->price, 2) }}</span>
-                                <span class="text-[10px] text-[var(--text-tertiary)]">{{ $tier->available_quantity }} passes remaining</span>
+                                <span class="text-[10px] text-[var(--text-tertiary)]">{{ $seatsLeft[$tier->id] ?? 0 }} passes remaining</span>
                             </div>
                         </button>
                     @empty

@@ -17,6 +17,7 @@ class ReservationReuseService
 {
     public function __construct(
         private readonly ReservationStockService $stocks,
+        private readonly ZoneCapacity $zoneCapacity,
     ) {}
 
     public function holdOrReuse(
@@ -57,6 +58,9 @@ class ReservationReuseService
         $reusable = $released['reservation'];
         $available = $released['available'];
 
+        // Still under the tier's row lock: each zone sells out on its own, within the tier's overall total.
+        $this->assertZoneHasSeats($ticket, $subdivisionId, $quantity, $reusable);
+
         $context = [
             'ticket' => $ticket,
             'organization_id' => $organizationId,
@@ -93,6 +97,30 @@ class ReservationReuseService
         }
 
         return ['reservation' => $reusable, 'available' => $available];
+    }
+
+    private function assertZoneHasSeats(
+        TicketType $ticket,
+        ?int $subdivisionId,
+        int $quantity,
+        ?Reservation $reusable,
+    ): void {
+        // The session's own hold is being resized (or moved to this zone), so it never counts against itself.
+        $remaining = $this->zoneCapacity->remaining($ticket, $subdivisionId, $reusable?->id);
+
+        if ($remaining === null || $quantity <= $remaining) {
+            return;
+        }
+
+        $zone = Subdivision::query()->whereKey($subdivisionId)->value('name') ?? 'this zone';
+
+        throw new TicketSoldOutException(
+            $remaining === 0
+                ? "{$ticket->name} is sold out in {$zone}."
+                : "Only {$remaining} {$ticket->name} "
+                . ($remaining === 1 ? 'pass is' : 'passes are')
+                . " left in {$zone}.",
+        );
     }
 
     private function organizationId(TicketType $ticket): int

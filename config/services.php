@@ -18,11 +18,8 @@ return [
         'secret_key' => env('PAYSTACK_SECRET_KEY'),
         'public_key' => env('PAYSTACK_PUBLIC_KEY'),
         'base_url' => env('PAYSTACK_BASE_URL', 'https://api.paystack.co'),
-        // Route payments to each zone's Paystack subaccount. Off until real subaccounts exist on the account.
-        'split_payments' => (bool) env('PAYSTACK_SPLIT_PAYMENTS', false),
-        // What happens when a zone has no verified subaccount while splits are on:
-        // "fallback" collects into the main account and flags the order as owed to the zone; "block" refuses checkout.
-        'unrouted_zone_policy' => env('PAYSTACK_UNROUTED_ZONE_POLICY', 'fallback'),
+        // Every paid order is split to its zone's verified Paystack subaccount. There is no switch and no fallback
+        // to the main account: a zone without a verified subaccount cannot sell paid tickets.
     ],
 
     // Shared secret for the serverless cron and migration endpoints; both refuse every request while it is unset.
