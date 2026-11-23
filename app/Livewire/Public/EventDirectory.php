@@ -33,7 +33,7 @@ class EventDirectory extends Component
     {
         $query = Event::query()
             ->with(['organization', 'ticketTypes'])
-            ->where(Event::publiclyVisible(...))
+            ->where(Event::listedPublicly(...))
             ->where('is_public', true);
 
         if (trim($this->search) !== '') {

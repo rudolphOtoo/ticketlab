@@ -33,6 +33,7 @@
 
 ### 🔜 Follow-up PR (from AUDIT.md)
 - [ ] **B-2** Paystack `refund.processed` webhook: mark the order refunded and void its passes, so the gate refuses them
+  - Until then, refunds for a **cancelled event** are manual: the org admin opens Events → the event's **Refund list** (paid orders and amounts per zone, CSV), refunds online payments in the Paystack dashboard and cash at the desk. Cancelling already makes the gate refuse the event's passes. When B-2 lands, mark those orders refunded too.
 - [ ] **E-1** Policies with `authorize()` on every admin and ops action (defence in depth beyond the current scoping and guards)
 - [ ] **B-5** Ghana phone validation at checkout and cash desk (normalise to +233, check network prefixes)
 - [ ] **D-2** Open Graph and WhatsApp previews per organisation and event (name, title, banner), and a single `<title>`

@@ -4,20 +4,17 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin;
 
-use App\Jobs\SendEventReminders;
 use App\Models\Attendee;
 use App\Models\Broadcast;
 use App\Models\Event;
 use App\Models\TicketType;
 use App\Models\User;
-use App\Services\Mail\BroadcastSchedule;
-use App\Services\Mail\MailQuota;
+use App\Services\Mail\BroadcastSender;
 use App\Support\ActiveEvent;
 use Illuminate\Bus\Batch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
@@ -88,22 +85,12 @@ class BroadcastHub extends Component
             'recipients_count' => $recipients->count(),
         ]);
 
-        $plan = BroadcastSchedule::plan($recipients->count(), app(MailQuota::class));
-
-        $jobs = $recipients
-            ->values()
-            ->map(static fn(Attendee $recipient, int $index): SendEventReminders => new SendEventReminders(
-                $broadcast->id,
-                $recipient->email,
-                $recipient->name,
-            )
-                ->onQueue('broadcasts')
-                ->delay($plan->sendAt($index)))
-            ->all();
-
-        $batch = Bus::batch($jobs)->name("Broadcast: {$this->subject}")->allowFailures()->dispatch();
-
-        $broadcast->update(['batch_id' => $batch->id]);
+        $plan = app(
+            BroadcastSender::class,
+        )->queue($broadcast, $recipients->map(static fn(Attendee $recipient): array => [
+            'email' => $recipient->email,
+            'name' => $recipient->name,
+        ]));
 
         $this->reset(['subject', 'body']);
         $this->flashMessage = "Broadcast queued to {$broadcast->recipients_count} recipients. " . $plan->summary();

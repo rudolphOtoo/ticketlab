@@ -67,6 +67,14 @@ class EventManager extends Component
 
     public string $deleteConfirmation = '';
 
+    /** The event whose cancel dialog is open. */
+    #[Locked]
+    public ?int $cancellingEventId = null;
+
+    public string $cancellationMessage = '';
+
+    public bool $emailBuyers = true;
+
     public function mount(): void
     {
         $this->organizationId();
@@ -247,7 +255,7 @@ class EventManager extends Component
         $event = $this
             ->events()
             ->whereKey($eventId)
-            ->where(Event::publiclyVisible(...))
+            ->where(Event::listedPublicly(...))
             ->first();
 
         if ($event === null) {
@@ -308,6 +316,51 @@ class EventManager extends Component
 
         $lifecycle->unarchive($event, $this->actor());
         $this->flashMessage = "'{$event->title}' is back as {$event->status}.";
+    }
+
+    public function confirmCancel(int $eventId): void
+    {
+        $event = $this->events()->whereKey($eventId)->whereNull('cancelled_at')->first();
+
+        if ($event === null) {
+            return;
+        }
+
+        $this->resetValidation(['cancellationMessage']);
+        $this->cancellationMessage = '';
+        $this->emailBuyers = true;
+        $this->cancellingEventId = $event->id;
+    }
+
+    public function closeCancel(): void
+    {
+        $this->cancellingEventId = null;
+    }
+
+    /**
+     * For an event that won't take place: sales stop at once, the public page shows the message, passes are refused
+     * at the gate, and buyers can be emailed. Refunds are made by hand from the refund list.
+     */
+    public function cancelEvent(int $eventId, EventLifecycle $lifecycle): void
+    {
+        $event = $this->events()->whereKey($eventId)->first();
+
+        if ($event === null) {
+            return;
+        }
+
+        $this->validate(['cancellationMessage' => ['required', 'string', 'max:1000']], [
+            'cancellationMessage.required' => 'Tell buyers why the event is cancelled and what happens next.',
+        ]);
+
+        $lifecycle->cancel($event, $this->actor(), trim($this->cancellationMessage));
+        $plan = $this->emailBuyers ? $lifecycle->emailBuyersAboutCancellation($event, $this->actor()) : null;
+        $this->closeCancel();
+        $this->flashMessage =
+            "'{$event->title}' is cancelled: sales have stopped and its passes are refused at the "
+            . 'gate. '
+            . ($plan === null ? '' : 'Buyers are being emailed: ' . $plan->summary() . ' ')
+            . 'Refund paid orders by hand from its refund list.';
     }
 
     /**
@@ -449,7 +502,10 @@ class EventManager extends Component
             ->orderByDesc('start_at')
             ->get();
 
+        $cancelling = $this->cancellingEventId === null ? null : $events->firstWhere('id', $this->cancellingEventId);
+
         return view('livewire.admin.event-manager', [
+            'cancellingBuyers' => $cancelling === null ? 0 : app(EventLifecycle::class)->buyers($cancelling)->count(),
             'events' => $events,
             'activeEventId' => ActiveEvent::id($organizationId),
             'featuredEventId' => DedicatedSite::featuredEventId(Organization::query()->findOrFail($organizationId)),

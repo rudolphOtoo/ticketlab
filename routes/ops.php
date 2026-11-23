@@ -10,6 +10,7 @@ use App\Livewire\Admin\DailySessionLedger;
 use App\Livewire\Admin\DataExportCentral;
 use App\Livewire\Admin\EventCustomizer;
 use App\Livewire\Admin\EventManager;
+use App\Livewire\Admin\EventRefunds;
 use App\Livewire\Admin\MarketingStudio;
 use App\Livewire\Admin\QueueMonitor;
 use App\Livewire\Admin\SubdivisionManager;
@@ -55,6 +56,8 @@ Route::middleware(['auth', 'subdivision.access'])
 
         // Event lifecycle CRUD & active event selection
         Route::get('events', EventManager::class)->name('events');
+        // Paid orders of a cancelled event, per zone, to refund by hand (refunds are not automatic yet)
+        Route::get('events/{event}/refunds', EventRefunds::class)->whereNumber('event')->name('events.refunds');
 
         // Staff & team management (RBAC)
         Route::get('users', UserManagement::class)->name('users');

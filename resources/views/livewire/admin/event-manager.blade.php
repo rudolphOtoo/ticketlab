@@ -46,6 +46,9 @@
                             @unless ($event->is_public)
                                 <x-ui.badge color="zinc" pill size="sm">Unlisted</x-ui.badge>
                             @endunless
+                            @if ($event->isCancelled())
+                                <x-ui.badge color="rose" pill size="sm">Cancelled</x-ui.badge>
+                            @endif
                             @if ($event->isArchived())
                                 <x-ui.badge color="zinc" pill size="sm">Archived</x-ui.badge>
                             @endif
@@ -113,11 +116,44 @@
                                 </button>
                                 <button type="button" wire:click="archiveEvent({{ $event->id }})" wire:confirm="Archive '{{ $event->title }}'? It leaves the public site and stops selling. Passes, ticket pages and reports keep working, and you can unarchive it." class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Archive</button>
                             @endif
+                            @if ($event->isCancelled())
+                                <a href="{{ route('admin.events.refunds', ['event' => $event->id]) }}" wire:navigate class="rounded-lg px-2.5 py-1 text-rose-700 hover:bg-rose-500/10 dark:text-rose-300 transition">Refund list</a>
+                            @else
+                                <button type="button" wire:click="confirmCancel({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-rose-600 hover:bg-rose-500/10 transition">Cancel event</button>
+                            @endif
                             <button type="button" wire:click="confirmDelete({{ $event->id }})" class="ml-auto cursor-pointer rounded-lg px-2.5 py-1 text-rose-600 hover:bg-rose-500/10 transition">Delete</button>
                         </div>
                     </div>
                 </article>
             @endforeach
+        </div>
+    @endif
+
+    @if ($cancellingEventId !== null && ($cancelling = $events->firstWhere('id', $cancellingEventId)))
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs" @keydown.window.escape="$wire.closeCancel()">
+            <form wire:submit="cancelEvent({{ $cancelling->id }})" role="dialog" aria-modal="true" aria-labelledby="cancel-event-title" data-cancel-event class="w-full max-w-lg space-y-4 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-2xl">
+                <div>
+                    <h2 id="cancel-event-title" class="text-base font-bold">Cancel '{{ $cancelling->title }}'?</h2>
+                    <p class="mt-1 text-xs text-[var(--text-secondary)]">For an event that won't take place. Sales stop at once, the public page says it has been cancelled with your message, and its passes are refused at the gate. This can't be undone.</p>
+                </div>
+                <div>
+                    <label for="cancellation-message" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Message to buyers <span class="text-rose-500">*</span></label>
+                    <textarea id="cancellation-message" wire:model="cancellationMessage" rows="4" maxlength="1000" placeholder="Why it is cancelled, and how refunds will be made." class="{{ $inputClass }}"></textarea>
+                    @error('cancellationMessage') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                </div>
+                <label class="flex items-start gap-2 text-xs">
+                    <input type="checkbox" wire:model="emailBuyers" class="mt-0.5" @disabled($cancellingBuyers === 0) />
+                    <span>
+                        Email this message to {{ $cancellingBuyers }} {{ \Illuminate\Support\Str::plural('buyer', $cancellingBuyers) }}.
+                        <span class="block text-[var(--text-tertiary)]">Sent within the daily email limit; a large list is spread over the next days.</span>
+                    </span>
+                </label>
+                <p class="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">Refunds are not automatic. Afterwards, the event's refund list shows every paid order and amount per {{ strtolower(auth()->user()?->zoneLabel() ?? 'zone') }}.</p>
+                <div class="flex justify-end gap-2 text-xs font-semibold">
+                    <button type="button" wire:click="closeCancel" class="cursor-pointer rounded-xl px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">Keep the event</button>
+                    <button type="submit" class="cursor-pointer rounded-xl bg-rose-600 px-4 py-2 text-white hover:bg-rose-700">Cancel the event</button>
+                </div>
+            </form>
         </div>
     @endif
 

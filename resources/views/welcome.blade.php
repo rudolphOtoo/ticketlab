@@ -22,7 +22,7 @@
                 ->all();
 
             $allEvents = \App\Models\Event::with(['organization', 'ticketTypes'])
-                ->where(\App\Models\Event::publiclyVisible(...))
+                ->where(\App\Models\Event::listedPublicly(...))
                 ->where('is_public', true)
                 ->get();
 

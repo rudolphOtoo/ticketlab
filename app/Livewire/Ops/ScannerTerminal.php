@@ -142,6 +142,16 @@ class ScannerTerminal extends Component
         $zoneLabel = $this->zoneLabel($orgId);
         $gateZoneId = $user->subdivision_id;
 
+        if ($attendee->ticketType->event->isCancelled()) {
+            return self::passResult(
+                'invalid',
+                'CANCELLED',
+                $attendee,
+                $zoneLabel,
+                'This event was cancelled. The pass is not valid for entry.',
+            );
+        }
+
         // A zone gate admits only its own zone's passes. Checked here, inside the locked check-in itself,
         // so a crafted Livewire call is refused exactly like a camera scan.
         if ($gateZoneId !== null && $attendee->subdivision_id !== $gateZoneId) {

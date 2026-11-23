@@ -18,11 +18,23 @@
                     @endif
                 </div>
 
+                @unless ($event->isCancelled())
                 <a href="#tickets" class="hidden sm:inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--color-primary-fg)] shadow-xs hover:opacity-90 transition press-scale">
                     Get Tickets
                 </a>
+                @endunless
             </div>
         </header>
+
+        @if ($event->isCancelled())
+            <div role="alert" data-event-cancelled class="mb-8 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-6 sm:p-8">
+                <h2 class="text-xl font-bold tracking-tight text-rose-800 dark:text-rose-200">This event has been cancelled</h2>
+                @if (filled($event->cancellation_message))
+                    <p class="mt-3 whitespace-pre-line text-sm text-[var(--text-primary)]">{{ $event->cancellation_message }}</p>
+                    <p class="mt-3 text-xs text-[var(--text-secondary)]">From {{ $organization->name }}</p>
+                @endif
+            </div>
+        @endif
 
         <div class="grid gap-8 lg:grid-cols-3">
             <section class="space-y-8 lg:col-span-2">
@@ -134,6 +146,7 @@
                     </div>
                 </div>
 
+                @unless ($event->isCancelled())
                 <!-- Ticket Tiers Selection Section: chosen in the browser, no server round trip per tap. The cards have no
                      colour transition: a tap shows the selection in the next frame instead of animating repaints
                      (on desktop those repaints also covered the sticky order summary, the whole page wide). -->
@@ -268,6 +281,7 @@
                         </div>
                     </div>
                 </div>
+                @endunless
 
                 <!-- Speakers & Guests Grid -->
                 @if ($speakers->isNotEmpty())
@@ -435,6 +449,7 @@
                  repaints inside it. The padding (offset by the negative margin) leaves room for the card's shadow.
                  It sticks below the fixed navbar: top-20 plus that padding puts the card at 6rem, the same space the
                  page keeps clear at the top (sm:pt-24); the navbar ends at 62-74px. --}}
+            @unless ($event->isCancelled())
             <aside class="lg:sticky lg:top-20 lg:self-start lg:-m-4 lg:p-4 lg:[contain:layout_paint]">
                 <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md space-y-5" data-order-summary>
                     <p class="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">Order Summary</p>
@@ -501,6 +516,7 @@
                     </div>
                 </div>
             </aside>
+            @endunless
         </div>
     </div>
 

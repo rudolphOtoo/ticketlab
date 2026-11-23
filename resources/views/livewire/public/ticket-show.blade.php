@@ -48,6 +48,15 @@
             </div>
 
             <div class="p-6 sm:p-8">
+                @if ($event?->isCancelled())
+                    <div role="alert" data-event-cancelled class="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm leading-6 text-rose-950">
+                        <p class="font-semibold">This event has been cancelled</p>
+                        @if (filled($event->cancellation_message))
+                            <p class="mt-1 whitespace-pre-line">{{ $event->cancellation_message }}</p>
+                        @endif
+                        <p class="mt-1 text-rose-800">These passes are no longer valid for entry. Keep this page: your order reference is {{ $order->reference }}.</p>
+                    </div>
+                @endif
                 @if (! $isPaid)
                     <div class="rounded-2xl bg-amber-50 p-5 text-sm leading-6 text-amber-900">
                         <p class="font-semibold">We have not received payment confirmation yet.</p>

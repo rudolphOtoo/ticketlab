@@ -28,6 +28,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $is_public
  * @property array<string, mixed>|null $customization
  * @property CarbonImmutable|null $archived_at
+ * @property CarbonImmutable|null $cancelled_at
+ * @property string|null $cancellation_message
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
@@ -66,6 +68,7 @@ class Event extends Model
             'is_public' => 'boolean',
             'customization' => 'array',
             'archived_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -74,12 +77,21 @@ class Event extends Model
         return $this->archived_at !== null;
     }
 
+    public function isCancelled(): bool
+    {
+        return $this->cancelled_at !== null;
+    }
+
     /**
      * Why no pass may be sold now, online or at the cash desk, or null when sales are open.
      */
     public function salesClosedReason(): ?string
     {
-        return $this->isArchived() ? 'This event is archived, so sales are closed.' : null;
+        return match (true) {
+            $this->isCancelled() => 'This event has been cancelled, so sales are closed.',
+            $this->isArchived() => 'This event is archived, so sales are closed.',
+            default => null,
+        };
     }
 
     /**
@@ -90,6 +102,18 @@ class Event extends Model
     public static function publiclyVisible(Builder $query): void
     {
         $query->where('status', 'published')->whereNull('archived_at');
+    }
+
+    /**
+     * Events listed on the public site and in the directory: publicly visible and not cancelled. A cancelled event's
+     * own page stays reachable, to tell buyers it was cancelled. Use as ->where(Event::listedPublicly(...)).
+     *
+     * @param Builder<self> $query
+     */
+    public static function listedPublicly(Builder $query): void
+    {
+        self::publiclyVisible($query);
+        $query->whereNull('cancelled_at');
     }
 
     /**

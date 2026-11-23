@@ -10,4 +10,14 @@ enum PaymentMethod: string
     case Card = 'card';
     case PhysicalCash = 'cash';
     case Complimentary = 'comp';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::MobileMoney => 'Mobile money',
+            self::Card => 'Card',
+            self::PhysicalCash => 'Cash',
+            self::Complimentary => 'Complimentary',
+        };
+    }
 }
