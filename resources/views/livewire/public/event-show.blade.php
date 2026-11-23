@@ -1,4 +1,4 @@
-<div x-data="ticketCheckout" class="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] pt-20 sm:pt-24 pb-12">
+<div x-data="ticketCheckout" @checkout-refreshed.window="refresh($event.detail.config)" class="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] pt-20 sm:pt-24 pb-12">
     {{-- Read once when Alpine starts. Kept out of x-data so a Livewire re-render never rebuilds the buyer's state. --}}
     <script type="application/json" data-checkout-config>@json($checkout)</script>
     <x-bespoke-navbar :organization="$organization" :event="$event" :collapsible="true" :is-event-page="true" />
@@ -72,7 +72,7 @@
                         @if ($event->start_at)
                             <div
                                 x-data="{
-                                    target: new Date('{{ $event->start_at->toIso8601String() }}').getTime(),
+                                    target: new Date(@js($event->start_at->toIso8601String())).getTime(),
                                     now: Date.now(),
                                     days: 0, hours: 0, minutes: 0, seconds: 0,
                                     isPast: false,
@@ -534,6 +534,8 @@
                     </div>
                 @endif
 
+                <p x-show="choiceError && open" x-text="choiceError" x-cloak role="alert" class="rounded-xl bg-[var(--status-danger-bg)] border border-[var(--status-danger)]/20 p-3 text-xs text-[var(--status-danger)] font-medium"></p>
+
                 {{-- Problems with the order itself (price changed, sold out, zone not payable) from the server's re-check. --}}
                 @foreach (['payment', 'clientTotalPesewas', 'ticketTypeId', 'quantity', 'subdivisionId'] as $orderError)
                     @error($orderError)
@@ -677,7 +679,10 @@
                     <div class="rounded-2xl bg-[var(--bg-subtle)] p-4 border border-[var(--border-hairline)]">
                         <div class="flex justify-between items-center text-sm font-bold text-[var(--text-primary)]">
                             <span>Total Payable:</span>
-                            <span x-text="money(totals.gross)"></span>
+                            <span>
+                                <span x-show="refreshed" x-cloak class="mr-1 rounded-full bg-[var(--status-warning-bg)] px-2 py-0.5 text-[10px] font-semibold text-[var(--status-warning)]">Updated</span>
+                                <span data-modal-total x-text="money(totals.gross)"></span>
+                            </span>
                         </div>
                     </div>
 

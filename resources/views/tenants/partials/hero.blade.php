@@ -42,7 +42,7 @@
                     $aboutUrl = $organization->pageUrl('about');
                 @endphp
                 <div class="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row lg:justify-start">
-                    <a href="{{ $phase === 'ended' ? $highlightsUrl : $checkoutUrl }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--dedicated-accent)] px-7 py-3.5 text-sm font-bold text-white shadow-md transition hover:opacity-90 press-scale sm:w-auto">
+                    <a href="{{ $phase === 'ended' ? $highlightsUrl : $checkoutUrl }}" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--dedicated-accent)] px-7 py-3.5 text-sm font-bold text-[var(--dedicated-accent-fg)] shadow-md transition hover:opacity-90 press-scale sm:w-auto">
                         <span>{{ match ($phase) { 'live' => 'Happening Now · Get Passes', 'ended' => 'Relive the Highlights', default => 'Reserve Your Seat' } }}</span>
                         <span aria-hidden="true">→</span>
                     </a>
@@ -57,7 +57,7 @@
             <div class="flex flex-col items-center gap-4 lg:col-span-5 lg:items-end">
                 <div class="w-full max-w-sm space-y-5 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-xl">
                     <div class="flex items-center gap-3 border-b border-[var(--border-hairline)] pb-4">
-                        <div class="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-[var(--dedicated-accent)] text-white">
+                        <div class="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-[var(--dedicated-accent)] text-[var(--dedicated-accent-fg)]">
                             <span class="text-[10px] font-bold uppercase">{{ $event->start_at->format('M') }}</span>
                             <span class="text-xl font-black leading-none">{{ $event->start_at->format('d') }}</span>
                         </div>

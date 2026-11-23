@@ -20,7 +20,7 @@
                     'border-[var(--border-hairline)]' => !$featured,
                 ])>
                     @if ($featured)
-                        <span class="absolute -top-3 left-6 rounded-full bg-[var(--dedicated-accent)] px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">Most popular</span>
+                        <span class="absolute -top-3 left-6 rounded-full bg-[var(--dedicated-accent)] px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--dedicated-accent-fg)]">Most popular</span>
                     @endif
 
                     <div class="space-y-2">

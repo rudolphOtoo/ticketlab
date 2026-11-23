@@ -457,7 +457,7 @@
                             @foreach (['Keynote', 'Atmosphere', 'Audience', 'VIP', 'Stage', 'Networking', 'Panels'] as $presetTag)
                                 <button
                                     type="button"
-                                    wire:click="$set('new_image_tag', '{{ $presetTag }}')"
+                                    wire:click="$set('new_image_tag', @js($presetTag))"
                                     class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer active:scale-[0.96] {{ $new_image_tag === $presetTag ? 'bg-[var(--color-primary)] text-[var(--color-primary-fg)] shadow-2xs' : 'border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]' }}"
                                 >
                                     {{ $presetTag }}
@@ -502,7 +502,7 @@
                             @foreach (['event' => 'This event', 'all' => 'All events'] as $filterKey => $filterLabel)
                                 <button
                                     type="button"
-                                    wire:click="$set('galleryFilter', '{{ $filterKey }}')"
+                                    wire:click="$set('galleryFilter', @js($filterKey))"
                                     @class([
                                         'cursor-pointer rounded-md px-2.5 py-1 transition',
                                         'bg-[var(--bg-subtle)] text-[var(--text-primary)]' => $galleryFilter === $filterKey,
@@ -537,7 +537,7 @@
                                             </span>
                                             <button
                                                 type="button"
-                                                wire:click="removeGalleryImage('{{ $img['id'] }}')"
+                                                wire:click="removeGalleryImage(@js($img['id']))"
                                                 class="text-[var(--text-tertiary)] hover:text-rose-500 transition cursor-pointer p-0.5"
                                                 title="Remove Photo"
                                             >

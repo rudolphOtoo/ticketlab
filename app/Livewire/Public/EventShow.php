@@ -44,6 +44,9 @@ class EventShow extends Component
 
     private const int MAX_PER_ORDER = 20;
 
+    /** Shown when Pay is refused because the page was out of date; the browser then gets fresh data. */
+    public const string CHANGED_MESSAGE = 'Prices or seats changed. Please review.';
+
     #[Locked]
     public int $organizationId;
 
@@ -148,7 +151,7 @@ class EventShow extends Component
         $ticketType = $this->checkoutTicketType($event, (int) $validated['ticketTypeId']);
         $subdivision = $this->checkoutSubdivision($organization, $validated['subdivisionId'] ?? null);
 
-        if ($this->shownTotalDiffers($ticketType, $quantity, $organization)) {
+        if ($this->pageWasOutOfDate($ticketType, $quantity, $organization)) {
             return;
         }
 
@@ -358,6 +361,26 @@ class EventShow extends Component
     }
 
     /**
+     * True (and the buyer is sent fresh data) when the tier went off sale or the price changed since the page loaded.
+     */
+    private function pageWasOutOfDate(TicketType $ticketType, int $quantity, Organization $organization): bool
+    {
+        if (!$ticketType->isOnSale()) {
+            $this->pricesOrSeatsChanged('ticketTypeId', 'This ticket tier is not on sale right now.');
+
+            return true;
+        }
+
+        if ($this->shownTotalDiffers($ticketType, $quantity, $organization)) {
+            $this->pricesOrSeatsChanged('clientTotalPesewas');
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Refuses when the total the buyer was shown is not what the server would charge (a tampered page, or prices
      * changed since the page loaded). Nothing is held and no transaction is opened.
      */
@@ -379,12 +402,30 @@ class EventShow extends Component
             'shown_pesewas' => $this->clientTotalPesewas,
             'expected_pesewas' => $expected,
         ]);
-        $this->addError(
-            'clientTotalPesewas',
-            'The total has changed since this page loaded. Please refresh the page and check your order before paying.',
-        );
 
         return true;
+    }
+
+    /**
+     * Pay was refused because the page was out of date (a price, the seats left or a sales window changed after it
+     * loaded). Tells the buyer, and sends the browser the current prices and seats: the page keeps their tier, zone
+     * and quantity (trimmed to what is left) and shows the new total, ready to pay again.
+     */
+    private function pricesOrSeatsChanged(string $field, ?string $reason = null): void
+    {
+        $this->addError($field, trim(self::CHANGED_MESSAGE . ' ' . ($reason ?? '')));
+
+        $event = $this->event();
+        // The tiers loaded at the start of this request may predate the change that caused the refusal.
+        $event->load('ticketTypes');
+        $organization = $event->organization;
+
+        $this->dispatch('checkout-refreshed', config: $this->clientCheckout(
+            $event,
+            $event->ticketTypes->where('is_active', true)->sortBy('price')->values(),
+            $organization->subdivisions->sortBy('name')->values(),
+            $organization,
+        ));
     }
 
     /**
@@ -415,8 +456,7 @@ class EventShow extends Component
         try {
             return $reservations->holdOrReuse($ticketType, $quantity, $this->checkoutSessionId(), $zone?->id);
         } catch (TicketSoldOutException $exception) {
-            $this->addError('quantity', $exception->getMessage());
-            $this->dispatch('ticket-hold-failed');
+            $this->pricesOrSeatsChanged('quantity', $exception->getMessage());
         } catch (InvalidArgumentException $exception) {
             $this->addError('subdivisionId', $exception->getMessage());
         }
@@ -445,22 +485,15 @@ class EventShow extends Component
     }
 
     /**
-     * Online sales honour the tier's pause switch and sales window set in Tickets & Pricing.
+     * The tier being bought, which must belong to this event. Whether it is on sale is checked by the caller.
      */
     private function checkoutTicketType(Event $event, int $ticketTypeId): TicketType
     {
-        $ticketType = $event
-            ->ticketTypes()
-            ->whereKey($ticketTypeId)
-            ->first() ?? throw ValidationException::withMessages([
-            'ticketTypeId' => 'The selected ticket tier is unavailable.',
-        ]);
-
-        if (!$ticketType->isOnSale()) {
-            throw ValidationException::withMessages(['ticketTypeId' => 'This ticket tier is not on sale right now.']);
-        }
-
-        return $ticketType;
+        return (
+            $event->ticketTypes()->whereKey($ticketTypeId)->first() ?? throw ValidationException::withMessages([
+                'ticketTypeId' => 'The selected ticket tier is unavailable.',
+            ])
+        );
     }
 
     /**

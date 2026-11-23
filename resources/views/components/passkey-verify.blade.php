@@ -29,8 +29,8 @@
             try {
                 const response = await window.Passkeys.verify({
                     routes: {
-                        options: '{{ route($optionsRoute) }}',
-                        submit: '{{ route($submitRoute) }}',
+                        options: @js(route($optionsRoute)),
+                        submit: @js(route($submitRoute)),
                     },
                 });
                 Livewire.navigate(response.redirect || '/dashboard');

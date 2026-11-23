@@ -38,7 +38,7 @@
                 <label for="contact-website">Website</label>
                 <input id="contact-website" type="text" wire:model="website" tabindex="-1" autocomplete="off" />
             </div>
-            <button type="submit" wire:loading.attr="disabled" class="w-full cursor-pointer rounded-xl bg-[var(--dedicated-accent,var(--color-primary))] px-5 py-3 text-sm font-bold text-white shadow-xs transition hover:opacity-90 press-scale disabled:opacity-60">
+            <button type="submit" wire:loading.attr="disabled" class="w-full cursor-pointer rounded-xl bg-[var(--dedicated-accent,var(--color-primary))] px-5 py-3 text-sm font-bold text-[var(--dedicated-accent-fg,var(--color-primary-fg))] shadow-xs transition hover:opacity-90 press-scale disabled:opacity-60">
                 <span wire:loading.remove wire:target="submit">Send Message</span>
                 <span wire:loading wire:target="submit">Sending…</span>
             </button>

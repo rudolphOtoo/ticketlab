@@ -393,7 +393,8 @@ test('a tampered client total is refused before any seat is held or payment open
         ->set('customerPhone', '0244000000')
         ->set('clientTotalPesewas', $shown + $offsetPesewas)
         ->call('startCheckout')
-        ->assertHasErrors('clientTotalPesewas')
+        ->assertHasErrors(['clientTotalPesewas' => EventShow::CHANGED_MESSAGE])
+        ->assertDispatched('checkout-refreshed')
         ->assertNotDispatched('open-paystack');
 
     expect(Order::query()->count())
@@ -420,4 +421,60 @@ test('a checkout without the shown total is refused', function (): void {
 
 test('the event page never polls the server', function (): void {
     $this->get('/gmsu/convention')->assertOk()->assertDontSee('wire:poll', escape: false);
+});
+
+test('a price change after the page loaded refuses Pay and sends the new price for the buyer to review', function (): void {
+    $page = Livewire::test(EventShow::class, ['org_slug' => 'gmsu', 'event_slug' => 'convention'])
+        ->set('ticketTypeId', $this->vip->id)
+        ->set('subdivisionId', $this->kumasi->id)
+        ->set('customerName', 'Ama Mensah')
+        ->set('customerEmail', 'ama@example.com')
+        ->set('customerPhone', '0244000000')
+        // What the page showed at the old price of GHS 100.
+        ->set('clientTotalPesewas', PaystackFeeCalculator::grossPesewas(100.0));
+
+    $this->vip->update(['price' => 120]);
+
+    $page
+        ->call('startCheckout')
+        ->assertHasErrors(['clientTotalPesewas' => EventShow::CHANGED_MESSAGE])
+        ->assertDispatched(
+            'checkout-refreshed',
+            static fn(string $name, array $params): bool => (
+                collect($params['config']['tiers'])->firstWhere('name', 'VIP')['price'] === 12_000
+            ),
+        );
+
+    expect(Order::query()->count())->toBe(0);
+
+    // Paying again at the total now shown goes through.
+    $page->checkoutAsShown()->assertHasNoErrors()->assertDispatched('open-paystack');
+    expect((float) Order::query()->sole()->gross_amount)->toBe(122.39);
+});
+
+test('seats running out after the page loaded refuses Pay with the reason and fresh seat counts', function (): void {
+    TicketTypeZoneCapacity::query()->create([
+        'organization_id' => $this->org->id,
+        'ticket_type_id' => $this->vip->id,
+        'subdivision_id' => $this->kumasi->id,
+        'capacity' => 3,
+    ]);
+    $page = Livewire::test(EventShow::class, ['org_slug' => 'gmsu', 'event_slug' => 'convention'])
+        ->set('ticketTypeId', $this->vip->id)
+        ->set('quantity', 3)
+        ->set('subdivisionId', $this->kumasi->id)
+        ->set('customerName', 'Ama Mensah')
+        ->set('customerEmail', 'ama@example.com')
+        ->set('customerPhone', '0244000000');
+
+    app(TicketReservationService::class)->holdOrReuse($this->vip, 2, 'someone-else', $this->kumasi->id);
+
+    $page
+        ->checkoutAsShown()
+        ->assertHasErrors('quantity')
+        ->assertSee(EventShow::CHANGED_MESSAGE)
+        ->assertDispatched(
+            'checkout-refreshed',
+            fn(string $name, array $params): bool => $params['config']['tiers'][0]['seats'][$this->kumasi->id] === 1,
+        );
 });

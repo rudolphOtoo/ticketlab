@@ -60,6 +60,17 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci
 
+      # public/build is not committed: Vercel builds it on deploy, and the views' @vite() needs a manifest here.
+      - name: Build front-end assets
+        run: npm run build
+
+      - name: JavaScript tests
+        run: npm run test:js
+
+      # The Browser test suite (pestphp/pest-plugin-browser) drives a real Chromium.
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
       - name: Copy environment file
         run: cp .env.example .env
 

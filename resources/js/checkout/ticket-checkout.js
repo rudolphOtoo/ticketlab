@@ -28,6 +28,8 @@ export default function ticketCheckout(config = readConfig()) {
         open: false,
         paying: false,
         choiceError: '',
+        /** Set when the server refused Pay because the page was out of date and sent fresh data. */
+        refreshed: false,
 
         init() {
             this.$watch('ticketId', () => this.clampQuantity());
@@ -130,13 +132,35 @@ export default function ticketCheckout(config = readConfig()) {
             this.open = true;
         },
 
+        /**
+         * Fresh prices, seats and fee settings from the server after it refused Pay (EventShow::pricesOrSeatsChanged).
+         * The buyer's tier, zone and quantity stay as they were, trimmed to what is now available.
+         */
+        refresh(config) {
+            this.tiers = config.tiers;
+            this.zones = config.zones;
+            this.fee = config.fee;
+            this.maxPerOrder = config.maxPerOrder;
+            this.clampQuantity();
+            this.refreshed = true;
+        },
+
         /** The only moment the selection reaches Livewire: deferred properties travel with the startCheckout call. */
         async pay() {
             if (this.paying) {
                 return;
             }
 
+            this.choiceError = '';
+
+            if (!this.selectable(this.ticket)) {
+                this.choiceError = 'This ticket is no longer available for your choice. Close this form and pick another.';
+
+                return;
+            }
+
             this.paying = true;
+            this.refreshed = false;
             this.$wire.ticketTypeId = this.ticketId;
             this.$wire.quantity = this.quantity;
             this.$wire.subdivisionId = this.zoneId;

@@ -43,10 +43,10 @@
             @foreach ($tags as $tag)
                 <button
                     type="button"
-                    @click="activeFilter = '{{ $tag }}'"
+                    @click="activeFilter = @js($tag)"
                     class="px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 cursor-pointer active:scale-[0.96]"
-                    :class="activeFilter === '{{ $tag }}'
-                        ? 'bg-[var(--dedicated-accent)] text-white shadow-xs'
+                    :class="activeFilter === @js($tag)
+                        ? 'bg-[var(--dedicated-accent)] text-[var(--dedicated-accent-fg)] shadow-xs'
                         : 'border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'"
                 >
                     {{ $tag }}
@@ -58,7 +58,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach ($galleryImages as $index => $item)
                 <div
-                    x-show="activeFilter === 'All' || activeFilter === '{{ $item['tag'] }}'"
+                    x-show="activeFilter === 'All' || activeFilter === @js($item['tag'])"
                     x-transition:enter="transition ease-out duration-250"
                     x-transition:enter-start="opacity-0 scale-95 translate-y-2"
                     x-transition:enter-end="opacity-100 scale-100 translate-y-0"

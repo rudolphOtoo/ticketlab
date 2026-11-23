@@ -1,6 +1,7 @@
 /.phpunit.cache
 /node_modules
-# /public/build
+# Built on deploy by Vercel (vercel.json buildCommand) and in CI; never commit it.
+/public/build
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage

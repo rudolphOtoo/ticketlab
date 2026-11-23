@@ -5,10 +5,6 @@
     'description' => null,
 ])
 
-@php
-    $custom = is_array($event?->customization) ? $event->customization : [];
-    $accentHex = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($custom['accent_hex'] ?? '')) === 1 ? $custom['accent_hex'] : '#d97706';
-@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -16,7 +12,7 @@
         <title>{{ $title ? $title . ' | ' : '' }}{{ $event?->title ?? $organization->name }}</title>
         <meta name="description" content="{{ $description ?? $event?->description ?? 'Welcome to ' . $organization->name }}" />
         <style>
-            :root { --dedicated-accent: {{ $accentHex }}; }
+            :root { {{ \App\Support\BrandColor::cssVariables($organization, $event) }} }
             @keyframes dedicated-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
             .dedicated-marquee { animation: dedicated-marquee 32s linear infinite; }
             .dedicated-marquee:hover { animation-play-state: paused; }

@@ -195,3 +195,64 @@ test('a server validation error keeps the checkout open and the buyer\'s choices
 
     expect(Order::query()->count())->toBe(0);
 });
+
+/** Opens checkout for the given tier, zone and quantity, and fills in the buyer. */
+function open_checkout(object $page, string $tier, string $zone, int $quantity = 1): object
+{
+    $page->click($tier)->click($zone);
+
+    for ($added = 1; $added < $quantity; $added++) {
+        $page->click('[aria-label="More tickets"]');
+    }
+
+    return $page
+        ->click('[data-proceed]')
+        ->type('#customerName', 'Ama Mensah')
+        ->type('#customerEmail', 'ama@example.com')
+        ->type('#customerPhone', '0244000000');
+}
+
+test('a price change before Pay shows a review message with the new total and keeps the choices', function (): void {
+    $page = open_checkout(visit('/gmsu/convention'), 'VIP', 'Zone B');
+    $page->assertSeeIn('[data-modal-total]', 'GHS 101.99');
+
+    // The organiser raises the price while the buyer is filling in the form.
+    $this->vip->update(['price' => 120]);
+
+    $page
+        ->click('[data-pay]')
+        ->assertSee('Prices or seats changed. Please review.')
+        ->assertVisible('[data-checkout-modal]')
+        ->assertSeeIn('[data-modal-total]', 'GHS 122.39')
+        ->assertSeeIn('[data-total]', 'GHS 122.39')
+        ->assertChecked('input[name=ticket_type][value="' . $this->vip->id . '"]')
+        ->assertChecked("#zone-{$this->zoneB->id}");
+    expect(Order::query()->count())->toBe(0);
+
+    // Paying again at the total now shown goes through.
+    $page->click('[data-pay]')->wait(2);
+    expect((float) Order::query()->sole()->gross_amount)->toBe(122.39);
+});
+
+test('seats running out before Pay trims the quantity to what is left and updates the total', function (): void {
+    $page = open_checkout(visit('/gmsu/convention'), 'Standard', 'Zone B', quantity: 5);
+    $page->assertSeeIn('[data-quantity]', '5');
+
+    // Someone else holds 5 of Zone B's 7 Standard seats in the meantime.
+    app(App\Services\Reservation\TicketReservationService::class)->holdOrReuse(
+        $this->standard,
+        5,
+        'someone-else',
+        $this->zoneB->id,
+    );
+
+    $page
+        ->click('[data-pay]')
+        ->assertSee('Prices or seats changed. Please review.')
+        ->assertSeeIn('[data-quantity]', '2')
+        ->assertSeeIn('[data-modal-total]', 'GHS 101.99')
+        ->assertChecked("#zone-{$this->zoneB->id}");
+
+    $page->click('[data-pay]')->wait(2);
+    expect(Order::query()->sole()->metadata['quantity'])->toBe(2);
+});

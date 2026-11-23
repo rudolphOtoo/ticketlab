@@ -92,7 +92,7 @@
                         <label class="text-xs font-semibold text-[var(--text-secondary)]">Theme Palette & Accents</label>
                         <div class="flex items-center gap-2">
                             @foreach (['amethyst' => '#7c3aed', 'emerald' => '#059669', 'amber' => '#d97706', 'rose' => '#e11d48', 'slate' => '#0f172a'] as $preset => $hex)
-                                <button type="button" wire:click="setPreset('{{ $preset }}')" class="size-7 rounded-full transition-transform {{ $themePreset === $preset ? 'ring-2 ring-offset-2 ring-[var(--text-primary)] scale-110' : 'hover:scale-105' }}" style="background-color: {{ $hex }};" title="{{ ucfirst($preset) }}"></button>
+                                <button type="button" wire:click="setPreset(@js($preset))" class="size-7 rounded-full transition-transform {{ $themePreset === $preset ? 'ring-2 ring-offset-2 ring-[var(--text-primary)] scale-110' : 'hover:scale-105' }}" style="background-color: {{ $hex }};" title="{{ ucfirst($preset) }}"></button>
                             @endforeach
                             <input type="color" wire:model.live="accentColor" class="size-7 rounded-full cursor-pointer border-0 bg-transparent p-0" title="Custom Hex">
                         </div>
@@ -166,7 +166,7 @@
                         
                         <div class="flex items-center gap-2">
                             <input type="text" readonly value="{{ $publicUrl }}" class="flex-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2 text-xs font-mono text-[var(--text-primary)] truncate">
-                            <button type="button" @click="navigator.clipboard.writeText('{{ $publicUrl }}'); alert('Link copied!');" class="cursor-pointer rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-2 text-xs font-medium hover:bg-[var(--bg-subtle)] transition">
+                            <button type="button" @click="navigator.clipboard.writeText(@js($publicUrl)); alert('Link copied!');" class="cursor-pointer rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-2 text-xs font-medium hover:bg-[var(--bg-subtle)] transition">
                                 Copy
                             </button>
                         </div>

@@ -88,8 +88,8 @@
                         <div class="flex items-center justify-between gap-3">
                             <span class="truncate font-mono text-xs font-semibold">{{ $job['name'] }} <span class="font-normal text-[var(--text-tertiary)]">· {{ $job['queue'] }}</span></span>
                             <div class="flex shrink-0 items-center gap-1.5 text-[11px] font-semibold">
-                                <button type="button" wire:click="retryJob('{{ $job['uuid'] }}')" class="cursor-pointer rounded-lg border border-[var(--border-hairline)] px-2.5 py-1 hover:bg-[var(--bg-subtle)]">Retry</button>
-                                <button type="button" wire:click="forgetJob('{{ $job['uuid'] }}')" class="cursor-pointer rounded-lg px-2.5 py-1 text-rose-600 hover:bg-rose-500/10">Delete</button>
+                                <button type="button" wire:click="retryJob(@js($job['uuid']))" class="cursor-pointer rounded-lg border border-[var(--border-hairline)] px-2.5 py-1 hover:bg-[var(--bg-subtle)]">Retry</button>
+                                <button type="button" wire:click="forgetJob(@js($job['uuid']))" class="cursor-pointer rounded-lg px-2.5 py-1 text-rose-600 hover:bg-rose-500/10">Delete</button>
                             </div>
                         </div>
                         <p class="text-[11px] text-[var(--text-secondary)]">{{ $job['error'] }}</p>

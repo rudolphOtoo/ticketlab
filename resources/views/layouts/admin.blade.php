@@ -117,7 +117,7 @@
                                 <a
                                     href="{{ route($link['route']) }}"
                                     wire:navigate
-                                    :title="sidebarCollapsed ? '{{ $link['label'] }}' : ''"
+                                    :title="sidebarCollapsed ? @js($link['label']) : ''"
                                     @class([
                                         'flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition',
                                         'bg-[var(--bg-subtle)] font-semibold text-[var(--text-primary)]' => request()->routeIs($link['route']),

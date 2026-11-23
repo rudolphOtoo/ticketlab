@@ -6,8 +6,6 @@
 ])
 
 @php
-    $custom = is_array($event?->customization) ? $event->customization : [];
-    $accentHex = preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($custom['accent_hex'] ?? '')) === 1 ? $custom['accent_hex'] : '#d97706';
     $navUser = auth()->user();
     $staffHome = $navUser?->staffHomeUrl();
     $homeUrl = $organization->homeUrl();
@@ -56,6 +54,8 @@
             this.open = !this.open;
         }
     }"
+    {{-- The brand colour and a text colour readable on it (WCAG AA), worked out on the server; see BrandColor. --}}
+    style="{{ \App\Support\BrandColor::cssVariables($organization, $event) }}"
     class="pointer-events-none fixed inset-x-0 top-4 z-50 mx-auto flex justify-center px-4"
 >
     <nav
@@ -70,9 +70,9 @@
         <a
             href="{{ $homeUrl }}"
             class="flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-3 py-1.5 text-xs font-bold transition hover:opacity-90 press-scale"
-            :title="collapsed ? 'Expand & Return Home' : '{{ $organization->name }} Home'"
+            :title="collapsed ? 'Expand & Return Home' : {{ \Illuminate\Support\Js::from($organization->name . ' Home') }}"
         >
-            <span class="size-2 rounded-full bg-[var(--dedicated-accent,{{ $accentHex }})]"></span>
+            <span class="size-2 rounded-full bg-[var(--dedicated-accent)]"></span>
             <span class="max-w-[9rem] truncate text-[var(--text-primary)]">{{ $organization->name }}</span>
         </a>
 
@@ -110,7 +110,8 @@
                 href="{{ $checkoutUrl }}"
                 x-show="!collapsed"
                 x-transition
-                class="hidden rounded-full bg-[var(--dedicated-accent,{{ $accentHex }})] px-4 py-1.5 text-xs font-bold text-white shadow-xs transition hover:opacity-90 press-scale sm:inline-flex"
+                data-get-passes
+                class="hidden rounded-full bg-[var(--dedicated-accent)] px-4 py-1.5 text-xs font-bold text-[var(--dedicated-accent-fg)] shadow-xs transition hover:opacity-90 press-scale sm:inline-flex"
             >Get Passes</a>
         @endif
 
@@ -209,7 +210,7 @@
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-[var(--border-hairline)]">
             <span class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Event Journey</span>
             <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--bg-subtle)] text-[var(--text-secondary)] border border-[var(--border-hairline)]">
-                <span class="size-1.5 rounded-full bg-[var(--dedicated-accent,{{ $accentHex }})]"></span>
+                <span class="size-1.5 rounded-full bg-[var(--dedicated-accent)]"></span>
                 <span>{{ $event?->title ?? $organization->name }}</span>
             </span>
         </div>
@@ -223,8 +224,8 @@
                     class="group relative flex items-start gap-3 text-left transition press-scale"
                 >
                     {{-- Timeline Circular Node --}}
-                    <div class="absolute -left-6 top-0.5 flex size-5 items-center justify-center rounded-full border-2 {{ $m['active'] ? 'border-[var(--dedicated-accent,'.$accentHex.')] bg-[var(--dedicated-accent,'.$accentHex.')]/20 shadow-[0_0_8px_var(--dedicated-accent,'.$accentHex.')]' : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] group-hover:border-[var(--text-secondary)]' }} transition">
-                        <span class="size-1.5 rounded-full {{ $m['active'] ? 'bg-[var(--dedicated-accent,'.$accentHex.')]' : 'bg-[var(--text-tertiary)] group-hover:bg-[var(--text-primary)]' }}"></span>
+                    <div class="absolute -left-6 top-0.5 flex size-5 items-center justify-center rounded-full border-2 {{ $m['active'] ? 'border-[var(--dedicated-accent)] bg-[var(--dedicated-accent)]/20 shadow-[0_0_8px_var(--dedicated-accent)]' : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] group-hover:border-[var(--text-secondary)]' }} transition">
+                        <span class="size-1.5 rounded-full {{ $m['active'] ? 'bg-[var(--dedicated-accent)]' : 'bg-[var(--text-tertiary)] group-hover:bg-[var(--text-primary)]' }}"></span>
                     </div>
 
                     {{-- Milestone Title & Subtitle --}}
@@ -246,7 +247,7 @@
                 <a
                     href="{{ $checkoutUrl }}"
                     x-on:click="open = false"
-                    class="flex items-center justify-between w-full rounded-2xl bg-[var(--dedicated-accent,{{ $accentHex }})] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-95 press-scale"
+                    class="flex items-center justify-between w-full rounded-2xl bg-[var(--dedicated-accent)] px-4 py-2.5 text-xs font-bold text-[var(--dedicated-accent-fg)] shadow-md transition hover:opacity-95 press-scale"
                 >
                     <span class="flex items-center gap-2">
                         <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
