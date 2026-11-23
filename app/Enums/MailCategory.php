@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Enums;
 
 /**
- * Kinds of email, most important first. Each may only use its share of the daily cap (config mail.quota.shares), so
- * the kinds below it can never use up the room ticket emails need.
+ * Kinds of email. Each may only use its share of the daily cap (config mail.quota.shares): tickets 90%, invitations
+ * and alerts 100%, zone choice 70%, broadcasts 50%. Lower shares can never use up the room of higher ones, and the
+ * last 10% stays free for invitations and alerts even on a big ticket day.
  */
 enum MailCategory: string
 {

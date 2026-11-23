@@ -39,10 +39,11 @@ Do the steps in order. Do not start a step until the previous one has passed its
       If an older cron calls `?token=…`, it keeps working for this release (with a deprecation warning); it's replaced in
       step 10.
 - [ ] **Brevo** (email), in the account used for YPG or a new one:
-  1. **Plan and cap.** The free plan sends 300 emails a day across every kind, reset daily, with no rollover. If a big
-     on-sale is expected (more than ~250 orders in a day), switch to **Starter** for that month and set
-     `BREVO_DAILY_LIMIT` to its allowance; otherwise later ticket emails go out over the following days (the ticket
-     page works at once either way).
+  1. **Plan and cap.** The free plan sends 300 emails a day across every kind, reset daily, with no rollover. Ticket
+     emails may use 270 of them (the last 30 stay free for invitations and payout alerts). If a big on-sale is
+     expected (more than ~250 orders in a day), switch to **Starter** for that month and set `BREVO_DAILY_LIMIT` to
+     its allowance; otherwise later ticket emails go out over the following days (the ticket page works at once
+     either way).
   2. **Authenticate the sending domain** (Brevo → Senders, Domains & Dedicated IPs → Domains → Add / Authenticate).
      Brevo shows the exact records to add at your DNS host; copy them as shown, don't retype them:
      - **Brevo code**: a TXT record `brevo-code:…` on the domain (proves ownership);
@@ -265,6 +266,22 @@ Run from your laptop with the same Neon variables as step 3.
 
 - [ ] **Scheduler.** The cron-job.org history shows HTTP 200 every 5 minutes since step 3, mostly
       `"Nothing due"`, and Vercel's logs show no "Deprecated: scheduler token sent as ?token=" warnings.
+- [ ] **After-response ticket email.** The ticket email is sent after the response has gone out (Laravel's
+      `defer()`), and the cron retries it if that never happened. Check which one Vercel's PHP runtime gives us:
+  1. Buy one test ticket (step 8's GHS 1 type) and note the time Paystack confirms.
+  2. Look up the order (Neon SQL editor):
+     ```sql
+     SELECT reference, paid_at, ticket_emailed_at, ticket_email_attempts, ticket_email_error,
+            EXTRACT(EPOCH FROM ticket_emailed_at - paid_at) AS seconds_to_email
+     FROM orders WHERE reference = 'TKT-…';
+     ```
+  3. **Within a minute** (`seconds_to_email` under 60, `ticket_email_attempts = 1`): after-response work runs on
+     Vercel. **5–10 minutes**, with the cron log showing `"due":["ticket-emails",…]` at that time: Vercel stops
+     after-response work, and the cron is doing the sending. Both deliver the email; the second only means buyers
+     rely on the ticket page for the first minutes.
+  4. **Write down which one you observed**, with the seconds, here: `Observed on <date>: ______`. If it is the cron,
+     raise it with the team: the fix is to send inside the webhook request before answering (the webhook has no
+     buyer waiting).
 - [ ] **Email.** On `/platform`, "Emails today" shows the test emails of step 8 against the limit, with
       `0 ticket emails waiting` and `0 given up`. If emails wait or were given up, the order's error is in
       `orders.ticket_email_error`; fix the cause (usually the SMTP key or sender) and use **Resend** on the Attendee
@@ -285,6 +302,8 @@ Run from your laptop with the same Neon variables as step 3.
       **Ledgers locked before this release** show their frozen totals (online, cash, attendees) but **no zone
       breakdown**: that breakdown existed only inside the PDF file stored at the time, and those files are not
       carried over. Ledgers locked from this release on keep their breakdown in the database.
+- [ ] **Page speed, desktop vs mobile.** Follow `docs/runbooks/performance-check.md` on the live event page and a
+      ticket page, and write the numbers next to its local baseline.
 - [ ] **Content-Security-Policy: review, then enforce.** With `CSP_MODE=report-only` (step 2), open these in Chrome
       with DevTools → Console, signed in where needed, and do what each page is for:
   - the organisation home, an event page (including a full test checkout up to the Paystack popup), the ticket page,

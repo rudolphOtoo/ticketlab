@@ -126,12 +126,15 @@ return [
      | Brevo's free plan sends 300 emails a day across every kind of email, reset daily, with no rollover; Starter
      | removes the cap (set a large BREVO_DAILY_LIMIT). Every email we send takes one slot of today's count
      | (App\Services\Mail\MailQuota), and each kind may only take a slot while today's total is under its share of
-     | the cap, so ticket emails always find room:
+     | the cap (defaults below, each settable from the environment):
      |
-     |   ticket        100%  (300)   the buyer's passes
-     |   transactional  90%  (270)   organisation-admin invitations, payout alerts, contact-form enquiries
+     |   transactional 100%  (300)   organisation-admin invitations, payout alerts, contact-form enquiries
+     |   ticket         90%  (270)   the buyer's passes (the ticket page and PDF are the main ticket)
      |   zone_choice    70%  (210)   "choose your zone" requests
      |   broadcast      50%  (150)   Broadcast Hub messages, spread over the following days when larger
+     |
+     | Tickets get room before zone-choice requests and broadcasts, but stop at 90%: on a big ticket day the last 30
+     | slots stay free, so an admin invitation or a payout alert can still go out the same day.
      |
      | An email without room waits for the next day (it is never dropped). Emails Laravel sends itself (password
      | resets, verification links) are never held back, but they are counted.
@@ -146,10 +149,10 @@ return [
 
         // Percent of the daily limit each kind may use, counted against everything sent today.
         'shares' => [
-            'ticket' => 100,
-            'transactional' => 90,
-            'zone_choice' => 70,
-            'broadcast' => 50,
+            'transactional' => (int) env('MAIL_SHARE_TRANSACTIONAL', 100),
+            'ticket' => (int) env('MAIL_SHARE_TICKET', 90),
+            'zone_choice' => (int) env('MAIL_SHARE_ZONE_CHOICE', 70),
+            'broadcast' => (int) env('MAIL_SHARE_BROADCAST', 50),
         ],
 
         // The platform dashboard turns amber from this share of the limit.

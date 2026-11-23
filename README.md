@@ -176,9 +176,12 @@ stands, and **Resend my ticket** (at most 3 an hour, 2 minutes apart, always to 
   update makes sure the immediate send and a retry never both send it.
 - **Daily cap.** Brevo's free plan sends **300 emails a day** across every kind, resetting daily with no rollover
   (`BREVO_DAILY_LIMIT`, default 300; Starter has no cap, so set a large number). Each email takes a slot of today's
-  count (`mail_quota_days`). Each kind may only take one while today's total is under its share, so tickets always
-  find room: **ticket 100% (300), invitations and alerts 90% (270), zone choice 70% (210), broadcasts 50% (150)**
-  (`config/mail.php` → `quota.shares`). Password-reset and verification emails are counted but never held back.
+  count (`mail_quota_days`). Each kind may only take one while today's total is under its share:
+  **invitations and alerts 100% (300), tickets 90% (270), zone choice 70% (210), broadcasts 50% (150)**
+  (`config/mail.php` → `quota.shares`, each settable with `MAIL_SHARE_TRANSACTIONAL`, `MAIL_SHARE_TICKET`,
+  `MAIL_SHARE_ZONE_CHOICE`, `MAIL_SHARE_BROADCAST`). Tickets get room before zone-choice requests and broadcasts, and
+  the last 30 slots stay free so an admin invitation or payout alert still goes out on a big ticket day.
+  Password-reset and verification emails are counted but never held back.
 - **Over the cap, emails wait for the next day**, never dropped. A queued email is put back until just after
   midnight (`MailQuotaGate`), and waiting never counts as a failed try. A ticket email shows "goes out after midnight"
   on the ticket page.

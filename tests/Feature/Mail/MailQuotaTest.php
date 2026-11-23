@@ -25,8 +25,8 @@ use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 
 /*
- * Brevo's free plan sends 300 emails a day across every kind. Each kind may only use its share (tickets 100%,
- * invitations and alerts 90%, zone choice 70%, broadcasts 50%), so ticket emails always find room, and anything
+ * Brevo's free plan sends 300 emails a day across every kind. Each kind may only use its share (invitations and
+ * alerts 100%, tickets 90%, zone choice 70%, broadcasts 50%), so a big ticket day leaves room for alerts, and anything
  * without room waits for the next day.
  */
 
@@ -63,8 +63,8 @@ it('lets each kind of email use only its share of the daily cap', function (
 
     expect(quota()->reserve($category))->toBeTrue()->and(quota()->reserve($category))->toBeFalse();
 })->with([
-    'tickets: all 300' => [MailCategory::Ticket, 300],
-    'invitations and alerts: 270' => [MailCategory::Transactional, 270],
+    'invitations and alerts: all 300' => [MailCategory::Transactional, 300],
+    'tickets: 270' => [MailCategory::Ticket, 270],
     'zone choice: 210' => [MailCategory::ZoneChoice, 210],
     'broadcasts: 150' => [MailCategory::Broadcast, 150],
 ]);
@@ -76,7 +76,40 @@ it('takes the cap from BREVO_DAILY_LIMIT (Starter has no cap: set a large number
     expect(quota()->reserve(MailCategory::Broadcast))
         ->toBeTrue()
         ->and(quota()->remaining(MailCategory::Ticket))
+        ->toBe(18_000 - 10_000)
+        ->and(quota()->remaining(MailCategory::Transactional))
         ->toBe(20_000 - 10_000);
+});
+
+it('keeps the last 30 of 300 for invitations and alerts on a big ticket day', function (): void {
+    sent_today(269);
+
+    expect(quota()->reserve(MailCategory::Ticket))
+        ->toBeTrue()
+        // Tickets stop at 270: the next one waits for tomorrow (the ticket page works meanwhile).
+        ->and(quota()->reserve(MailCategory::Ticket))
+        ->toBeFalse()
+        // An admin invitation or payout alert still goes out today.
+        ->and(quota()->reserve(MailCategory::Transactional))
+        ->toBeTrue()
+        ->and(quota()->remaining(MailCategory::Transactional))
+        ->toBe(29);
+});
+
+it('takes each share from config (MAIL_SHARE_*)', function (): void {
+    config(['mail.quota.shares.ticket' => 60, 'mail.quota.shares.broadcast' => 10]);
+
+    expect(MailCategory::Ticket->ceiling(300))
+        ->toBe(180)
+        ->and(MailCategory::Broadcast->ceiling(300))
+        ->toBe(30)
+        ->and(MailCategory::Transactional->ceiling(300))
+        ->toBe(300);
+
+    // Out-of-range values are clamped to 0–100%.
+    config(['mail.quota.shares.zone_choice' => 250]);
+
+    expect(MailCategory::ZoneChoice->ceiling(300))->toBe(300);
 });
 
 it('starts from zero on the next day (Brevo resets daily, with no rollover)', function (): void {
@@ -241,6 +274,18 @@ it('shows today\'s count, the waiting ticket emails and the deferrals on the pla
         ->assertSeeHtml('data-mail-health')
         ->assertSee('Emails today')
         ->assertSeeInOrder(['250', '/ 300'])
+        // Each kind with how far it may go today.
+        ->assertSeeInOrder([
+            'Tickets',
+            'up to 270',
+            'Invitations &amp; alerts',
+            'up to 300',
+            'Zone choice',
+            'up to 210',
+            'Broadcasts',
+            'up to 150',
+        ], false)
+        ->assertSee('Tickets stop at 270, keeping 30 for invitations & alerts.')
         ->assertSee('0 ticket emails waiting')
         ->assertSee('1 moved to tomorrow');
 });

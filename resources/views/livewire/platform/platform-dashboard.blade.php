@@ -134,7 +134,7 @@
             </div>
             <ul class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--text-tertiary)]">
                 @foreach ($mail['categories'] as $category)
-                    <li>{{ $category['label'] }}: <span class="font-semibold text-[var(--text-secondary)]">{{ $category['sent'] }}</span></li>
+                    <li>{{ $category['label'] }}: <span class="font-semibold text-[var(--text-secondary)]">{{ $category['sent'] }}</span>@if ($category['ceiling'] !== null) <span>(up to {{ $category['ceiling'] }})</span>@endif</li>
                 @endforeach
             </ul>
             <ul class="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
@@ -149,6 +149,9 @@
                 </li>
             </ul>
         </div>
+        @if ($mail['reserve_note'])
+            <p class="mt-2 text-[11px] text-[var(--text-tertiary)]">{{ $mail['reserve_note'] }} "Up to" counts every email sent today.</p>
+        @endif
         <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]" role="progressbar" aria-label="Daily email limit used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ min(100, $mail['percent']) }}">
             <div class="h-full rounded-full {{ $mail['warn'] ? 'bg-amber-500' : 'bg-emerald-500' }}" style="width: {{ min(100, $mail['percent']) }}%"></div>
         </div>

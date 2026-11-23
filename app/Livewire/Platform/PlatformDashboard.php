@@ -119,7 +119,8 @@ class PlatformDashboard extends Component
      *     percent: int,
      *     warn: bool,
      *     deferred: int,
-     *     categories: list<array{label: string, sent: int}>,
+     *     categories: list<array{label: string, sent: int, ceiling: int|null}>,
+     *     reserve_note: string|null,
      *     tickets_waiting: int,
      *     tickets_failed: int
      * }
@@ -127,6 +128,8 @@ class PlatformDashboard extends Component
     protected static function mailHealth(): array
     {
         $snapshot = app(MailQuota::class)->snapshot();
+        $ticketCeiling = MailCategory::Ticket->ceiling($snapshot['limit']);
+        $transactionalCeiling = MailCategory::Transactional->ceiling($snapshot['limit']);
         $tickets = app(TicketEmailer::class)->counts();
         $percent = $snapshot['limit'] > 0 ? (int) floor(($snapshot['sent'] * 100) / $snapshot['limit']) : 100;
 
@@ -136,10 +139,22 @@ class PlatformDashboard extends Component
             'percent' => $percent,
             'warn' => $percent >= (int) config('mail.quota.warn_percent', 80),
             'deferred' => $snapshot['deferred'],
-            'categories' => array_map(static fn(MailCategory $category): array => [
-                'label' => $category->label(),
-                'sent' => $snapshot['by_category'][$category->value] ?? 0,
-            ], MailCategory::cases()),
+            'categories' => array_map(
+                static fn(MailCategory $category): array => [
+                    'label' => $category->label(),
+                    'sent' => $snapshot['by_category'][$category->value] ?? 0,
+                    // Today's total this kind may bring the count to; account emails are never held back.
+                    'ceiling' => $category === MailCategory::Other ? null : $category->ceiling($snapshot['limit']),
+                ],
+                MailCategory::cases(),
+            ),
+            'reserve_note' => $transactionalCeiling > $ticketCeiling
+                ? sprintf(
+                    'Tickets stop at %d, keeping %d for invitations & alerts.',
+                    $ticketCeiling,
+                    $transactionalCeiling - $ticketCeiling,
+                )
+                : null,
             'tickets_waiting' => $tickets['waiting'],
             'tickets_failed' => $tickets['gave_up'],
         ];
