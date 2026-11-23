@@ -77,7 +77,7 @@ function buy_ticket(object $test, ?Subdivision $zone, int $quantity = 1): Testab
         ->set('customerName', 'Esi Owusu')
         ->set('customerEmail', 'esi@example.com')
         ->set('customerPhone', '0244000111')
-        ->call('startCheckout');
+        ->checkoutAsShown();
 }
 
 /**
@@ -159,14 +159,14 @@ test('the zone receives exactly the ticket value and the main account keeps fees
 
 test('reopening an unchanged checkout resumes the same paystack transaction', function (): void {
     $checkout = buy_ticket($this, $this->zone);
-    $checkout->call('startCheckout')->assertHasNoErrors();
+    $checkout->checkoutAsShown()->assertHasNoErrors();
 
     expect(initializations())->toHaveCount(1);
 });
 
 test('changing the order opens a fresh paystack reference for it', function (): void {
     $checkout = buy_ticket($this, $this->zone);
-    $checkout->set('quantity', 2)->call('startCheckout')->assertHasNoErrors();
+    $checkout->set('quantity', 2)->checkoutAsShown()->assertHasNoErrors();
 
     $order = Order::query()->sole();
 
@@ -275,7 +275,7 @@ test('a legacy unrouted order paid into a subaccount is held for review', functi
 
 test('a payment under a re-opened attempt reference fulfils the order', function (): void {
     $checkout = buy_ticket($this, $this->zone);
-    $checkout->set('quantity', 2)->call('startCheckout');
+    $checkout->set('quantity', 2)->checkoutAsShown();
     $order = Order::query()->sole();
 
     post_webhook($this, settled_payment($order, ['fees_split' => ['subaccount' => 10_000]]))->assertOk();
@@ -287,7 +287,7 @@ test('paying an abandoned earlier attempt is held for review instead of fulfille
     $checkout = buy_ticket($this, $this->zone);
     $order = Order::query()->sole();
     $firstReference = $order->reference;
-    $checkout->set('quantity', 2)->call('startCheckout');
+    $checkout->set('quantity', 2)->checkoutAsShown();
 
     post_webhook($this, settled_payment($order->refresh(), ['reference' => $firstReference]))->assertStatus(409);
 
@@ -348,7 +348,7 @@ test('a stale paystack session is not resumed', function (): void {
         ],
     ])->save();
 
-    $checkout->call('startCheckout')->assertHasNoErrors();
+    $checkout->checkoutAsShown()->assertHasNoErrors();
 
     expect(array_column(initializations(), 'reference'))->toBe([
         Order::query()->sole()->reference,

@@ -70,3 +70,23 @@ it('converts amounts to pesewas without floating point drift', function () {
         ->and(PaystackFeeCalculator::toPesewas(19.99))
         ->toBe(1_999);
 });
+
+it('matches the shared fee fixture that the browser formula is also tested against', function () {
+    /** @var array{basis: int, scale: int, cases: list<array<string, int>>} $fixture */
+    $fixture = json_decode((string) file_get_contents(__DIR__ . '/../fixtures/paystack-fees.json'), true);
+
+    // The page sends these constants to the browser (EventShow::clientCheckout), so they must be the fixture's.
+    expect(PaystackFeeCalculator::DENOMINATOR_BASIS)
+        ->toBe($fixture['basis'])
+        ->and(PaystackFeeCalculator::SCALE)
+        ->toBe($fixture['scale']);
+
+    foreach ($fixture['cases'] as $case) {
+        $breakdown = PaystackFeeCalculator::breakdown($case['net_pesewas'] / 100, $case['platform_fee_pesewas'] / 100);
+
+        expect($breakdown['gross_pesewas'])
+            ->toBe($case['gross_pesewas'], 'gross for net ' . $case['net_pesewas'])
+            ->and($breakdown['processing_fee_pesewas'])
+            ->toBe($case['processing_fee_pesewas'], 'fee for net ' . $case['net_pesewas']);
+    }
+});

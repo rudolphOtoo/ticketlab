@@ -43,7 +43,7 @@ function checkout_with_zone(object $test, ?Subdivision $zone): Testable
         ->set('customerName', 'Ama Mensah')
         ->set('customerEmail', 'ama@example.com')
         ->set('customerPhone', '0244000000')
-        ->call('startCheckout');
+        ->checkoutAsShown();
 }
 
 /**

@@ -86,7 +86,7 @@ function checkout_with(object $test, array $answers): \Livewire\Features\Support
         $component->set("customFieldResponses.{$key}", $value);
     }
 
-    return $component->call('startCheckout');
+    return $component->checkoutAsShown();
 }
 
 function paid_attendee(\Livewire\Features\SupportTesting\Testable $checkout): Attendee
@@ -133,8 +133,6 @@ function exported_rows(object $test, ?int $eventId): array
 test('the checkout modal renders every active registration question with its options', function (): void {
     Livewire::test(EventShow::class, ['org_slug' => 'grace-hub', 'event_slug' => 'leaders-summit'])
         ->set('ticketTypeId', $this->ticket->id)
-        ->call('openCheckout')
-        ->assertSet('checkoutOpen', true)
         ->assertSeeHtml('wire:model="customFieldResponses.t_shirt_size"')
         ->assertSeeHtml('wire:model="customFieldResponses.bus_route"')
         ->assertSeeHtml('wire:model="customFieldResponses.dietary"')

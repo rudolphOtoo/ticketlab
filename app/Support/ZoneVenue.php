@@ -45,6 +45,14 @@ final readonly class ZoneVenue
     }
 
     /**
+     * "Sat, 6 Mar 2027 · 10:00 AM": when this zone meets, as the event page shows it.
+     */
+    public function when(): string
+    {
+        return $this->startAt->format('D, j M Y · g:i A');
+    }
+
+    /**
      * "Wesley Girls Hall, 12 Castle Road, Cape Coast" style one-liner for passes and emails.
      */
     public function place(): ?string

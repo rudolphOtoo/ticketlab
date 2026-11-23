@@ -201,7 +201,7 @@ test('retrying checkout reuses the session reservation and pending order', funct
         ->set('customerName', 'Ama Mensah')
         ->set('customerEmail', 'ama@example.com')
         ->set('customerPhone', '0244000000')
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors()
         ->assertDispatched('open-paystack');
 
@@ -211,7 +211,7 @@ test('retrying checkout reuses the session reservation and pending order', funct
     $expiresAt = $reservation->expires_at->getTimestamp();
 
     $component
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors()
         ->assertDispatched('open-paystack')
         ->assertSet('orderReference', $reference);

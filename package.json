@@ -5,7 +5,8 @@
     "scripts": {
         "build": "vp build",
         "vercel-build": "npm run build",
-        "dev": "vp dev"
+        "dev": "vp dev",
+        "test:js": "vp test run tests/js"
     },
     "dependencies": {
         "@laravel/passkeys": "^0.2.0",
@@ -26,5 +27,8 @@
     },
     "overrides": {
         "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0"
+    },
+    "devDependencies": {
+        "playwright": "^1.65.1"
     }
 }

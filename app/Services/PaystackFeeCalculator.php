@@ -14,9 +14,10 @@ class PaystackFeeCalculator
 {
     public const RATE = 0.0195;
 
-    private const DENOMINATOR_BASIS = 9805;
+    /** Public so the event page can run the same integer formula in the browser (resources/js/checkout/fees.js). */
+    public const int DENOMINATOR_BASIS = 9805;
 
-    private const SCALE = 10_000;
+    public const int SCALE = 10_000;
 
     public static function grossPesewas(float|int|string $netAmount, float|int|string $platformFee = 0): int
     {

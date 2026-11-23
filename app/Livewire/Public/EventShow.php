@@ -24,6 +24,7 @@ use App\Services\Reservation\ZoneCapacity;
 use App\Support\ZoneVenue;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -40,6 +41,8 @@ use Throwable;
 class EventShow extends Component
 {
     private const int CHECKOUTS_PER_WINDOW = 15;
+
+    private const int MAX_PER_ORDER = 20;
 
     #[Locked]
     public int $organizationId;
@@ -59,13 +62,17 @@ class EventShow extends Component
 
     public ?int $subdivisionId = null;
 
+    /**
+     * The total (in pesewas) the buyer saw in the browser when they pressed Pay. Display only: the server prices the
+     * order itself and refuses to continue if the two disagree, so nobody is charged an amount they were not shown.
+     */
+    public ?int $clientTotalPesewas = null;
+
     public string $customerName = '';
 
     public string $customerEmail = '';
 
     public string $customerPhone = '';
-
-    public bool $checkoutOpen = false;
 
     public ?string $orderReference = null;
 
@@ -119,69 +126,6 @@ class EventShow extends Component
         $this->subdivisionId = null;
     }
 
-    public function selectTicketType(int $ticketTypeId): void
-    {
-        $ticketType = $this->event()->ticketTypes->firstWhere('id', $ticketTypeId);
-
-        if ($ticketType === null || !$ticketType->isOnSale()) {
-            return;
-        }
-
-        $this->ticketTypeId = $ticketType->id;
-
-        $available = $this->seatsLeft($ticketType);
-        if ($available > 0 && $this->quantity > $available) {
-            $this->quantity = min(20, $available);
-        }
-
-        $this->resetValidation('ticketTypeId');
-    }
-
-    public function incrementQuantity(): void
-    {
-        $ticketType = $this->selectedTicketType();
-        $maximum = $ticketType === null ? 20 : $this->seatsLeft($ticketType);
-        $maximum = max(1, min(20, $maximum));
-
-        if ($this->quantity < $maximum) {
-            $this->quantity++;
-            $this->resetValidation('quantity');
-        }
-    }
-
-    public function decrementQuantity(): void
-    {
-        $this->quantity = max(1, $this->quantity - 1);
-        $this->resetValidation('quantity');
-    }
-
-    public function updatedQuantity(mixed $value): void
-    {
-        $quantity = (int) $value;
-        $ticketType = $this->selectedTicketType();
-        $maximum = $ticketType === null ? 20 : $this->seatsLeft($ticketType);
-        $maximum = max(1, min(20, $maximum));
-
-        $this->quantity = max(1, min($quantity, $maximum));
-    }
-
-    public function openCheckout(): void
-    {
-        if ($this->selectedTicketType() === null) {
-            $this->addError('ticketTypeId', 'Select a ticket tier before continuing.');
-
-            return;
-        }
-
-        $this->checkoutOpen = true;
-        $this->resetValidation();
-    }
-
-    public function closeCheckout(): void
-    {
-        $this->checkoutOpen = false;
-    }
-
     public function startCheckout(
         TicketReservationService $reservations,
         ?PendingOrderService $pendingOrders = null,
@@ -203,6 +147,10 @@ class EventShow extends Component
         $quantity = (int) $validated['quantity'];
         $ticketType = $this->checkoutTicketType($event, (int) $validated['ticketTypeId']);
         $subdivision = $this->checkoutSubdivision($organization, $validated['subdivisionId'] ?? null);
+
+        if ($this->shownTotalDiffers($ticketType, $quantity, $organization)) {
+            return;
+        }
 
         if ($this->zoneCannotBePaid($ticketType, $subdivision)) {
             return;
@@ -270,52 +218,6 @@ class EventShow extends Component
         $this->flashMessage = 'Payment cancelled. Your seats remain reserved for 15 minutes.';
     }
 
-    public function availabilityBadge(TicketType $ticketType): string
-    {
-        if (!$ticketType->isOnSale()) {
-            return $ticketType->sales_start_at?->isFuture() === true ? 'Coming Soon' : 'Sales Closed';
-        }
-
-        $seatsLeft = $this->seatsLeft($ticketType);
-
-        if ($seatsLeft <= 0) {
-            return 'Sold Out';
-        }
-
-        $limitedThreshold = max(10, (int) ceil($ticketType->total_capacity * 0.2));
-
-        return $seatsLeft <= $limitedThreshold ? 'Limited' : 'Available';
-    }
-
-    /**
-     * Seats the buyer can get in this tier for the zone they picked: the tier's own stock, narrowed by that zone's
-     * remaining seats (each zone sells out on its own).
-     */
-    public function seatsLeft(TicketType $ticketType): int
-    {
-        return app(ZoneCapacity::class)->sellable($ticketType, $this->subdivisionId);
-    }
-
-    public function updatedSubdivisionId(): void
-    {
-        $ticketType = $this->selectedTicketType();
-
-        if ($ticketType !== null) {
-            $this->quantity = max(1, min($this->quantity, $this->seatsLeft($ticketType)));
-        }
-
-        $this->resetValidation(['subdivisionId', 'quantity']);
-    }
-
-    public function availabilityBadgeClass(TicketType $ticketType): string
-    {
-        return match ($this->availabilityBadge($ticketType)) {
-            'Sold Out', 'Sales Closed', 'Coming Soon' => 'bg-zinc-200 text-zinc-600',
-            'Limited' => 'bg-amber-100 text-amber-800',
-            default => 'bg-emerald-100 text-emerald-800',
-        };
-    }
-
     public function render(): View
     {
         $event = $this->event();
@@ -325,12 +227,14 @@ class EventShow extends Component
         // Paused tiers are hidden; tiers outside their sales window stay visible but cannot be selected.
         $ticketTypes = $event->ticketTypes->where('is_active', true)->sortBy('price')->values();
 
-        $selectedTicketType = $ticketTypes->firstWhere('id', $this->ticketTypeId);
-
-        $subtotal = $selectedTicketType === null ? 0.0 : round((float) $selectedTicketType->price * $this->quantity, 2);
-
-        $breakdown = PaystackFeeCalculator::breakdown($subtotal, $this->platformFee($organization));
         $subdivisions = $organization->subdivisions->sortBy('name')->values();
+        // Each zone meets at its own venue (and possibly date), so buyers see them all before choosing.
+        $zoneVenues = $subdivisions->mapWithKeys(static fn(Subdivision $zone): array => [
+            $zone->id => ZoneVenue::for($event, $zone),
+        ]);
+
+        $checkout = $this->clientCheckout($event, $ticketTypes, $subdivisions, $organization);
+        $initialTicket = collect($checkout['tiers'])->firstWhere('id', $this->ticketTypeId);
 
         $speakers = $event->speakers;
         $schedules = $event->schedules;
@@ -362,12 +266,14 @@ class EventShow extends Component
             'ticketTypes' => $ticketTypes,
             'subdivisions' => $subdivisions,
             // Each zone meets at its own venue (and possibly date), so buyers see them all before choosing.
-            'zoneVenues' => $subdivisions->mapWithKeys(static fn(Subdivision $zone): array => [
-                $zone->id => ZoneVenue::for($event, $zone),
-            ]),
-            'selectedTicketType' => $selectedTicketType,
-            'subtotal' => $subtotal,
-            'breakdown' => $breakdown,
+            'zoneVenues' => $zoneVenues,
+            'checkout' => $checkout,
+            // First paint before Alpine starts (and for crawlers); Alpine takes over from the same numbers.
+            'initialTicket' => $initialTicket,
+            'initialTotals' => PaystackFeeCalculator::breakdown(
+                (($initialTicket['price'] ?? 0) * $this->quantity) / 100,
+                $this->platformFee($organization),
+            ),
             'speakers' => $speakers,
             'schedules' => $schedules,
             'scheduleDays' => $scheduleDays,
@@ -376,6 +282,109 @@ class EventShow extends Component
             'customization' => $customization,
             'viewingSpeaker' => $viewingSpeaker,
         ]);
+    }
+
+    /**
+     * Everything the browser needs to choose a tier, zone and quantity and show the total without a server round trip:
+     * prices in pesewas, seats left per tier per zone, and the fee formula's constants. Display only; startCheckout()
+     * re-checks every value.
+     *
+     * @param Collection<int, TicketType> $ticketTypes
+     * @param SupportCollection<int, Subdivision> $zones
+     *
+     * @return array{
+     *     tiers: list<array{id: int, name: string, price: int, onSale: bool, status: ?string, limitedAt: int, seats: array<int, int>}>,
+     *     zones: list<array{id: int, name: string, when: string, place: ?string}>,
+     *     zoneRequired: bool,
+     *     zoneLabel: string,
+     *     maxPerOrder: int,
+     *     fee: array{basis: int, scale: int, platformFee: int},
+     *     initial: array{ticketId: ?int, quantity: int, zoneId: ?int}
+     * }
+     */
+    private function clientCheckout(
+        Event $event,
+        Collection $ticketTypes,
+        SupportCollection $zones,
+        Organization $organization,
+    ): array {
+        $zoneIds = array_values($zones->map(static fn(Subdivision $zone): int => $zone->id)->all());
+        $seats = app(ZoneCapacity::class)->sellableGrid($ticketTypes, $zoneIds);
+
+        return [
+            'tiers' => array_values(
+                $ticketTypes->map(static fn(TicketType $tier): array => [
+                    'id' => $tier->id,
+                    'name' => $tier->name,
+                    'price' => PaystackFeeCalculator::toPesewas($tier->price),
+                    'onSale' => $tier->isOnSale(),
+                    // Shown instead of a seat badge while the tier is outside its sales window.
+                    'status' => match (true) {
+                        $tier->isOnSale() => null,
+                        $tier->sales_start_at?->isFuture() === true => 'Coming Soon',
+                        default => 'Sales Closed',
+                    },
+                    'limitedAt' => max(10, (int) ceil($tier->total_capacity * 0.2)),
+                    'seats' => $seats[$tier->id] ?? [0 => 0],
+                ])->all(),
+            ),
+            'zones' => array_values(
+                $zones->map(static function (Subdivision $zone) use ($event): array {
+                    // Reads the event's eager-loaded zone rows; no query per zone.
+                    $venue = ZoneVenue::for($event, $zone);
+
+                    return [
+                        'id' => $zone->id,
+                        'name' => $zone->name,
+                        'when' => $venue->when(),
+                        'place' => $venue->place(),
+                    ];
+                })->all(),
+            ),
+            'zoneRequired' => $zones->isNotEmpty(),
+            'zoneLabel' => strtolower($organization->subdivision_label),
+            'maxPerOrder' => self::MAX_PER_ORDER,
+            'fee' => [
+                'basis' => PaystackFeeCalculator::DENOMINATOR_BASIS,
+                'scale' => PaystackFeeCalculator::SCALE,
+                'platformFee' => PaystackFeeCalculator::toPesewas($this->platformFee($organization)),
+            ],
+            'initial' => [
+                'ticketId' => $this->ticketTypeId,
+                'quantity' => $this->quantity,
+                'zoneId' => $this->subdivisionId,
+            ],
+        ];
+    }
+
+    /**
+     * Refuses when the total the buyer was shown is not what the server would charge (a tampered page, or prices
+     * changed since the page loaded). Nothing is held and no transaction is opened.
+     */
+    private function shownTotalDiffers(TicketType $ticketType, int $quantity, Organization $organization): bool
+    {
+        $expected = PaystackFeeCalculator::grossPesewas(
+            round((float) $ticketType->price * $quantity, precision: 2),
+            $this->platformFee($organization),
+        );
+
+        if ($this->clientTotalPesewas === $expected) {
+            return false;
+        }
+
+        Log::notice('Checkout refused: the total shown in the browser differs from the server price.', [
+            'event_id' => $this->eventId,
+            'ticket_type_id' => $ticketType->id,
+            'quantity' => $quantity,
+            'shown_pesewas' => $this->clientTotalPesewas,
+            'expected_pesewas' => $expected,
+        ]);
+        $this->addError(
+            'clientTotalPesewas',
+            'The total has changed since this page loaded. Please refresh the page and check your order before paying.',
+        );
+
+        return true;
     }
 
     /**
@@ -493,7 +502,8 @@ class EventShow extends Component
         return [
             [
                 'ticketTypeId' => ['required', 'integer'],
-                'quantity' => ['required', 'integer', 'min:1', 'max:20'],
+                'quantity' => ['required', 'integer', 'min:1', 'max:' . self::MAX_PER_ORDER],
+                'clientTotalPesewas' => ['required', 'integer', 'min:0'],
                 // When the organisation has zones, every order belongs to one: it decides the gate and the payout.
                 'subdivisionId' => [$organization->subdivisions->isNotEmpty() ? 'required' : 'nullable', 'integer'],
                 'customerName' => ['required', 'string', 'max:255'],
@@ -672,15 +682,6 @@ class EventShow extends Component
                 'formFields' => static fn($q) => $q->where('is_active', true)->orderBy('sort_order'),
             ])
             ->findOrFail($this->eventId);
-    }
-
-    private function selectedTicketType(): ?TicketType
-    {
-        if ($this->ticketTypeId === null) {
-            return null;
-        }
-
-        return $this->event()->ticketTypes->firstWhere('id', $this->ticketTypeId);
     }
 
     private function platformFee(Organization $organization): float

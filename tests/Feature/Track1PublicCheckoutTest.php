@@ -219,13 +219,12 @@ test('the checkout flow holds stock and dispatches the paystack payload', functi
         'event_slug' => $this->event->slug,
     ])
         ->assertSet('ticketTypeId', $this->regularTicket->id)
-        ->call('selectTicketType', $this->regularTicket->id)
         ->set('quantity', 2)
         ->set('subdivisionId', $this->zoneA->id)
         ->set('customerName', 'Ama Mensah')
         ->set('customerEmail', 'ama@example.com')
         ->set('customerPhone', '0244000000')
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors()
         ->assertDispatched('open-paystack');
 

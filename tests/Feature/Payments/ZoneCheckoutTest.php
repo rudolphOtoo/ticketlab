@@ -49,7 +49,7 @@ function buy_in_zone(object $test, ?Subdivision $zone, int $quantity = 1): \Live
         ->set('customerName', 'Ama Mensah')
         ->set('customerEmail', 'ama@example.com')
         ->set('customerPhone', '0244000000')
-        ->call('startCheckout');
+        ->checkoutAsShown();
 }
 
 test('a Kumasi purchase is split to the Kumasi subaccount, which receives exactly the ticket value', function (): void {
@@ -131,11 +131,17 @@ test('a zone sells out on its own while other zones keep selling', function (): 
 
     expect($this->vip->fresh()->available_quantity)->toBe(43);
 
+    // The page sends each zone's seats to the browser, which shows them as the buyer switches zone.
     Livewire::test(EventShow::class, ['org_slug' => 'gmsu', 'event_slug' => 'convention'])
+        ->assertViewHas(
+            'checkout',
+            fn(array $checkout): bool => (
+                $checkout['tiers'][0]['seats'][$this->kumasi->id] === 0
+                && $checkout['tiers'][0]['seats'][$this->accra->id] === 43
+            ),
+        )
         ->set('subdivisionId', $this->kumasi->id)
-        ->assertSee('Sold Out')
-        ->set('subdivisionId', $this->accra->id)
-        ->assertSee('43 left');
+        ->assertSee('Sold Out');
 });
 
 test('the cash desk checks the zone cap under the same lock', function (): void {
@@ -337,3 +343,81 @@ test('an order created before zones were required still confirms and issues its 
     // Paystack sends an empty subaccount object for unsplit transactions.
     'empty subaccount object' => [[]],
 ]);
+
+/*
+ |--------------------------------------------------------------------------
+ | Ticket and zone choice happen in the browser; the server re-checks on Pay
+ |--------------------------------------------------------------------------
+ */
+
+test('the page sends seats left per tier per zone, matching the checkout capacity check', function (): void {
+    TicketTypeZoneCapacity::query()->create([
+        'organization_id' => $this->org->id,
+        'ticket_type_id' => $this->vip->id,
+        'subdivision_id' => $this->kumasi->id,
+        'capacity' => 3,
+    ]);
+    $cheap = TicketType::factory()->create([
+        'event_id' => $this->event->id,
+        'price' => 50,
+        'total_capacity' => 10,
+        'available_quantity' => 10,
+    ]);
+    app(TicketReservationService::class)->holdOrReuse($this->vip, 2, 'someone-else', $this->kumasi->id);
+
+    $capacity = app(App\Services\Reservation\ZoneCapacity::class);
+    $tiers = collect([$this->vip->fresh(), $cheap]);
+    $grid = $capacity->sellableGrid($tiers, [$this->accra->id, $this->kumasi->id]);
+
+    foreach ($tiers as $tier) {
+        expect($grid[$tier->id][0])->toBe($capacity->sellable($tier, null));
+
+        foreach ([$this->accra, $this->kumasi] as $zone) {
+            expect($grid[$tier->id][$zone->id])->toBe($capacity->sellable($tier, $zone->id));
+        }
+    }
+
+    // Kumasi is capped at 3 with 2 held; Accra has no cap of its own, so only the tier's 48 left apply.
+    expect($grid[$this->vip->id][$this->kumasi->id])->toBe(1)->and($grid[$this->vip->id][$this->accra->id])->toBe(48);
+});
+
+test('a tampered client total is refused before any seat is held or payment opened', function (int $offsetPesewas): void {
+    $shown = PaystackFeeCalculator::grossPesewas(200.0);
+
+    Livewire::test(EventShow::class, ['org_slug' => 'gmsu', 'event_slug' => 'convention'])
+        ->set('ticketTypeId', $this->vip->id)
+        ->set('quantity', 2)
+        ->set('subdivisionId', $this->kumasi->id)
+        ->set('customerName', 'Ama Mensah')
+        ->set('customerEmail', 'ama@example.com')
+        ->set('customerPhone', '0244000000')
+        ->set('clientTotalPesewas', $shown + $offsetPesewas)
+        ->call('startCheckout')
+        ->assertHasErrors('clientTotalPesewas')
+        ->assertNotDispatched('open-paystack');
+
+    expect(Order::query()->count())
+        ->toBe(0)
+        ->and(App\Models\Reservation::query()->count())
+        ->toBe(0)
+        ->and($this->vip->fresh()->available_quantity)
+        ->toBe(50);
+    Http::assertNotSent(static fn(Request $request): bool => str_contains($request->url(), 'transaction/initialize'));
+})->with(['one pesewa less' => [-1], 'free' => [-20_398], 'more' => [500]]);
+
+test('a checkout without the shown total is refused', function (): void {
+    Livewire::test(EventShow::class, ['org_slug' => 'gmsu', 'event_slug' => 'convention'])
+        ->set('ticketTypeId', $this->vip->id)
+        ->set('subdivisionId', $this->kumasi->id)
+        ->set('customerName', 'Ama Mensah')
+        ->set('customerEmail', 'ama@example.com')
+        ->set('customerPhone', '0244000000')
+        ->call('startCheckout')
+        ->assertHasErrors(['clientTotalPesewas' => 'required']);
+
+    expect(Order::query()->count())->toBe(0);
+});
+
+test('the event page never polls the server', function (): void {
+    $this->get('/gmsu/convention')->assertOk()->assertDontSee('wire:poll', escape: false);
+});

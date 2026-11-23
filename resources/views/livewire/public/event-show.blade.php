@@ -1,4 +1,6 @@
-<div class="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] pt-20 sm:pt-24 pb-12">
+<div x-data="ticketCheckout" class="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)] pt-20 sm:pt-24 pb-12">
+    {{-- Read once when Alpine starts. Kept out of x-data so a Livewire re-render never rebuilds the buyer's state. --}}
+    <script type="application/json" data-checkout-config>@json($checkout)</script>
     <x-bespoke-navbar :organization="$organization" :event="$event" :collapsible="true" :is-event-page="true" />
 
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -129,165 +131,132 @@
                     </div>
                 </div>
 
-                <!-- Ticket Tiers Selection Section -->
-                <div
-                    id="tickets"
-                    x-data="{
-                        selectedId: {{ $ticketTypeId ?? 'null' }},
-                        selectTicket(id, isSoldOut) {
-                            if (isSoldOut) return;
-                            this.selectedId = id;
-                            $wire.selectTicketType(id);
-                        }
-                    }"
-                    x-init="$watch('$wire.ticketTypeId', value => selectedId = value)"
-                    class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md sm:p-8 space-y-5"
-                >
-                    <div>
-                        <h2 class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Choose your ticket</h2>
-                    </div>
+                <!-- Ticket Tiers Selection Section: chosen in the browser, no server round trip per tap -->
+                <div id="tickets" class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md sm:p-8 space-y-5">
+                    <fieldset>
+                        <legend class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Choose your ticket</legend>
 
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        @foreach ($ticketTypes as $ticketType)
-                            @php
-                                $isSoldOut = $this->seatsLeft($ticketType) <= 0 || ! $ticketType->isOnSale();
-                                $isSelected = $ticketTypeId === $ticketType->id;
-                            @endphp
-                            <div
-                                wire:key="ticket-{{ $ticketType->id }}"
-                                tabindex="0"
-                                @click="selectTicket({{ $ticketType->id }}, {{ $isSoldOut ? 'true' : 'false' }})"
-                                @keydown.enter="selectTicket({{ $ticketType->id }}, {{ $isSoldOut ? 'true' : 'false' }})"
-                                @class([
-                                    'rounded-2xl border p-4 transition-all focus-ring press-scale',
-                                    'opacity-50 cursor-not-allowed bg-[var(--bg-subtle)] border-[var(--border-hairline)]' => $isSoldOut,
-                                    'cursor-pointer hover:border-[var(--text-secondary)] active:scale-[0.98]' => ! $isSoldOut,
-                                    'border-[var(--border-focused)] bg-[var(--color-primary)] text-[var(--color-primary-fg)] shadow-md' => $isSelected,
-                                    'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-primary)]' => ! $isSelected,
-                                ])
-                                :class="{
-                                    'border-[var(--border-focused)] bg-[var(--color-primary)] text-[var(--color-primary-fg)] shadow-md': selectedId === {{ $ticketType->id }},
-                                    'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-primary)]': selectedId !== {{ $ticketType->id }}
-                                }"
-                            >
-                                <div class="flex items-start justify-between gap-3">
-                                    <div>
-                                        <p class="font-bold text-sm">{{ $ticketType->name }}</p>
-                                        <p
-                                            @class([
-                                                'mt-1 text-xs',
-                                                'text-[var(--color-primary-fg)]/80' => $isSelected,
-                                                'text-[var(--text-secondary)]' => ! $isSelected,
-                                            ])
-                                            :class="selectedId === {{ $ticketType->id }} ? 'text-[var(--color-primary-fg)]/80' : 'text-[var(--text-secondary)]'"
-                                        >
-                                            {{ $ticketType->description ?: 'Standard admittance pass' }}
-                                        </p>
+                        <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                            @foreach ($checkout['tiers'] as $tier)
+                                <label
+                                    wire:key="ticket-{{ $tier['id'] }}"
+                                    data-ticket="{{ $tier['id'] }}"
+                                    class="group block rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)] transition-colors cursor-pointer hover:border-[var(--text-secondary)] has-checked:border-[var(--border-focused)] has-checked:bg-[var(--color-primary)] has-checked:text-[var(--color-primary-fg)] has-checked:shadow-md has-disabled:cursor-not-allowed has-disabled:opacity-50 has-disabled:bg-[var(--bg-subtle)] has-focus-visible:ring-2 has-focus-visible:ring-[var(--border-focused)] has-focus-visible:ring-offset-2"
+                                >
+                                    <input
+                                        type="radio"
+                                        name="ticket_type"
+                                        value="{{ $tier['id'] }}"
+                                        class="sr-only"
+                                        x-model.number="ticketId"
+                                        :disabled="! selectable(tier({{ $tier['id'] }}))"
+                                        @checked($tier['id'] === $ticketTypeId)
+                                    />
+                                    @php
+                                        $ticketType = $ticketTypes->firstWhere('id', $tier['id']);
+                                        $seats = $tier['seats'][$subdivisionId ?? 0] ?? $tier['seats'][0];
+                                    @endphp
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="font-bold text-sm">{{ $tier['name'] }}</p>
+                                            <p class="mt-1 text-xs text-[var(--text-secondary)] group-has-checked:text-[var(--color-primary-fg)]/80">
+                                                {{ $ticketType?->description ?: 'Standard admittance pass' }}
+                                            </p>
+                                        </div>
+                                        <span
+                                            data-badge
+                                            :data-tone="badgeTone(tier({{ $tier['id'] }}))"
+                                            x-text="badge(tier({{ $tier['id'] }}))"
+                                            class="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-800 data-[tone=limited]:bg-amber-100 data-[tone=limited]:text-amber-800 data-[tone=closed]:bg-zinc-200 data-[tone=closed]:text-zinc-600 group-has-checked:bg-[var(--color-primary-fg)] group-has-checked:text-[var(--color-primary)] group-has-checked:font-bold"
+                                        >{{ $tier['status'] ?? ($seats <= 0 ? 'Sold Out' : ($seats <= $tier['limitedAt'] ? 'Limited' : 'Available')) }}</span>
                                     </div>
-                                    <span
-                                        @class([
-                                            'rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors',
-                                            'bg-[var(--color-primary-fg)] text-[var(--color-primary)] font-bold' => $isSelected,
-                                            $this->availabilityBadgeClass($ticketType) => ! $isSelected,
-                                        ])
-                                        :class="selectedId === {{ $ticketType->id }} ? 'bg-[var(--color-primary-fg)] text-[var(--color-primary)] font-bold' : '{{ $this->availabilityBadgeClass($ticketType) }}'"
-                                    >
-                                        {{ $this->availabilityBadge($ticketType) }}
-                                    </span>
-                                </div>
 
-                                <div class="mt-4 flex items-baseline justify-between">
-                                    <span class="text-lg font-black">
-                                        GHS {{ number_format((float) $ticketType->price, 2) }}
-                                    </span>
-                                    <span
-                                        @class([
-                                            'text-[11px]',
-                                            'text-[var(--color-primary-fg)]/80' => $isSelected,
-                                            'text-[var(--text-secondary)]' => ! $isSelected,
-                                        ])
-                                        :class="selectedId === {{ $ticketType->id }} ? 'text-[var(--color-primary-fg)]/80' : 'text-[var(--text-secondary)]'"
-                                    >
-                                        {{ $this->seatsLeft($ticketType) }} left
-                                    </span>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
+                                    <div class="mt-4 flex items-baseline justify-between">
+                                        <span class="text-lg font-black">GHS {{ number_format($tier['price'] / 100, 2) }}</span>
+                                        <span class="text-[11px] text-[var(--text-secondary)] group-has-checked:text-[var(--color-primary-fg)]/80">
+                                            <span data-seats-left x-text="seatsLeft(tier({{ $tier['id'] }}))">{{ $seats }}</span> left
+                                        </span>
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </fieldset>
 
+                    @if ($subdivisions->isNotEmpty())
+                        <div class="pt-4 border-t border-[var(--border-hairline)]">
+                        <fieldset data-zone-venues>
+                            <legend class="text-xs font-semibold text-[var(--text-secondary)]">
+                                Select your {{ $organization->subdivision_label }}
+                            </legend>
+
+                            <ul class="mt-2 grid gap-2">
+                                @foreach ($subdivisions as $zone)
+                                    @php $zv = $zoneVenues[$zone->id]; @endphp
+                                    <li wire:key="zone-{{ $zone->id }}">
+                                        <label
+                                            data-zone="{{ $zone->id }}"
+                                            class="group/zone block w-full cursor-pointer rounded-xl border border-[var(--border-hairline)] px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--bg-subtle)] has-checked:border-[var(--border-focused)] has-checked:bg-[var(--bg-subtle)] has-checked:ring-1 has-checked:ring-[var(--border-focused)] has-focus-visible:ring-2 has-focus-visible:ring-[var(--border-focused)]"
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="zone"
+                                                id="zone-{{ $zone->id }}"
+                                                value="{{ $zone->id }}"
+                                                class="sr-only"
+                                                x-model.number="zoneId"
+                                                @checked((int) $subdivisionId === $zone->id)
+                                            />
+                                            <span class="flex items-center justify-between gap-2">
+                                                <span class="block font-semibold text-[var(--text-primary)]">{{ $zone->name }}</span>
+                                                <span aria-hidden="true" class="size-3.5 rounded-full border border-[var(--border-hairline)] group-has-checked/zone:border-4 group-has-checked/zone:border-[var(--border-focused)]"></span>
+                                            </span>
+                                            <span class="block text-[var(--text-secondary)]">{{ $zv->when() }}</span>
+                                            @if ($zv->place())
+                                                <span class="block text-[var(--text-secondary)]">📍 {{ $zv->place() }}</span>
+                                            @endif
+                                        </label>
+                                        @if ($zv->mapUrl)
+                                            <a href="{{ $zv->mapUrl }}" target="_blank" rel="noopener noreferrer" class="mt-0.5 inline-block pl-3 text-[11px] font-semibold underline text-[var(--text-secondary)]">Open map</a>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                            @error('subdivisionId')
+                                <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                            @enderror
+                        </fieldset>
+                        </div>
+                    @endif
+
+                    <p x-show="choiceError" x-text="choiceError" x-cloak role="alert" class="text-xs font-semibold text-rose-500"></p>
                     @error('ticketTypeId')
                         <p class="text-xs font-semibold text-rose-500">{{ $message }}</p>
                     @enderror
 
-                    @if ($subdivisions->isNotEmpty())
-                        <div class="pt-4 border-t border-[var(--border-hairline)]">
-                            <label for="landingSubdivision" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                                Select your {{ $organization->subdivision_label }}
-                            </label>
-                            <select
-                                id="landingSubdivision"
-                                wire:model.live="subdivisionId"
-                                class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3 py-2 text-xs shadow-xs focus:border-[var(--border-focused)] focus:outline-hidden"
-                            >
-                                <option value="" disabled>Choose your {{ strtolower($organization->subdivision_label) }}…</option>
-                                @foreach ($subdivisions as $subdivision)
-                                    <option value="{{ $subdivision->id }}">{{ $subdivision->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('subdivisionId')
-                                <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
-                            @enderror
-
-                            @if ($zoneVenues->isNotEmpty())
-                                <ul class="mt-3 grid gap-2" data-zone-venues>
-                                    @foreach ($subdivisions as $zone)
-                                        @php $zv = $zoneVenues[$zone->id]; @endphp
-                                        <li>
-                                            <button
-                                                type="button"
-                                                wire:click="$set('subdivisionId', {{ $zone->id }})"
-                                                @class([
-                                                    'w-full cursor-pointer rounded-xl border px-3 py-2 text-left text-xs transition',
-                                                    'border-[var(--border-focused)] bg-[var(--bg-subtle)]' => (int) $subdivisionId === $zone->id,
-                                                    'border-[var(--border-hairline)] hover:bg-[var(--bg-subtle)]' => (int) $subdivisionId !== $zone->id,
-                                                ])
-                                            >
-                                                <span class="block font-semibold text-[var(--text-primary)]">{{ $zone->name }}</span>
-                                                <span class="block text-[var(--text-secondary)]">{{ $zv->startAt->format('D, j M Y · g:i A') }}</span>
-                                                @if ($zv->place())
-                                                    <span class="block text-[var(--text-secondary)]">📍 {{ $zv->place() }}</span>
-                                                @endif
-                                            </button>
-                                            @if ($zv->mapUrl)
-                                                <a href="{{ $zv->mapUrl }}" target="_blank" rel="noopener noreferrer" class="mt-0.5 inline-block pl-3 text-[11px] font-semibold underline text-[var(--text-secondary)]">Open map</a>
-                                            @endif
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @endif
-                        </div>
-                    @endif
-
                     <!-- Quantity Controls -->
                     <div class="pt-4 border-t border-[var(--border-hairline)] flex items-center justify-between">
                         <div>
-                            <span class="text-xs font-semibold text-[var(--text-primary)]">Ticket Quantity</span>
-                            <p class="text-[11px] text-[var(--text-secondary)]">Maximum 20 passes per checkout</p>
+                            <span id="quantity-label" class="text-xs font-semibold text-[var(--text-primary)]">Ticket Quantity</span>
+                            <p class="text-[11px] text-[var(--text-secondary)]">Maximum {{ $checkout['maxPerOrder'] }} passes per checkout</p>
                         </div>
 
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3" role="group" aria-labelledby="quantity-label">
                             <button
                                 type="button"
-                                wire:click="decrementQuantity"
-                                class="size-8 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] flex items-center justify-center cursor-pointer transition press-scale"
+                                @click="decrement()"
+                                :disabled="quantity <= 1"
+                                aria-label="Fewer tickets"
+                                class="size-8 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] flex items-center justify-center cursor-pointer transition press-scale disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 -
                             </button>
-                            <span class="font-bold text-sm min-w-6 text-center text-[var(--text-primary)] tabular-nums">{{ $quantity }}</span>
+                            <span data-quantity aria-live="polite" class="font-bold text-sm min-w-6 text-center text-[var(--text-primary)] tabular-nums" x-text="quantity">{{ $quantity }}</span>
                             <button
                                 type="button"
-                                wire:click="incrementQuantity"
-                                class="size-8 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] flex items-center justify-center cursor-pointer transition press-scale"
+                                @click="increment()"
+                                :disabled="quantity >= maxQuantity"
+                                aria-label="More tickets"
+                                class="size-8 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] flex items-center justify-center cursor-pointer transition press-scale disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 +
                             </button>
@@ -350,14 +319,14 @@
                             <h2 class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Program Schedule</h2>
                         </div>
 
-                        <div x-data="{ tab: '{{ $scheduleDays->keys()->first() }}' }" class="space-y-4">
+                        <div x-data="{ tab: @js($scheduleDays->keys()->first()) }" class="space-y-4">
                             @if ($scheduleDays->count() > 1)
                                 <div class="flex flex-wrap gap-2">
                                     @foreach ($scheduleDays as $dayLabel => $daySessions)
                                         <button
                                             type="button"
-                                            @click="tab = '{{ $dayLabel }}'"
-                                            :class="tab === '{{ $dayLabel }}' ? 'bg-[var(--color-primary)] text-[var(--color-primary-fg)] font-semibold shadow-xs' : 'border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'"
+                                            @click="tab = @js($dayLabel)"
+                                            :class="tab === @js($dayLabel) ? 'bg-[var(--color-primary)] text-[var(--color-primary-fg)] font-semibold shadow-xs' : 'border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'"
                                             class="rounded-full px-3 py-1 text-xs transition cursor-pointer press-scale"
                                         >
                                             {{ $dayLabel }}
@@ -368,7 +337,7 @@
 
                             <div class="space-y-2.5">
                                 @foreach ($scheduleDays as $dayLabel => $daySessions)
-                                    <div x-show="tab === '{{ $dayLabel }}'" class="space-y-2.5">
+                                    <div x-show="tab === @js($dayLabel)" class="space-y-2.5">
                                         @foreach ($daySessions as $session)
                                             <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                                 <div class="flex items-start gap-3">
@@ -456,70 +425,102 @@
                 @endif
             </section>
 
-            <!-- Order Summary Sticky Card (Right Rail) -->
+            <!-- Order Summary Sticky Card (Right Rail): worked out in the browser from the same fee formula as the server -->
             <aside class="lg:sticky lg:top-6 lg:self-start">
-                <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md space-y-5">
+                <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md space-y-5" data-order-summary>
                     <p class="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">Order Summary</p>
 
-                    @if ($selectedTicketType)
+                    <div x-show="ticket" @if ($initialTicket === null) x-cloak @endif class="space-y-5">
                         <div class="flex items-start justify-between gap-4 border-b border-[var(--border-hairline)] pb-4">
                             <div>
-                                <p class="font-bold text-[var(--text-primary)]">{{ $selectedTicketType->name }}</p>
-                                <p class="text-xs text-[var(--text-secondary)] mt-0.5">GHS {{ number_format((float) $selectedTicketType->price, 2) }} x {{ $quantity }}</p>
+                                <p class="font-bold text-[var(--text-primary)]" x-text="ticket?.name">{{ $initialTicket['name'] ?? '' }}</p>
+                                <p class="text-xs text-[var(--text-secondary)] mt-0.5">
+                                    <span x-text="ticket ? money(ticket.price) : ''">GHS {{ number_format(($initialTicket['price'] ?? 0) / 100, 2) }}</span>
+                                    x <span x-text="quantity">{{ $quantity }}</span>
+                                </p>
                             </div>
-                            <p class="font-bold text-[var(--text-primary)]">GHS {{ number_format($subtotal, 2) }}</p>
+                            <p class="font-bold text-[var(--text-primary)]" x-text="money(totals.net)">GHS {{ number_format($initialTotals['net'], 2) }}</p>
                         </div>
+
+                        @if ($subdivisions->isNotEmpty())
+                            <div class="text-xs" data-selected-zone>
+                                <p class="font-semibold text-[var(--text-secondary)]">{{ $organization->subdivision_label }}</p>
+                                <template x-if="zone">
+                                    <div>
+                                        <p class="font-bold text-[var(--text-primary)]" data-zone-name x-text="zone.name"></p>
+                                        <p class="text-[var(--text-secondary)]" data-zone-when x-text="zone.when"></p>
+                                        <p class="text-[var(--text-secondary)]" data-zone-place x-show="zone.place" x-text="'📍 ' + zone.place"></p>
+                                    </div>
+                                </template>
+                                <p x-show="! zone" class="text-[var(--text-tertiary)]">Choose your {{ strtolower($organization->subdivision_label) }}</p>
+                            </div>
+                        @endif
 
                         <dl class="space-y-2 text-xs">
                             <div class="flex justify-between text-[var(--text-secondary)]">
                                 <dt>Ticket Subtotal</dt>
-                                <dd class="font-medium text-[var(--text-primary)]">GHS {{ number_format($breakdown['net'], 2) }}</dd>
+                                <dd class="font-medium text-[var(--text-primary)]" x-text="money(totals.net)">GHS {{ number_format($initialTotals['net'], 2) }}</dd>
                             </div>
-                            @if ($breakdown['platform_fee'] > 0)
+                            @if ($checkout['fee']['platformFee'] > 0)
                                 <div class="flex justify-between text-[var(--text-secondary)]">
                                     <dt>Platform Fee</dt>
-                                    <dd class="font-medium text-[var(--text-primary)]">GHS {{ number_format($breakdown['platform_fee'], 2) }}</dd>
+                                    <dd class="font-medium text-[var(--text-primary)]" x-text="money(totals.platformFee)">GHS {{ number_format($initialTotals['platform_fee'], 2) }}</dd>
                                 </div>
                             @endif
                             <div class="flex justify-between text-[var(--text-secondary)]">
                                 <dt>Processing Fee</dt>
-                                <dd class="font-medium text-[var(--text-primary)]">GHS {{ number_format($breakdown['processing_fee'], 2) }}</dd>
+                                <dd class="font-medium text-[var(--text-primary)]" data-processing-fee x-text="money(totals.processingFee)">GHS {{ number_format($initialTotals['processing_fee'], 2) }}</dd>
                             </div>
                             <div class="flex justify-between border-t border-[var(--border-hairline)] pt-3 text-sm font-bold text-[var(--text-primary)]">
                                 <dt>Total Payable</dt>
-                                <dd class="text-base text-[var(--text-primary)]">GHS {{ number_format($breakdown['gross'], 2) }}</dd>
+                                <dd class="text-base text-[var(--text-primary)]" data-total x-text="money(totals.gross)">GHS {{ number_format($initialTotals['gross'], 2) }}</dd>
                             </div>
                         </dl>
 
                         <button
                             type="button"
-                            wire:click="openCheckout"
+                            @click="proceed()"
+                            data-proceed
                             class="w-full cursor-pointer rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-primary-fg)] shadow-xs hover:opacity-90 transition press-scale text-center"
                         >
                             Proceed to Checkout →
                         </button>
-                    @else
-                        <div class="py-8 text-center text-[var(--text-tertiary)] text-xs">
-                            Select a ticket tier to review checkout pricing.
-                        </div>
-                    @endif
+                    </div>
+
+                    <div x-show="! ticket" @if ($initialTicket !== null) x-cloak @endif class="py-8 text-center text-[var(--text-tertiary)] text-xs">
+                        Select a ticket tier to review checkout pricing.
+                    </div>
                 </div>
             </aside>
         </div>
     </div>
 
-    <!-- Slide-over / Modal Checkout Drawer -->
-    @if ($checkoutOpen)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
-            <div class="w-full max-w-lg rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-2xl sm:p-8 space-y-5 my-8 max-h-[90vh] overflow-y-auto animate-physical-modal">
+    <!-- Checkout details: always in the page and opened by Alpine, so "Proceed" needs no round trip -->
+    <div
+        x-show="open"
+        x-cloak
+        @keydown.escape.window="open = false"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto"
+        data-checkout-modal
+    >
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="checkout-title"
+            @click.outside="if (! paying) open = false"
+            x-trap.noscroll="open"
+            class="w-full max-w-lg rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-2xl sm:p-8 space-y-5 my-8 max-h-[90vh] overflow-y-auto animate-physical-modal"
+        >
                 <div class="flex items-start justify-between">
                     <div>
-                        <h3 class="text-lg font-bold text-[var(--text-primary)]">Attendee Checkout</h3>
-                        <p class="text-xs text-[var(--text-secondary)] mt-0.5">{{ $selectedTicketType?->name }} • {{ $quantity }} ticket(s)</p>
+                        <h3 id="checkout-title" class="text-lg font-bold text-[var(--text-primary)]">Attendee Checkout</h3>
+                        <p class="text-xs text-[var(--text-secondary)] mt-0.5">
+                            <span x-text="ticket?.name"></span> • <span x-text="quantity"></span> ticket(s)
+                        </p>
                     </div>
                     <button
                         type="button"
-                        wire:click="closeCheckout"
+                        @click="open = false"
                         class="size-8 rounded-full border border-[var(--border-hairline)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] flex items-center justify-center transition cursor-pointer press-scale"
                         aria-label="Close checkout"
                     >
@@ -533,13 +534,16 @@
                     </div>
                 @endif
 
-                @error('payment')
-                    <div class="rounded-xl bg-[var(--status-danger-bg)] border border-[var(--status-danger)]/20 p-3 text-xs text-[var(--status-danger)] font-medium">
-                        {{ $message }}
-                    </div>
-                @enderror
+                {{-- Problems with the order itself (price changed, sold out, zone not payable) from the server's re-check. --}}
+                @foreach (['payment', 'clientTotalPesewas', 'ticketTypeId', 'quantity', 'subdivisionId'] as $orderError)
+                    @error($orderError)
+                        <div role="alert" data-order-error class="rounded-xl bg-[var(--status-danger-bg)] border border-[var(--status-danger)]/20 p-3 text-xs text-[var(--status-danger)] font-medium">
+                            {{ $message }}
+                        </div>
+                    @enderror
+                @endforeach
 
-                <form wire:submit="startCheckout" class="space-y-4">
+                <form @submit.prevent="pay()" class="space-y-4">
                     <div>
                         <label for="customerName" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Full Name</label>
                         <input
@@ -579,26 +583,15 @@
                     </div>
 
                     @if ($subdivisions->isNotEmpty())
-                        <div>
-                            <label for="subdivisionId" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
-                                {{ $organization->subdivision_label }}
-                            </label>
-                            <select
-                                id="subdivisionId"
-                                wire:model.live="subdivisionId"
-                                class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-input)] px-3.5 py-2 text-xs shadow-xs focus:border-[var(--border-focused)] focus:outline-hidden"
-                            >
-                                <option value="" disabled>Choose your {{ strtolower($organization->subdivision_label) }}…</option>
-                                @foreach ($subdivisions as $sub)
-                                    <option value="{{ $sub->id }}">{{ $sub->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('subdivisionId') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
-                            @if ($subdivisionId !== null && ($chosen = $zoneVenues[(int) $subdivisionId] ?? null) !== null)
-                                <p class="mt-1 text-[11px] text-[var(--text-secondary)]" data-chosen-zone-venue>
-                                    {{ $chosen->startAt->format('D, j M Y · g:i A') }}@if ($chosen->place()) · 📍 {{ $chosen->place() }}@endif
-                                </p>
-                            @endif
+                        <div class="rounded-xl border border-[var(--border-hairline)] px-3.5 py-2 text-xs" data-chosen-zone-venue>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-semibold text-[var(--text-secondary)]">{{ $organization->subdivision_label }}</span>
+                                <button type="button" @click="open = false; $nextTick(() => document.querySelector('[data-zone-venues] input:checked, [data-zone-venues] input')?.focus())" class="text-[11px] font-semibold underline text-[var(--text-secondary)] cursor-pointer">Change</button>
+                            </div>
+                            <p class="font-bold text-[var(--text-primary)]" x-text="zone?.name"></p>
+                            <p class="text-[11px] text-[var(--text-secondary)]">
+                                <span x-text="zone?.when"></span><span x-show="zone?.place" x-text="' · 📍 ' + zone?.place"></span>
+                            </p>
                         </div>
                     @endif
 
@@ -684,22 +677,23 @@
                     <div class="rounded-2xl bg-[var(--bg-subtle)] p-4 border border-[var(--border-hairline)]">
                         <div class="flex justify-between items-center text-sm font-bold text-[var(--text-primary)]">
                             <span>Total Payable:</span>
-                            <span>GHS {{ number_format($breakdown['gross'], 2) }}</span>
+                            <span x-text="money(totals.gross)"></span>
                         </div>
                     </div>
 
                     <button
                         type="submit"
-                        class="w-full cursor-pointer rounded-xl bg-[var(--color-primary)] py-3 px-4 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs hover:opacity-90 transition press-scale"
-                        wire:loading.attr="disabled"
+                        class="w-full cursor-pointer rounded-xl bg-[var(--color-primary)] py-3 px-4 text-xs font-semibold text-[var(--color-primary-fg)] shadow-xs hover:opacity-90 transition press-scale disabled:cursor-wait disabled:opacity-70"
+                        :disabled="paying"
+                        :aria-busy="paying"
+                        data-pay
                     >
-                        <span wire:loading.remove>Reserve Seats & Pay with Paystack →</span>
-                        <span wire:loading>Holding seats & preparing Paystack...</span>
+                        <span x-show="! paying">Reserve Seats & Pay with Paystack →</span>
+                        <span x-show="paying" x-cloak>Holding seats & preparing Paystack...</span>
                     </button>
                 </form>
-            </div>
         </div>
-    @endif
+    </div>
 
     <!-- Speaker Bio Modal Drawer -->
     @if ($viewingSpeaker)

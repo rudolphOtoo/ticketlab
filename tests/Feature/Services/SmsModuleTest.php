@@ -81,7 +81,7 @@ test('fulfilling an order does NOT queue SendTicketSms when sms is disabled', fu
         ->set('customerEmail', 'kofi@example.com')
         ->set('customerPhone', '0244998877')
         ->set('subdivisionId', $this->zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors();
 
     $order = Order::query()->where('reference', $component->get('orderReference'))->firstOrFail();
@@ -116,7 +116,7 @@ test('fulfilling an order queues SendTicketSms when sms is enabled', function ()
         ->set('customerEmail', 'kofi@example.com')
         ->set('customerPhone', '0244998877')
         ->set('subdivisionId', $this->zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors();
 
     $order = Order::query()->where('reference', $component->get('orderReference'))->firstOrFail();

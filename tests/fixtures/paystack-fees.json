@@ -1,0 +1,127 @@
+{
+    "note": "Buyer-pays Paystack fee cases. Checked by tests/Unit/PaystackFeeCalculatorTest.php (PHP) and tests/js/fees.test.js (browser formula). Do not regenerate from the code under test: change a value only on purpose.",
+    "basis": 9805,
+    "scale": 10000,
+    "cases": [
+        {
+            "net_pesewas": 0,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 0,
+            "processing_fee_pesewas": 0
+        },
+        {
+            "net_pesewas": 1,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 2,
+            "processing_fee_pesewas": 1
+        },
+        {
+            "net_pesewas": 99,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 101,
+            "processing_fee_pesewas": 2
+        },
+        {
+            "net_pesewas": 100,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 102,
+            "processing_fee_pesewas": 2
+        },
+        {
+            "net_pesewas": 1999,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 2039,
+            "processing_fee_pesewas": 40
+        },
+        {
+            "net_pesewas": 4950,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 5049,
+            "processing_fee_pesewas": 99
+        },
+        {
+            "net_pesewas": 5000,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 5100,
+            "processing_fee_pesewas": 100
+        },
+        {
+            "net_pesewas": 10000,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 10199,
+            "processing_fee_pesewas": 199
+        },
+        {
+            "net_pesewas": 15000,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 15299,
+            "processing_fee_pesewas": 299
+        },
+        {
+            "net_pesewas": 20000,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 20398,
+            "processing_fee_pesewas": 398
+        },
+        {
+            "net_pesewas": 9805,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 10000,
+            "processing_fee_pesewas": 195
+        },
+        {
+            "net_pesewas": 19610,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 20000,
+            "processing_fee_pesewas": 390
+        },
+        {
+            "net_pesewas": 49999,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 50994,
+            "processing_fee_pesewas": 995
+        },
+        {
+            "net_pesewas": 100000,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 101989,
+            "processing_fee_pesewas": 1989
+        },
+        {
+            "net_pesewas": 2000000,
+            "platform_fee_pesewas": 0,
+            "gross_pesewas": 2039776,
+            "processing_fee_pesewas": 39776
+        },
+        {
+            "net_pesewas": 5000,
+            "platform_fee_pesewas": 250,
+            "gross_pesewas": 5355,
+            "processing_fee_pesewas": 105
+        },
+        {
+            "net_pesewas": 10000,
+            "platform_fee_pesewas": 500,
+            "gross_pesewas": 10709,
+            "processing_fee_pesewas": 209
+        },
+        {
+            "net_pesewas": 0,
+            "platform_fee_pesewas": 300,
+            "gross_pesewas": 306,
+            "processing_fee_pesewas": 6
+        },
+        {
+            "net_pesewas": 12345,
+            "platform_fee_pesewas": 678,
+            "gross_pesewas": 13282,
+            "processing_fee_pesewas": 259
+        },
+        {
+            "net_pesewas": 40000,
+            "platform_fee_pesewas": 1000,
+            "gross_pesewas": 41816,
+            "processing_fee_pesewas": 816
+        }
+    ]
+}

@@ -159,7 +159,7 @@ test('dynamic questionnaire validates required fields during checkout', function
         ->set('customerEmail', 'kwesi@example.com')
         ->set('customerPhone', '0244112233')
         ->set('subdivisionId', $zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasErrors(['customFieldResponses.t_shirt_size']);
 
     // Validation fails when t_shirt_size has invalid option
@@ -171,7 +171,7 @@ test('dynamic questionnaire validates required fields during checkout', function
         ->set('customerPhone', '0244112233')
         ->set('customFieldResponses.t_shirt_size', 'NonExistentSize')
         ->set('subdivisionId', $zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasErrors(['customFieldResponses.t_shirt_size']);
 });
 
@@ -223,7 +223,7 @@ test('dynamic questionnaire responses are persisted to attendees custom_fields u
         ->set('customFieldResponses.t_shirt_size', 'Large')
         ->set('customFieldResponses.department', 'Media & IT')
         ->set('subdivisionId', $zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors();
 
     $orderRef = $component->get('orderReference');
@@ -278,7 +278,7 @@ test('a sold-out race surfaces a friendly quantity error instead of crashing che
 
     $component
         ->set('subdivisionId', $zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasErrors(['quantity'])
         ->assertSet('orderReference', null);
 });
@@ -311,7 +311,7 @@ test('questionnaire options containing commas validate correctly', function (): 
         ->set('customerPhone', '0244000000')
         ->set('customFieldResponses.city', $answer)
         ->set('subdivisionId', $zone->id)
-        ->call('startCheckout');
+        ->checkoutAsShown();
 
     $checkout('Accra, Greater Accra')->assertHasNoErrors();
     $checkout('Accra')->assertHasErrors(['customFieldResponses.city']);
@@ -345,7 +345,7 @@ test('switched-off required questionnaire fields are not displayed and do not bl
         ->set('customerEmail', 'abena@example.com')
         ->set('customerPhone', '0244123456')
         ->set('subdivisionId', $zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors();
 });
 
@@ -389,7 +389,7 @@ test('responses submitted for inactive questionnaire fields are stripped and nev
         ->set('customFieldResponses.active_field', 'Valid Answer')
         ->set('customFieldResponses.hidden_field', 'Injected Inactive Payload')
         ->set('subdivisionId', $zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors();
 
     $order = Order::query()->where('reference', $component->get('orderReference'))->firstOrFail();

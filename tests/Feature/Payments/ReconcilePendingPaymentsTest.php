@@ -39,7 +39,7 @@ beforeEach(function (): void {
         ->set('customerName', 'Ama Mensah')
         ->set('customerEmail', 'ama@example.com')
         ->set('customerPhone', '0244000000')
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors();
 
     $this->order = Order::query()->sole();

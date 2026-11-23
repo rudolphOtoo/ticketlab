@@ -7,19 +7,22 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-pest()
-    ->extend(TestCase::class)
-    ->use(RefreshDatabase::class)
-    ->beforeEach(function (): void {
-        // Never reach the real Paystack account from the suite, whatever keys the local .env holds.
-        config(['services.paystack.secret_key' => 'sk_test_suite', 'services.paystack.public_key' => 'pk_test_suite']);
-        app()->instance('paystack.initialize.queue', new ArrayObject());
-        Http::preventStrayRequests();
-        Http::fake([
-            'api.paystack.co/transaction/initialize' => static fn(Request $request) => paystack_initialized($request),
-        ]);
-    })
-    ->in('Feature');
+/**
+ * Never reach the real Paystack account from the suite, whatever keys the local .env holds.
+ */
+$paystackSandbox = function (): void {
+    config(['services.paystack.secret_key' => 'sk_test_suite', 'services.paystack.public_key' => 'pk_test_suite']);
+    app()->instance('paystack.initialize.queue', new ArrayObject());
+    Http::preventStrayRequests();
+    Http::fake([
+        'api.paystack.co/transaction/initialize' => static fn(Request $request) => paystack_initialized($request),
+    ]);
+};
+
+pest()->extend(TestCase::class)->use(RefreshDatabase::class)->beforeEach($paystackSandbox)->in('Feature');
+
+// Real Chromium against the app (pestphp/pest-plugin-browser). Run with `php artisan test --testsuite=Browser`.
+pest()->extend(TestCase::class)->use(RefreshDatabase::class)->beforeEach($paystackSandbox)->in('Browser');
 
 /**
  * Script the next /transaction/initialize answers; once the queue is empty Paystack accepts every request.
@@ -139,3 +142,18 @@ function paystack_routing(App\Models\Order $order): array
             ]
     );
 }
+
+/**
+ * Presses Pay the way the event page does: the browser sends the total it showed the buyer
+ * (EventShow::$clientTotalPesewas), worked out from the chosen tier, quantity and the organisation's platform fee.
+ */
+Livewire\Features\SupportTesting\Testable::macro('checkoutAsShown', function (): Livewire\Features\SupportTesting\Testable {
+    /** @var Livewire\Features\SupportTesting\Testable $this */
+    $tier = App\Models\TicketType::query()->with('event.organization')->find($this->get('ticketTypeId'));
+    $net = $tier === null ? 0.0 : round((float) $tier->price * (int) $this->get('quantity'), 2);
+    $platformFee = max(0.0, (float) ($tier?->event->organization->settings['platform_fee'] ?? 0));
+
+    return $this->set('clientTotalPesewas', App\Services\PaystackFeeCalculator::grossPesewas($net, $platformFee))->call(
+        'startCheckout',
+    );
+});

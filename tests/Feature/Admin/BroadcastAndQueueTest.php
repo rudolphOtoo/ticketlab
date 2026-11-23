@@ -216,7 +216,7 @@ test('paying for an order queues the ticket email exactly once', function (): vo
         ->set('customerEmail', 'kofi@example.com')
         ->set('customerPhone', '0244998877')
         ->set('subdivisionId', $this->zone->id)
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasNoErrors();
 
     $order = Order::query()->where('reference', $component->get('orderReference'))->firstOrFail();

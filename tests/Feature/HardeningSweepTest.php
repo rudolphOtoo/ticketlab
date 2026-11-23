@@ -39,10 +39,12 @@ test('tiers that are paused or outside their sales window cannot be bought onlin
 ): void {
     $tier = TicketType::factory()->create(['event_id' => $this->event->id, 'name' => 'Closed Tier', ...$state]);
 
+    // Not preselected, and the page tells the browser the tier is off sale (its radio stays disabled there).
     $page = Livewire::test(EventShow::class, ['org_slug' => $this->org->slug, 'event_slug' => $this->event->slug])
         ->assertSet('ticketTypeId', null)
-        ->call('selectTicketType', $tier->id)
-        ->assertSet('ticketTypeId', null);
+        ->assertViewHas('checkout', static fn(array $checkout): bool => collect($checkout['tiers'])
+            ->where('id', $tier->id)
+            ->every(static fn(array $shown): bool => $shown['onSale'] === false));
 
     if ($badge !== '') {
         $page->assertSee($badge);
@@ -53,7 +55,7 @@ test('tiers that are paused or outside their sales window cannot be bought onlin
         ->set('customerName', 'Efua Mensah')
         ->set('customerEmail', 'efua@example.com')
         ->set('customerPhone', '0244000999')
-        ->call('startCheckout')
+        ->checkoutAsShown()
         ->assertHasErrors('ticketTypeId');
 
     expect(Order::query()->count())->toBe(0)->and($tier->fresh()->available_quantity)->toBe($tier->available_quantity);
