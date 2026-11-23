@@ -83,11 +83,19 @@ jobs:
       - name: Run migrations
         run: php artisan migrate --force
 
+      # Fails on any advisory. To accept one deliberately, allow-list that advisory ID in composer.json (Composer
+      # 2.11 names the setting policy.advisories.ignore-id) and give the reason in the commit; never `|| true`.
       - name: Security Audit - Composer
-        run: composer audit --format=plain || true
+        run: composer audit --locked --format=plain
 
-      - name: Security Audit - NPM
-        run: npm audit --audit-level=moderate || true
+      # Packages that ship (everything in "dependencies", which here includes the Vite/Tailwind build tools that
+      # produce public/build) must be clean at moderate and above.
+      - name: Security Audit - NPM (production, strict)
+        run: npm audit --omit=dev --audit-level=moderate
+
+      # devDependencies (Playwright for the browser tests) are reported but never fail the build.
+      - name: Security Audit - NPM (dev, report only)
+        run: npm audit --audit-level=moderate || echo "::warning::npm audit found advisories in devDependencies (report only)"
 
       - name: Code Style Check (Mago)
         run: vendor/bin/mago format --check
