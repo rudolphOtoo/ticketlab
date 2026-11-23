@@ -88,6 +88,7 @@ class Event extends Model
     public function salesClosedReason(): ?string
     {
         return match (true) {
+            !$this->organization->isActive() => 'Sales are closed because this organisation is unavailable.',
             $this->isCancelled() => 'This event has been cancelled, so sales are closed.',
             $this->isArchived() => 'This event is archived, so sales are closed.',
             default => null,
@@ -105,15 +106,15 @@ class Event extends Model
     }
 
     /**
-     * Events listed on the public site and in the directory: publicly visible and not cancelled. A cancelled event's
-     * own page stays reachable, to tell buyers it was cancelled. Use as ->where(Event::listedPublicly(...)).
+     * Events listed on the public site and in the directory: publicly visible, not cancelled, of an active
+     * organisation. A cancelled event's own page stays reachable, to tell buyers it was cancelled. Use as ->where(Event::listedPublicly(...)).
      *
      * @param Builder<self> $query
      */
     public static function listedPublicly(Builder $query): void
     {
         self::publiclyVisible($query);
-        $query->whereNull('cancelled_at');
+        $query->whereNull('cancelled_at')->whereIn('organization_id', Organization::activeIds());
     }
 
     /**

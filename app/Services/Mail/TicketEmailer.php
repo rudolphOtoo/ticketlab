@@ -8,9 +8,11 @@ use App\Enums\MailCategory;
 use App\Enums\OrderStatus;
 use App\Mail\TicketIssuedMail;
 use App\Models\Order;
+use App\Models\Organization;
 use App\Services\Payment\TicketPassPdf;
 use App\Support\Scheduler\SchedulerBudget;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -140,12 +142,7 @@ final class TicketEmailer
     {
         $outcomes = [];
 
-        $ids = Order::query()
-            ->whereNotNull('ticket_email_due_at')
-            ->where('ticket_email_due_at', '<=', now())
-            ->orderBy('ticket_email_due_at')
-            ->limit(max(1, $max))
-            ->pluck('id');
+        $ids = $this->due()->orderBy('ticket_email_due_at')->limit(max(1, $max))->pluck('id');
 
         foreach ($ids as $id) {
             if (CarbonImmutable::now()->greaterThanOrEqualTo($deadline)) {
@@ -162,7 +159,21 @@ final class TicketEmailer
     /** Whether any email is owed and due now: one indexed query, so an idle cron run stops here. */
     public function hasDue(): bool
     {
-        return Order::query()->whereNotNull('ticket_email_due_at')->where('ticket_email_due_at', '<=', now())->exists();
+        return $this->due()->exists();
+    }
+
+    /**
+     * Owed emails whose time has come. Suspended and archived organisations are skipped: their emails wait, and go
+     * once the organisation is reactivated.
+     *
+     * @return Builder<Order>
+     */
+    private function due(): Builder
+    {
+        return Order::query()
+            ->whereNotNull('ticket_email_due_at')
+            ->where('ticket_email_due_at', '<=', now())
+            ->whereIn('organization_id', Organization::activeIds());
     }
 
     /**

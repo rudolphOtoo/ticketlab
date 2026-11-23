@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Enums\ReservationStatus;
+use App\Models\Organization;
 use App\Models\Reservation;
 use App\Models\TicketType;
 use Illuminate\Console\Command;
@@ -23,6 +24,8 @@ class ReleaseExpiredReservations extends Command
         Reservation::query()
             ->where('status', ReservationStatus::Active)
             ->where('expires_at', '<=', now())
+            // Suspended and archived organisations are skipped; their holds are released once reactivated.
+            ->whereIn('organization_id', Organization::activeIds())
             ->select('id')
             ->chunkById(100, function ($reservations) use (&$released): void {
                 foreach ($reservations as $reservation) {

@@ -45,6 +45,8 @@ final readonly class DedicatedSite
      */
     public static function forOrganization(Organization $organization): self
     {
+        OrganizationAvailability::ensure($organization);
+
         $published = Event::query()
             ->where('organization_id', $organization->id)
             ->where(Event::listedPublicly(...))

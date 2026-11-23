@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Models\Organization;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\PayoutAccountRejected;
@@ -40,6 +41,7 @@ class RecheckPayoutSubaccounts extends Command
         // every zone still comes round about once a day.
         $zones = Subdivision::query()
             ->whereNotNull('paystack_subaccount_code')
+            ->whereIn('organization_id', Organization::activeIds())
             ->where(
                 static fn($query) => $query->whereNull('payout_checked_at')->orWhere(
                     'payout_checked_at',

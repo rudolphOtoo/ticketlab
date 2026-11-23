@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Livewire\Platform;
 
+use App\Enums\OrganizationStatus;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AuditLog;
 use App\Models\Organization;
+use App\Models\PlatformAuditLog;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Services\Payment\PaystackSubaccountResolver;
+use App\Services\Platform\OrganizationLifecycle;
 use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
@@ -54,6 +57,14 @@ class EditOrganization extends Component
     public string $newZoneSubaccount = '';
 
     public ?string $flashMessage = null;
+
+    /** Why the organisation is being suspended, archived or reactivated: required, and kept in the audit trail. */
+    public string $statusReason = '';
+
+    public string $deleteReason = '';
+
+    /** The organisation's web address, typed to confirm a delete. */
+    public string $deleteConfirmation = '';
 
     public function mount(Organization $organization): void
     {
@@ -215,11 +226,82 @@ class EditOrganization extends Component
             . ($code === '' ? ' (no payout account yet: paid sales stay paused for it).' : '.');
     }
 
-    public function render(PaystackSubaccountResolver $subaccounts): View
+    /**
+     * Suspend, archive or reactivate the organisation, with a reason.
+     */
+    public function changeStatus(string $to, OrganizationLifecycle $lifecycle): void
+    {
+        $actor = self::superAdmin();
+        $status = OrganizationStatus::tryFrom($to) ?? abort(422);
+
+        $this->validate(['statusReason' => ['required', 'string', 'min:5', 'max:1000']], [
+            'statusReason.required' => 'Give a reason: it is kept in the audit trail.',
+        ]);
+
+        $organization = $this->organization();
+        $reason = trim($this->statusReason);
+
+        match ($status) {
+            OrganizationStatus::Active => $lifecycle->reactivate($organization, $actor, $reason),
+            OrganizationStatus::Suspended => $lifecycle->suspend($organization, $actor, $reason),
+            OrganizationStatus::Archived => $lifecycle->archive($organization, $actor, $reason),
+        };
+
+        $this->statusReason = '';
+        $this->flashMessage = match ($status) {
+            OrganizationStatus::Active
+                => "{$organization->name} is active again: its pages, sales and sign-ins are back.",
+            OrganizationStatus::Suspended => "{$organization->name} is suspended: its pages are unavailable, sales are "
+                . 'stopped and its users are signed out. Nothing was deleted.',
+            OrganizationStatus::Archived => "{$organization->name} is archived: like suspended, and hidden from the "
+                . 'organisation list. Nothing was deleted.',
+        };
+    }
+
+    /**
+     * Deletes an organisation that never took an order or a payment, once its web address is typed exactly.
+     */
+    public function deleteOrganization(OrganizationLifecycle $lifecycle): void
+    {
+        $actor = self::superAdmin();
+        $organization = $this->organization();
+
+        $this->validate([
+            'deleteReason' => ['required', 'string', 'min:5', 'max:1000'],
+            'deleteConfirmation' => ['required', 'in:' . $organization->slug],
+        ], [
+            'deleteReason.required' => 'Give a reason: it is kept in the audit trail.',
+            'deleteConfirmation.required' => 'Type the web address to confirm.',
+            'deleteConfirmation.in' => 'Type the web address exactly as shown to confirm.',
+        ]);
+
+        $blocker = $lifecycle->delete($organization, $actor, trim($this->deleteReason));
+
+        if ($blocker !== null) {
+            $this->addError('deleteConfirmation', $blocker);
+
+            return;
+        }
+
+        session()->flash(
+            'platform_status',
+            "{$organization->name} was deleted. Its web address /{$organization->slug} stays reserved.",
+        );
+        $this->redirectRoute('platform.organizations', navigate: true);
+    }
+
+    public function render(PaystackSubaccountResolver $subaccounts, OrganizationLifecycle $lifecycle): View
     {
         $organization = $this->organization();
 
         return view('livewire.platform.edit-organization', [
+            'deleteBlocker' => $lifecycle->deleteBlocker($organization),
+            'history' => PlatformAuditLog::query()
+                ->where('organization_id', $organization->id)
+                ->with('user:id,name')
+                ->latest('id')
+                ->limit(20)
+                ->get(),
             'organization' => $organization,
             'zones' => Subdivision::query()->where('organization_id', $organization->id)->orderBy('name')->get(),
             'subaccounts' => $subaccounts,

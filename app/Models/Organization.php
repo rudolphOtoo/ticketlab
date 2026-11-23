@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\OrganizationStatus;
 use App\Services\Media\ImagePreset;
 use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\OrganizationFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,6 +23,8 @@ use Illuminate\Support\Str;
  * @property string|null $logo_url
  * @property string $subdivision_label
  * @property array<string, mixed>|null $settings
+ * @property OrganizationStatus $status
+ * @property CarbonImmutable|null $status_changed_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
@@ -82,7 +86,33 @@ class Organization extends Model
     {
         return [
             'settings' => 'array',
+            'status' => OrganizationStatus::class,
+            'status_changed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * New organisations start active (the column's default); set here too so a model that was just created knows it.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => 'active',
+    ];
+
+    public function isActive(): bool
+    {
+        return $this->status === OrganizationStatus::Active;
+    }
+
+    /**
+     * Ids of active organisations, for whereIn('organization_id', …): what the public sees and the scheduler works on.
+     *
+     * @return Builder<self>
+     */
+    public static function activeIds(): Builder
+    {
+        return self::query()->select('id')->where('status', OrganizationStatus::Active->value);
     }
 
     /**

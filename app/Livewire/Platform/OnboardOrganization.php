@@ -7,6 +7,7 @@ namespace App\Livewire\Platform;
 use App\Livewire\Concerns\UploadsImages;
 use App\Models\AuditLog;
 use App\Models\Organization;
+use App\Models\RetiredOrganizationSlug;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\OrganizationAdminInvitation;
@@ -14,6 +15,7 @@ use App\Services\Media\CloudinaryClient;
 use App\Services\Media\CloudinaryImage;
 use App\Services\Payment\PaystackSubaccountResolver;
 use App\Support\MediaUrl;
+use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -108,32 +110,43 @@ class OnboardOrganization extends Component
             static fn(array $zone): bool => trim($zone['name']) !== '' || trim($zone['subaccount']) !== '',
         ));
 
-        $this->validate([
-            'name' => ['required', 'string', 'max:150'],
-            'slug' => [
-                'required',
-                'string',
-                'max:80',
-                'alpha_dash',
-                Rule::notIn(Organization::RESERVED_SLUGS),
-                Rule::unique(Organization::class, 'slug'),
+        $this->validate(
+            [
+                'name' => ['required', 'string', 'max:150'],
+                'slug' => [
+                    'required',
+                    'string',
+                    'max:80',
+                    'alpha_dash',
+                    Rule::notIn(Organization::RESERVED_SLUGS),
+                    Rule::unique(Organization::class, 'slug'),
+                    // A deleted organisation's address stays reserved, so its old links never reach someone else.
+                    static function (string $attribute, mixed $value, Closure $fail): void {
+                        if (RetiredOrganizationSlug::query()->where('slug', $value)->exists()) {
+                            $fail(
+                                'That address belonged to a deleted organisation and stays reserved. Choose another.',
+                            );
+                        }
+                    },
+                ],
+                'subdivisionLabel' => ['required', 'string', 'max:30'],
+                'contactEmail' => ['required', 'email', 'max:255'],
+                'contactPhone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ()-]{7,20}$/'],
+                'logoUrl' => ['nullable', 'url:https', 'max:2048'],
+                'brandColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+                'timezone' => ['required', 'timezone:all'],
+                'zones' => ['required', 'array', 'min:1', 'max:50'],
+                'zones.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
+                'zones.*.subaccount' => ['nullable', 'string', 'max:64', 'regex:/^ACCT_[a-z0-9]+$/i', 'distinct'],
+                'adminName' => ['required', 'string', 'max:255'],
+                'adminEmail' => ['required', 'email', 'max:255', Rule::unique(User::class, 'email')],
             ],
-            'subdivisionLabel' => ['required', 'string', 'max:30'],
-            'contactEmail' => ['required', 'email', 'max:255'],
-            'contactPhone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ()-]{7,20}$/'],
-            'logoUrl' => ['nullable', 'url:https', 'max:2048'],
-            'brandColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'timezone' => ['required', 'timezone:all'],
-            'zones' => ['required', 'array', 'min:1', 'max:50'],
-            'zones.*.name' => ['required', 'string', 'max:100', 'distinct:ignore_case'],
-            'zones.*.subaccount' => ['nullable', 'string', 'max:64', 'regex:/^ACCT_[a-z0-9]+$/i', 'distinct'],
-            'adminName' => ['required', 'string', 'max:255'],
-            'adminEmail' => ['required', 'email', 'max:255', Rule::unique(User::class, 'email')],
-        ], [
-            'zones.required' => 'Add at least one ' . strtolower($this->subdivisionLabel) . '.',
-            'zones.*.subaccount.regex' => 'Paystack subaccount codes look like ACCT_xxxxxxxxxxxx.',
-            'slug.not_in' => 'That address is used by TicketLab itself. Choose another.',
-        ]);
+            [
+                'zones.required' => 'Add at least one ' . strtolower($this->subdivisionLabel) . '.',
+                'zones.*.subaccount.regex' => 'Paystack subaccount codes look like ACCT_xxxxxxxxxxxx.',
+                'slug.not_in' => 'That address is used by TicketLab itself. Choose another.',
+            ],
+        );
 
         $this->verifySubaccounts($subaccounts);
 

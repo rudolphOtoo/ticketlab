@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Public;
 
 use App\Jobs\SendEnquiryEmail;
+use App\Models\Organization;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -42,6 +43,13 @@ class ContactForm extends Component
 
         // Bots that fill the hidden field get the same success state, so they learn nothing.
         if ($this->website !== '') {
+            $this->sent = true;
+
+            return;
+        }
+
+        // A page left open after the organisation was suspended or archived sends nothing.
+        if (!Organization::activeIds()->whereKey($this->organizationId)->exists()) {
             $this->sent = true;
 
             return;

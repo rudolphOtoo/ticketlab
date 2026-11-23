@@ -6,6 +6,7 @@ namespace App\Livewire\Platform;
 
 use App\Enums\MailCategory;
 use App\Enums\OrderStatus;
+use App\Enums\OrganizationStatus;
 use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Order;
@@ -25,6 +26,9 @@ use Livewire\Component;
 class PlatformDashboard extends Component
 {
     public string $tenantSearch = '';
+
+    /** Archived organisations are left out of the tenant list unless asked for. */
+    public bool $showArchivedTenants = false;
 
     public ?int $selectedTenantId = null;
 
@@ -181,7 +185,13 @@ class PlatformDashboard extends Component
         $this->platformFeeAccumulator = $this->paidTicketsCount * 3.00;
 
         // Fetch tenants with aggregated event counts
-        $tenantQuery = Organization::query()->withCount('events');
+        $tenantQuery = Organization::query()
+            ->withCount('events')
+            ->when(!$this->showArchivedTenants, static fn($query) => $query->where(
+                'status',
+                '!=',
+                OrganizationStatus::Archived->value,
+            ));
 
         if (trim($this->tenantSearch) !== '') {
             $term = '%' . trim($this->tenantSearch) . '%';

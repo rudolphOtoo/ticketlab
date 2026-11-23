@@ -27,6 +27,9 @@ final class FakeCloudinaryClient implements CloudinaryClient
     /** @var list<string> */
     public array $destroyed = [];
 
+    /** @var list<string> */
+    public array $destroyedFolders = [];
+
     /** @var list<array{from: string, to: string}> */
     public array $renamed = [];
 
@@ -118,5 +121,16 @@ final class FakeCloudinaryClient implements CloudinaryClient
     {
         unset($this->images[$publicId]);
         $this->destroyed[] = $publicId;
+    }
+
+    public function destroyFolder(string $folder): void
+    {
+        $prefix = trim($folder, '/') . '/';
+        $this->images = array_filter(
+            $this->images,
+            static fn(string $publicId): bool => !str_starts_with($publicId, $prefix),
+            ARRAY_FILTER_USE_KEY,
+        );
+        $this->destroyedFolders[] = trim($folder, '/');
     }
 }

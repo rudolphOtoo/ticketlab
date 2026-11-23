@@ -290,6 +290,11 @@
                 <p class="text-xs text-[var(--text-secondary)] mt-0.5">Inspect organization footprints, monitor active portals, and access tenant control panels.</p>
             </div>
 
+            <label class="inline-flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                <input type="checkbox" wire:model.live="showArchivedTenants" data-show-archived />
+                Show archived
+            </label>
+
             <div class="relative w-full sm:w-72">
                 <input
                     type="search"

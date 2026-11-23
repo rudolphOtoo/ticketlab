@@ -14,7 +14,13 @@
         </div>
     @endif
 
-    <input type="search" wire:model.live.debounce.250ms="search" placeholder="Search by name or slug…" aria-label="Search organisations" class="w-full max-w-sm rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs" />
+    <div class="flex flex-wrap items-center gap-4">
+        <input type="search" wire:model.live.debounce.250ms="search" placeholder="Search by name or slug…" aria-label="Search organisations" class="w-full max-w-sm rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs" />
+        <label class="inline-flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+            <input type="checkbox" wire:model.live="showArchived" data-show-archived />
+            Show archived{{ $archivedCount > 0 ? " ({$archivedCount})" : '' }}
+        </label>
+    </div>
 
     <div class="overflow-x-auto rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)]">
         <table class="w-full min-w-[820px] text-left text-xs">
@@ -36,6 +42,9 @@
                     <tr data-organization="{{ $organization->slug }}">
                         <td class="px-4 py-3">
                             <a href="{{ route('platform.organizations.edit', $organization) }}" wire:navigate class="block font-semibold hover:underline">{{ $organization->name }}</a>
+                            @unless ($organization->isActive())
+                                <x-ui.badge :color="$organization->status === \App\Enums\OrganizationStatus::Suspended ? 'amber' : 'zinc'" pill size="sm">{{ $organization->status->label() }}</x-ui.badge>
+                            @endunless
                             <a href="{{ url('/' . $organization->slug) }}" target="_blank" rel="noopener" class="font-mono text-[11px] text-[var(--text-secondary)] underline">/{{ $organization->slug }}</a>
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums" data-events-count>{{ $organization->events_count }}</td>

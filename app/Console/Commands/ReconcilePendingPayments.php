@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Enums\OrderStatus;
 use App\Enums\ReservationStatus;
 use App\Models\Order;
+use App\Models\Organization;
 use App\Models\Reservation;
 use App\Models\TicketType;
 use App\Services\Payment\OrderFulfillmentException;
@@ -88,6 +89,8 @@ class ReconcilePendingPayments extends Command
         $orders = Order::query()
             ->where('payment_status', OrderStatus::Pending->value)
             ->where('created_at', '<=', now()->subMinutes($minutes))
+            // Suspended and archived organisations are skipped (Paystack webhooks still confirm their payments).
+            ->whereIn('organization_id', Organization::activeIds())
             ->orderBy('created_at')
             ->orderBy('id')
             ->limit($batch)

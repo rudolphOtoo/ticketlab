@@ -48,7 +48,8 @@ class SendEventReminders implements ShouldQueue
 
         $broadcast = Broadcast::query()->with(['event', 'organization'])->find($this->broadcastId);
 
-        if ($broadcast === null) {
+        // Nothing goes out for a suspended or archived organisation, even from a batch queued before.
+        if ($broadcast === null || !$broadcast->organization->isActive()) {
             return;
         }
 

@@ -108,4 +108,69 @@
         </form>
         <p class="text-[11px] text-[var(--text-tertiary)]">Renaming {{ strtolower(\Illuminate\Support\Str::plural($zoneWord)) }} and changing payout accounts is done by the organisation admin under {{ $zoneWord }} Payouts.</p>
     </section>
+
+    <section class="{{ $sectionClass }}" data-organization-status>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="text-sm font-bold">Status</h2>
+            <x-ui.badge :color="match ($organization->status) { \App\Enums\OrganizationStatus::Active => 'emerald', \App\Enums\OrganizationStatus::Suspended => 'amber', default => 'zinc' }" pill size="sm">{{ $organization->status->label() }}</x-ui.badge>
+        </div>
+        <p class="text-xs text-[var(--text-secondary)]">
+            Suspending makes its public pages unavailable, stops sales and checkout, signs its users out and keeps them out, and the scheduler skips it. Archiving does the same and hides it from the organisation list. Nothing is deleted, ticket links keep working, and either can be undone.
+        </p>
+        <div>
+            <label for="status-reason" class="{{ $labelClass }}">Reason (required, kept in the audit trail)</label>
+            <textarea id="status-reason" wire:model="statusReason" rows="2" maxlength="1000" class="{{ $inputClass }}"></textarea>
+            @error('statusReason') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs font-semibold">
+            @unless ($organization->isActive())
+                <button type="button" wire:click="changeStatus('active')" class="cursor-pointer rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700">Reactivate</button>
+            @endunless
+            @unless ($organization->status === \App\Enums\OrganizationStatus::Suspended)
+                <button type="button" wire:click="changeStatus('suspended')" wire:confirm="Suspend {{ $organization->name }}? Its pages go offline, sales stop and its users are signed out." class="cursor-pointer rounded-xl border border-amber-500/40 px-4 py-2 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300">Suspend</button>
+            @endunless
+            @unless ($organization->status === \App\Enums\OrganizationStatus::Archived)
+                <button type="button" wire:click="changeStatus('archived')" wire:confirm="Archive {{ $organization->name }}? Like suspending, and it is hidden from the organisation list." class="cursor-pointer rounded-xl border border-[var(--border-hairline)] px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">Archive</button>
+            @endunless
+        </div>
+
+        <div class="space-y-3 border-t border-[var(--border-hairline)] pt-4" data-delete-organization>
+            <h3 class="text-xs font-bold text-rose-600">Delete organisation</h3>
+            @if ($deleteBlocker !== null)
+                <p class="text-xs text-[var(--text-secondary)]" data-delete-blocked>{{ $deleteBlocker }}</p>
+            @else
+                <p class="text-xs text-[var(--text-secondary)]">It has no orders or payments. Deleting removes its {{ strtolower(\Illuminate\Support\Str::plural($zoneWord)) }}, users, events and images for good. Its web address stays reserved, so no other organisation can take it. This can't be undone.</p>
+                <form wire:submit="deleteOrganization" class="grid gap-3 sm:grid-cols-2">
+                    <div>
+                        <label for="delete-reason" class="{{ $labelClass }}">Reason (required)</label>
+                        <input id="delete-reason" type="text" wire:model="deleteReason" maxlength="1000" class="{{ $inputClass }}" />
+                        @error('deleteReason') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label for="delete-confirmation" class="{{ $labelClass }}">Type <strong class="select-all font-mono text-[var(--text-primary)]">{{ $organization->slug }}</strong> to confirm</label>
+                        <input id="delete-confirmation" type="text" wire:model="deleteConfirmation" autocomplete="off" class="{{ $inputClass }} font-mono" />
+                        @error('deleteConfirmation') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="sm:col-span-2">
+                        <button type="submit" class="cursor-pointer rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700">Delete {{ $organization->name }}</button>
+                    </div>
+                </form>
+            @endif
+        </div>
+
+        @if ($history->isNotEmpty())
+            <div class="space-y-2 border-t border-[var(--border-hairline)] pt-4">
+                <h3 class="text-xs font-bold">History</h3>
+                <ul class="space-y-2 text-xs" data-platform-audit>
+                    @foreach ($history as $entry)
+                        <li>
+                            <span class="font-semibold">{{ \Illuminate\Support\Str::of($entry->action)->after('organization.')->headline() }}</span>
+                            by {{ $entry->user?->name ?? 'a removed user' }} · {{ $entry->created_at->format('M j, Y · g:i A') }}
+                            <span class="block text-[var(--text-secondary)]">{{ $entry->reason }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+    </section>
 </div>

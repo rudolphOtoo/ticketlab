@@ -48,9 +48,14 @@ test('the scanner loads its library and starts the camera', function (): void {
     $page = visit(route('ops.scanner'))->assertNoJavaScriptErrors();
 
     // The scanner created its Html5Qrcode reader and tried the camera: it is scanning (the test browser's fake
-    // camera) or reports the camera offline, but it is no longer waiting for the library.
-    $page->wait(1.5);
+    // camera) or reports the camera offline, but it is no longer waiting for the library. Starting the camera takes
+    // longer on a busy machine, so wait for that (up to 10 s) rather than a fixed time.
     $scanner = "Alpine.\$data(document.getElementById('qr-reader'))";
+    $started = "!!{$scanner} && ({$scanner}.isScanning || {$scanner}.cameraError !== null)";
+
+    for ($tries = 0; $tries < 40 && $page->script($started) !== true; $tries++) {
+        $page->wait(0.25);
+    }
 
     expect($page->script('typeof window.Html5Qrcode'))
         ->toBe('function')

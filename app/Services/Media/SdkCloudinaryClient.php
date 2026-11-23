@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Media;
 
+use Cloudinary\Api\Admin\AdminApi;
 use Cloudinary\Api\ApiUtils;
 use Cloudinary\Api\Exception\NotFound;
 use Cloudinary\Cloudinary;
@@ -82,6 +83,45 @@ final readonly class SdkCloudinaryClient implements CloudinaryClient
     public function destroy(string $publicId): void
     {
         $this->sdk()->uploadApi()->destroy($publicId, ['invalidate' => true]);
+    }
+
+    public function destroyFolder(string $folder): void
+    {
+        $folder = trim($folder, '/');
+        $admin = $this->sdk()->adminApi();
+
+        // Up to 1000 images per call; Cloudinary answers "partial" while more remain.
+        do {
+            $deleted = $admin->deleteAssetsByPrefix($folder . '/', ['invalidate' => true]);
+        } while (($deleted['partial'] ?? false) === true);
+
+        $this->deleteFolderTree($admin, $folder);
+    }
+
+    /**
+     * Cloudinary only deletes empty folders, so sub-folders go first.
+     */
+    private function deleteFolderTree(AdminApi $admin, string $path): void
+    {
+        try {
+            $children = $admin->subFolders($path, ['max_results' => 500]);
+        } catch (NotFound) {
+            return;
+        }
+
+        foreach ((array) ($children['folders'] ?? []) as $child) {
+            if (!is_array($child) || !is_string($child['path'] ?? null)) {
+                continue;
+            }
+
+            $this->deleteFolderTree($admin, $child['path']);
+        }
+
+        try {
+            $admin->deleteFolder($path);
+        } catch (NotFound) {
+            return;
+        }
     }
 
     private function sdk(): Cloudinary

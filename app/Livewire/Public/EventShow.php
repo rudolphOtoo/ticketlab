@@ -21,6 +21,7 @@ use App\Services\PaystackFeeCalculator;
 use App\Services\Reservation\TicketReservationService;
 use App\Services\Reservation\TicketSoldOutException;
 use App\Services\Reservation\ZoneCapacity;
+use App\Support\OrganizationAvailability;
 use App\Support\ZoneVenue;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -106,6 +107,7 @@ class EventShow extends Component
     public function mount(string $org_slug, string $event_slug): void
     {
         $organization = Organization::query()->where('slug', $org_slug)->firstOrFail();
+        OrganizationAvailability::ensure($organization);
 
         $event = Event::query()
             ->with('ticketTypes')

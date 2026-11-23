@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Platform;
 
 use App\Enums\OrderStatus;
+use App\Enums\OrganizationStatus;
 use App\Models\Organization;
 use App\Models\Subdivision;
 use App\Models\User;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
@@ -25,6 +27,10 @@ use Livewire\Component;
 class Organizations extends Component
 {
     public string $search = '';
+
+    /** Archived organisations are left out of the list unless asked for. */
+    #[Url(as: 'archived')]
+    public bool $showArchived = false;
 
     public ?string $flashMessage = null;
 
@@ -65,6 +71,11 @@ class Organizations extends Component
         $term = trim($this->search);
 
         $organizations = Organization::query()
+            ->when(!$this->showArchived, static fn(Builder $query) => $query->where(
+                'status',
+                '!=',
+                OrganizationStatus::Archived->value,
+            ))
             ->when($term !== '', static fn(Builder $query) => $query->where(static fn(Builder $match) => $match->where(
                 'name',
                 'like',
@@ -86,6 +97,7 @@ class Organizations extends Component
 
         return view('livewire.platform.organizations', [
             'organizations' => $organizations,
+            'archivedCount' => Organization::query()->where('status', OrganizationStatus::Archived->value)->count(),
             // Stored verification only: listing never calls Paystack.
             'missingSubaccounts' => $organizations->mapWithKeys(static fn(Organization $organization): array => [
                 $organization->id => $organization

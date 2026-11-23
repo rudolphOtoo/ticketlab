@@ -44,4 +44,10 @@ interface CloudinaryClient
 
     /** Deletes an image and invalidates its cached copies on the CDN. */
     public function destroy(string $publicId): void;
+
+    /**
+     * Deletes every image under a folder (e.g. a deleted organisation's), then the folder and its sub-folders.
+     * A folder that doesn't exist is not an error.
+     */
+    public function destroyFolder(string $folder): void;
 }

@@ -37,11 +37,19 @@ final class MediaUrl
     public const int MAX_BYTES = 5 * 1024 * 1024;
 
     /**
+     * Cloudinary folder holding everything of one organisation (its logos, banners and every event's images).
+     */
+    public static function organizationRoot(int $organizationId): string
+    {
+        return self::root() . "/orgs/{$organizationId}";
+    }
+
+    /**
      * Cloudinary folder for an organisation's uploads of one kind (logos, gallery, flyers).
      */
     public static function organizationDirectory(int $organizationId, string $kind): string
     {
-        return self::root() . "/orgs/{$organizationId}/{$kind}";
+        return self::organizationRoot($organizationId) . "/{$kind}";
     }
 
     /**
