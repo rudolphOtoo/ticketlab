@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Enums\MailCategory;
+use App\Jobs\Concerns\WaitsForMailQuota;
+use App\Jobs\Middleware\MailQuotaGate;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -21,6 +24,7 @@ use Illuminate\Support\Facades\URL;
 class OrganizationAdminInvitation extends Notification implements ShouldQueue
 {
     use Queueable;
+    use WaitsForMailQuota;
 
     public const int INVITATION_DAYS = 7;
 
@@ -36,6 +40,14 @@ class OrganizationAdminInvitation extends Notification implements ShouldQueue
     public function via(User $notifiable): array
     {
         return ['mail'];
+    }
+
+    /**
+     * @return list<object>
+     */
+    public function middleware(User $notifiable, string $channel): array
+    {
+        return $channel === 'mail' ? [new MailQuotaGate(MailCategory::Transactional)] : [];
     }
 
     public function toMail(User $notifiable): MailMessage

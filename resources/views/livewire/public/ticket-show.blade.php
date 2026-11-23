@@ -84,6 +84,66 @@
                         </div>
                     @endif
 
+                    <section class="no-print mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-950" data-your-ticket>
+                        <p class="text-base font-semibold">This page is your ticket</p>
+                        <p class="mt-1 text-emerald-900/80">Show the QR {{ $attendees->count() === 1 ? 'code' : 'codes' }} below at the gate, from this page or the PDF. Save the link or the PDF now; the email is only a backup copy.</p>
+
+                        <div class="mt-4 flex flex-col gap-2 sm:flex-row" x-data="{ copied: false }">
+                            <input
+                                type="text"
+                                readonly
+                                value="{{ $ticketUrl }}"
+                                aria-label="Your ticket link"
+                                class="min-w-0 flex-1 rounded-xl border border-emerald-300 bg-white px-3 py-2.5 font-mono text-xs text-zinc-800"
+                                x-ref="link"
+                                x-on:focus="$event.target.select()"
+                                data-ticket-link
+                            >
+                            <button
+                                type="button"
+                                class="cursor-pointer rounded-xl border border-emerald-400 bg-white px-4 py-2.5 font-semibold text-emerald-900 hover:bg-emerald-100"
+                                x-on:click="navigator.clipboard?.writeText($refs.link.value).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"
+                                x-text="copied ? 'Copied' : 'Copy link'"
+                            >Copy link</button>
+                            <a href="{{ route('public.tickets.pdf', ['order' => $order->reference]) }}" download class="rounded-xl bg-emerald-700 px-4 py-2.5 text-center font-semibold text-white hover:bg-emerald-800">
+                                Download PDF
+                            </a>
+                        </div>
+
+                        <div class="mt-4 flex flex-col gap-2 border-t border-emerald-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                            <p class="text-emerald-900/80" data-email-status="{{ $emailStatus['state'] }}">
+                                @switch($emailStatus['state'])
+                                    @case('sent')
+                                        A copy was emailed to <strong>{{ $order->customer_email }}</strong>{{ $emailStatus['at'] ? ' on '.$emailStatus['at']->format('j M, g:i A') : '' }}.
+                                        @break
+                                    @case('sending')
+                                        A copy is on its way to <strong>{{ $order->customer_email }}</strong>.
+                                        @break
+                                    @case('tomorrow')
+                                        Today's email limit is reached, so the copy to <strong>{{ $order->customer_email }}</strong> goes out after midnight. Your ticket works now, here and in the PDF.
+                                        @break
+                                    @case('failed')
+                                        We couldn't email a copy to <strong>{{ $order->customer_email }}</strong>. Your ticket works here and in the PDF.
+                                        @break
+                                    @default
+                                        Your ticket works here and in the PDF.
+                                @endswitch
+                            </p>
+                            <button
+                                type="button"
+                                wire:click="resendTicket"
+                                wire:loading.attr="disabled"
+                                class="cursor-pointer whitespace-nowrap rounded-xl border border-emerald-400 bg-white px-4 py-2.5 font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+                            >
+                                Resend my ticket
+                            </button>
+                        </div>
+
+                        @if ($resendMessage)
+                            <p class="mt-3 font-medium" role="status" data-resend-message>{{ $resendMessage }}</p>
+                        @endif
+                    </section>
+
                     <div class="space-y-5">
                         @foreach ($attendees as $attendee)
                             <article class="ticket-card overflow-hidden rounded-2xl border border-zinc-200">

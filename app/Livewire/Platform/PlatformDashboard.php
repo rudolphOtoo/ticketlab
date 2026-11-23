@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Livewire\Platform;
 
+use App\Enums\MailCategory;
 use App\Enums\OrderStatus;
 use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Organization;
+use App\Services\Mail\MailQuota;
+use App\Services\Mail\TicketEmailer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -107,6 +110,41 @@ class PlatformDashboard extends Component
         ];
     }
 
+    /**
+     * Today's emails against the provider's daily cap, plus ticket emails still owed or given up.
+     *
+     * @return array{
+     *     sent: int,
+     *     limit: int,
+     *     percent: int,
+     *     warn: bool,
+     *     deferred: int,
+     *     categories: list<array{label: string, sent: int}>,
+     *     tickets_waiting: int,
+     *     tickets_failed: int
+     * }
+     */
+    protected static function mailHealth(): array
+    {
+        $snapshot = app(MailQuota::class)->snapshot();
+        $tickets = app(TicketEmailer::class)->counts();
+        $percent = $snapshot['limit'] > 0 ? (int) floor(($snapshot['sent'] * 100) / $snapshot['limit']) : 100;
+
+        return [
+            'sent' => $snapshot['sent'],
+            'limit' => $snapshot['limit'],
+            'percent' => $percent,
+            'warn' => $percent >= (int) config('mail.quota.warn_percent', 80),
+            'deferred' => $snapshot['deferred'],
+            'categories' => array_map(static fn(MailCategory $category): array => [
+                'label' => $category->label(),
+                'sent' => $snapshot['by_category'][$category->value] ?? 0,
+            ], MailCategory::cases()),
+            'tickets_waiting' => $tickets['waiting'],
+            'tickets_failed' => $tickets['gave_up'],
+        ];
+    }
+
     public function render(): View
     {
         $totalTenants = Organization::query()->count();
@@ -169,6 +207,7 @@ class PlatformDashboard extends Component
             'grossMerchandiseValue' => $this->grossMerchandiseValue,
             'platformFeeAccumulator' => $this->platformFeeAccumulator,
             'health' => $this->getSystemHealth(),
+            'mail' => self::mailHealth(),
             'tenants' => $tenants,
             'selectedTenant' => $selectedTenant,
             'selectedTenantStats' => $selectedTenantStats,

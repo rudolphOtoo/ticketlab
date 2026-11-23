@@ -6,9 +6,6 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DedicatedPageController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\QrCodeController;
-use App\Http\Middleware\VerifySchedulerToken;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -34,20 +31,5 @@ Route::get('partnership', DedicatedPageController::class)->defaults('page', 'par
 );
 Route::get('faq', DedicatedPageController::class)->defaults('page', 'faq')->name('dedicated.faq');
 Route::get('contact', DedicatedPageController::class)->defaults('page', 'contact')->name('dedicated.contact');
-
-// Serverless maintenance hooks, called by an external cron. Token in "Authorization: Bearer" (see VerifySchedulerToken).
-Route::middleware([VerifySchedulerToken::class, 'throttle:10,1'])->group(static function (): void {
-    Route::get('api/run-scheduler', static function (): JsonResponse {
-        Artisan::call('schedule:run');
-
-        return response()->json(['message' => 'Scheduler executed', 'output' => Artisan::output()]);
-    });
-
-    Route::get('api/run-migrate', static function (): JsonResponse {
-        Artisan::call('migrate', ['--force' => true]);
-
-        return response()->json(['message' => 'Migrations executed', 'output' => Artisan::output()]);
-    });
-});
 
 require __DIR__ . '/settings.php';

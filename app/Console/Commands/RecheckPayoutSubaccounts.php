@@ -8,6 +8,7 @@ use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\PayoutAccountRejected;
 use App\Services\Payment\PaystackSubaccountResolver;
+use App\Support\Scheduler\SchedulerBudget;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -28,7 +29,11 @@ class RecheckPayoutSubaccounts extends Command
     {
         $counts = ['verified' => 0, 'rejected' => 0, 'unreachable' => 0];
 
-        $deadline = now()->addSeconds(max(1, (int) config('scheduler.payout_recheck.time_budget_seconds')));
+        // Cut to what is left of the scheduler run, when it runs inside one.
+        $deadline = now()->addSeconds(max(
+            1,
+            SchedulerBudget::clamp((int) config('scheduler.payout_recheck.time_budget_seconds')),
+        ));
         $dueBefore = now()->subHours((int) config('scheduler.payout_recheck.interval_hours'));
 
         // Zones checked longest ago first, a small batch per run, so each run fits the serverless time limit and

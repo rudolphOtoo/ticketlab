@@ -26,13 +26,40 @@ Do the steps in order. Do not start a step until the previous one has passed its
       is removed in this release and now returns 404.
 - [ ] **Cloudinary** account ready (README "Media (Cloudinary)"): copy the API environment variable
       `cloudinary://<api_key>:<api_secret>@<cloud_name>` from Settings → API Keys. No bucket, preset, CORS or lifecycle
-      rule is needed.
+      rule is needed. The key must be allowed to **create, read, update and delete** media: a restricted key fails
+      uploads with "missing permissions (actions=["create"])". Check it from your laptop with that `CLOUDINARY_URL`:
+      `php artisan media:check-cloudinary` uploads, reads, delivers, renames and deletes one 1×1 test image, and says
+      which step fails and why.
 - [ ] **cron-job.org** job (Vercel Hobby only allows daily crons): URL `https://<your-domain>/api/run-scheduler`,
-      method GET, every 1 minute, with a request header `Authorization: Bearer <SCHEDULER_TOKEN>`. Keep the job
-      **disabled** until step 3. It runs the queue worker (ticket emails, invitations, zone-choice emails), seat-hold
-      release, pending-payment reconciliation and the payout re-check, all inside Vercel's 60-second limit (see the README).
+      method GET, **every 5 minutes**, with a request header `Authorization: Bearer <SCHEDULER_TOKEN>`. Turn on
+      "treat 4xx/5xx as failure" notifications. Keep the job **disabled** until step 3. Ticket emails don't wait for
+      it (they're sent right after payment); it retries owed ticket emails, releases lapsed seat holds, reconciles
+      pending payments, re-checks payouts and runs the queue worker (invitations, zone-choice emails, broadcasts),
+      all inside Vercel's 60-second limit, and answers "Nothing due" at once when there is nothing to do (README).
       If an older cron calls `?token=…`, it keeps working for this release (with a deprecation warning); it's replaced in
       step 10.
+- [ ] **Brevo** (email), in the account used for YPG or a new one:
+  1. **Plan and cap.** The free plan sends 300 emails a day across every kind, reset daily, with no rollover. If a big
+     on-sale is expected (more than ~250 orders in a day), switch to **Starter** for that month and set
+     `BREVO_DAILY_LIMIT` to its allowance; otherwise later ticket emails go out over the following days (the ticket
+     page works at once either way).
+  2. **Authenticate the sending domain** (Brevo → Senders, Domains & Dedicated IPs → Domains → Add / Authenticate).
+     Brevo shows the exact records to add at your DNS host; copy them as shown, don't retype them:
+     - **Brevo code**: a TXT record `brevo-code:…` on the domain (proves ownership);
+     - **DKIM**: the record(s) Brevo lists (CNAMEs such as `brevo1._domainkey` / `brevo2._domainkey`, or one TXT
+       `mail._domainkey`). This signs every email;
+     - **SPF**: one TXT record on the domain, `v=spf1 include:spf.brevo.com ~all`. If an SPF record already exists,
+       add `include:spf.brevo.com` to it: a domain must have **only one** SPF record;
+     - **DMARC**: TXT on `_dmarc.<domain>`, start with `v=DMARC1; p=none; rua=mailto:dmarc@<domain>` (reports only).
+       After two clean weeks of reports, move to `p=quarantine`.
+  3. Check from your laptop, then click **Authenticate** in Brevo until every row shows green:
+     ```bash
+     dig +short TXT <domain>            # brevo-code and the single v=spf1 … include:spf.brevo.com
+     dig +short TXT _dmarc.<domain>     # v=DMARC1; p=none; …
+     dig +short CNAME brevo1._domainkey.<domain>   # (or the DKIM names Brevo listed)
+     ```
+  4. Add the sender `tickets@<domain>` (Senders) and create an **SMTP key** (SMTP & API → SMTP → Generate). Note the
+     SMTP host and login shown on that page.
 - [ ] Find the Methodist event's id and which organisation it is under, and whether a GMSU organisation already exists
       (read-only; run in the Neon SQL editor):
       ```sql
@@ -102,6 +129,11 @@ timings) without touching real data or real buyers.
     `CLOUDINARY_SECURE_URL`, `CLOUDINARY_UPLOAD_PRESET`, `PRIVATE_DISK`, `LIVEWIRE_DISK`, `R2_*` and `MEDIA_URL`.
   - `LEGACY_MEDIA_URL` stays unset. (It is only for images uploaded to R2 before any Cloudinary setup, and is
     ignored while `MEDIA_DISK=cloudinary`.)
+- [ ] Email (Brevo SMTP): `MAIL_MAILER=smtp`, `MAIL_HOST=<host from Brevo>`, `MAIL_PORT=587`,
+      `MAIL_USERNAME=<SMTP login>`, `MAIL_PASSWORD=<SMTP key>`, `MAIL_TIMEOUT=8`,
+      `MAIL_FROM_ADDRESS=tickets@<authenticated domain>`, `MAIL_FROM_NAME=<name buyers recognise>`, and
+      `BREVO_DAILY_LIMIT=300` (or the Starter allowance).
+- [ ] `CSP_MODE=report-only`. The policy is sent but blocks nothing; step 10 reviews it before it's enforced.
 - [ ] `CACHE_STORE=database` and `SCHEDULER_LOCK_STORE=database` (or `redis`). Never `file`: locks must be shared
       between serverless instances.
 - [ ] Worker queues: nothing to set. The worker runs `transactional,emails,broadcasts,default` from `config/queue.php`,
@@ -122,11 +154,13 @@ timings) without touching real data or real buyers.
         php artisan migrate --force
       ```
       New in this release: `event_zones`, `audit_logs` (plus zone-assignment columns on `attendees`),
-      `ticket_type_zone_capacities`, and payout verification columns on `subdivisions`. All are additive; no data is changed.
+      `ticket_type_zone_capacities`, payout verification columns on `subdivisions`, ticket-email tracking columns on
+      `orders`, and `mail_quota_days`. All are additive; no data is changed.
 - [ ] Check: `php artisan migrate:status` (same environment variables) shows all migrations as Ran. The site loads, and
       `/up` returns 200.
-- [ ] Enable the cron-job.org job from step 0 (Bearer header). From now on, the queue worker sends the invitation and
-      zone-choice emails of steps 5 and 7. Check its first runs return 200.
+- [ ] Enable the cron-job.org job from step 0 (Bearer header, every 5 minutes). From now on, the queue worker sends the
+      invitation and zone-choice emails of steps 5 and 7. Check its first runs return 200; when idle the body is
+      `{"message":"Nothing due",…}`.
 
 ## 4. Check and remove the seeded `@ticketlab.test` accounts
 
@@ -209,7 +243,11 @@ Run from your laptop with the same Neon variables as step 3.
 
 - [ ] The GMSU organisation admin adds a temporary ticket type, e.g. "Payment test" at GHS 1, with a short sales window.
 - [ ] For **each** zone: buy one with real Mobile Money and choose that zone. Then check:
+  - [ ] after paying you land on the ticket page: "This page is your ticket", the link, **Download PDF**, and "A copy
+        was emailed to …" within a minute (no waiting for the cron);
   - [ ] the confirmation email and PDF show GMSU's name and **that zone's** venue;
+  - [ ] in Gmail, ⋮ → **Show original** on that email says `SPF: PASS`, `DKIM: PASS` and `DMARC: PASS`;
+  - [ ] **Resend my ticket** sends a second copy; pressing it again at once says "We just sent it";
   - [ ] in the Paystack live dashboard, the transaction's split credits **that zone's** subaccount with the full ticket price;
   - [ ] signed in as **that zone's** usher, the scanner admits the pass ("Zone: <zone>");
   - [ ] signed in as **another** zone's usher, the same pass is refused with "WRONG ZONE".
@@ -225,8 +263,12 @@ Run from your laptop with the same Neon variables as step 3.
 
 ## 10. Post-deploy checks
 
-- [ ] **Scheduler.** The cron-job.org history shows HTTP 200 every minute since step 3, and Vercel's logs show no
-      "Deprecated: scheduler token sent as ?token=" warnings.
+- [ ] **Scheduler.** The cron-job.org history shows HTTP 200 every 5 minutes since step 3, mostly
+      `"Nothing due"`, and Vercel's logs show no "Deprecated: scheduler token sent as ?token=" warnings.
+- [ ] **Email.** On `/platform`, "Emails today" shows the test emails of step 8 against the limit, with
+      `0 ticket emails waiting` and `0 given up`. If emails wait or were given up, the order's error is in
+      `orders.ticket_email_error`; fix the cause (usually the SMTP key or sender) and use **Resend** on the Attendee
+      Roster.
 - [ ] **Stuck payments.** Dry run first, then let the scheduler take over. It runs every 10 minutes with `--execute`,
       at most 25 orders per run:
       ```bash
@@ -235,7 +277,7 @@ Run from your laptop with the same Neon variables as step 3.
       ```
       Every listed order should show `success` (to be confirmed), `failed`/`abandoned` (seats released), or `ongoing`.
       Anything "held for review" needs a person: look up the reference in the Paystack dashboard.
-- [ ] **Media.** Upload a logo for GMSU on `/platform/organizations` → Edit. The progress bar runs, the preview shows,
+- [ ] **Media.** `php artisan media:check-cloudinary` with the production `CLOUDINARY_URL` passes every step. Upload a logo for GMSU on `/platform/organizations` → Edit. The progress bar runs, the preview shows,
       and after Save the logo loads from `res.cloudinary.com/<cloud>/image/upload/f_auto,q_auto,c_limit,w_200/…`. In
       the Cloudinary Media Library it sits in `ticketlab/production/orgs/<id>/logos/`. Upload another: the first one is
       deleted there.
@@ -243,6 +285,17 @@ Run from your laptop with the same Neon variables as step 3.
       **Ledgers locked before this release** show their frozen totals (online, cash, attendees) but **no zone
       breakdown**: that breakdown existed only inside the PDF file stored at the time, and those files are not
       carried over. Ledgers locked from this release on keep their breakdown in the database.
+- [ ] **Content-Security-Policy: review, then enforce.** With `CSP_MODE=report-only` (step 2), open these in Chrome
+      with DevTools → Console, signed in where needed, and do what each page is for:
+  - the organisation home, an event page (including a full test checkout up to the Paystack popup), the ticket page,
+    the PDF download;
+  - `/platform` (edit an organisation and upload a logo), the event studio (banner, speaker photo, gallery upload),
+    the scanner.
+
+  Every `[Report Only] Refused to …` line names a blocked source. Add a legitimate one to `config/csp.php` in a
+  follow-up release; ignore browser-extension noise (`chrome-extension://`). Keep `report-only` for a few days of real
+  traffic. Then set `CSP_MODE=enforce`, redeploy, repeat the checkout and upload checks, and keep the console open for
+  a day. To undo, set `CSP_MODE=report-only` (or `off`) and redeploy; no code change is needed.
 - [ ] **Rotate `SCHEDULER_TOKEN`** now that the header-based cron is live:
   1. generate a new long random value;
   2. set it in Vercel (Production) and redeploy;
@@ -251,34 +304,37 @@ Run from your laptop with the same Neon variables as step 3.
      the cron shows 200 again;
   5. remove any old cron that still used `?token=`.
 
-## 11. Convert the earlier Cloudinary images (after step 10, once you will not roll back)
+## 11. Earlier Cloudinary images: dry run, then convert only if it finds any (after step 10)
 
-Until now the new code has served images stored by the earlier setup (`logos/abc.jpg`) through `MEDIA_DISK=cloudinary`
-and `CLOUDINARY_FOLDER`. This step rewrites them to `cloudinary:v<version>/<public_id>`, looking up each image with the
-Admin API. It never deletes anything, on Cloudinary or in the database, and it can be run again.
+The earlier setup (codebar-ag Flysystem disk) was never pushed to any branch, but it may have been deployed to Vercel
+from a laptop, so production could hold a few images it stored as plain paths (`logos/abc.jpg`). Until now the new
+code has served any such images through `MEDIA_DISK=cloudinary` and `CLOUDINARY_FOLDER`. The dry run tells you whether
+there are any.
 
-**After `--execute`, the previous deployment can no longer show those images**, so it comes last, once rollback is off
-the table.
-
-- [ ] Dry run (reads only):
+- [ ] **Dry run** (reads only; it never writes or deletes anything):
       ```bash
       DATABASE_URL="…" DB_CONNECTION=pgsql APP_ENV=production CLOUDINARY_URL="cloudinary://…" \
         CLOUDINARY_FOLDER=ticketlab php artisan media:convert-legacy-cloudinary
       ```
       Each image costs 1–4 Admin API lookups (the summary line counts them); Cloudinary's free plan allows about 500 an
-      hour. If it stops on a rate limit, wait and run it again: converted images are skipped.
-- [ ] Anything listed as **not converted** keeps its old value. Look it up in the Cloudinary Media Library, or re-upload
-      it in the studio after this step.
-- [ ] Convert: the same command with `--execute`. Expect the same numbers as the dry run.
+      hour. If it stops on a rate limit, wait and run it again.
+- [ ] **If it prints "No images from the earlier Cloudinary disk found."** (`Would convert 0, not converted 0`):
+      **remove** `MEDIA_DISK` and `CLOUDINARY_FOLDER` from Vercel (Production), redeploy, and **skip `--execute`**.
+      Then do the live-page check below. That's the end of this step.
+- [ ] **Otherwise**, convert. **After `--execute`, the previous deployment can no longer show those images**, which is
+      why this step comes after step 10, once rollback is off the table.
+  1. Anything listed as **not converted** keeps its old value. Look it up in the Cloudinary Media Library, or re-upload
+     it in the studio.
+  2. Run the same command with `--execute`. Expect the same numbers as the dry run. Converted images are skipped if you
+     run it again.
+  3. Only if it reported `not converted 0`: **remove** `MEDIA_DISK` and `CLOUDINARY_FOLDER` from Vercel (Production)
+     and redeploy. If images remain unconverted, leave both set; those images keep showing until they are found or
+     re-uploaded.
 - [ ] **Check on the live event page** (`/<org_slug>`, and the event's own page) in a private window with DevTools →
       Network → Img:
-  - the organisation logo, the event banner, the speaker photos and the gallery all show;
-  - every image request to `res.cloudinary.com` is **200**, and its URL now has `/v<10 digits>/` (the converted value),
-    not `/v1/`;
-  - no broken-image icons.
-- [ ] Only if the run reported `not converted 0`: **remove** `MEDIA_DISK` and `CLOUDINARY_FOLDER` from Vercel
-      (Production) and redeploy, then repeat the live-page check. If images remain unconverted, leave both set; those
-      images keep showing until they are found or re-uploaded.
+  - the organisation logo, the event banner, the speaker photos and the gallery all show, with no broken-image icons;
+  - every image request to `res.cloudinary.com` is **200**, and none has `/v1/` in its URL (that marks an image not
+    yet converted).
 
 ---
 
@@ -289,7 +345,7 @@ the table.
 - **After step 6** (data has moved): restore the Neon branch from step 1 **and** redeploy the previous Vercel deployment.
   Payments taken since the backup are missing from the restored database. Find them in the Paystack dashboard and
   re-confirm them; the webhook can be re-sent from Paystack.
-- **After step 11** (images converted): the previous deployment shows the converted images as missing. Roll forward
+- **After step 11 with `--execute`** (images converted): the previous deployment shows the converted images as missing. Roll forward
   instead, or restore the Neon branch from step 1 as above.
 - Note anything unusual in the window: the times, any refused webhooks (they show as "requires review" on orders), and the
   output of every command.

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Enums\MailCategory;
+use App\Jobs\Concerns\WaitsForMailQuota;
+use App\Jobs\Middleware\MailQuotaGate;
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,11 +20,20 @@ use Illuminate\Mail\Mailables\Envelope;
 class ZoneChoiceRequestMail extends Mailable implements ShouldQueue
 {
     use Queueable;
+    use WaitsForMailQuota;
 
     public function __construct(
         public Order $order,
     ) {
         $this->onQueue('emails');
+    }
+
+    /**
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [new MailQuotaGate(MailCategory::ZoneChoice)];
     }
 
     public function envelope(): Envelope

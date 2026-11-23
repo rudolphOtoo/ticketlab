@@ -11,6 +11,7 @@ use App\Models\Reservation;
 use App\Models\TicketType;
 use App\Services\Payment\OrderFulfillmentException;
 use App\Services\Payment\PaystackGateway;
+use App\Support\Scheduler\SchedulerBudget;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Http\Client\RequestException;
@@ -75,7 +76,11 @@ class ReconcilePendingPayments extends Command
     {
         $minutes = max(1, (int) (is_numeric($this->option('older-than')) ? $this->option('older-than') : 10));
         $batch = max(1, (int) config('scheduler.reconcile.batch_size'));
-        $deadline = now()->addSeconds(max(1, (int) config('scheduler.reconcile.time_budget_seconds')));
+        // Cut to what is left of the scheduler run, when it runs inside one.
+        $deadline = now()->addSeconds(max(
+            1,
+            SchedulerBudget::clamp((int) config('scheduler.reconcile.time_budget_seconds')),
+        ));
         $this->execute = (bool) $this->option('execute');
         $rows = [];
 

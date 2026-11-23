@@ -6,12 +6,12 @@ namespace App\Livewire\Admin;
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
-use App\Jobs\SendTicketEmail;
 use App\Models\Attendee;
 use App\Models\Order;
 use App\Models\Subdivision;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Services\Mail\TicketEmailer;
 use App\Services\Payment\AttendeeIssuer;
 use App\Services\Zones\ZoneAssignment;
 use App\Support\ActiveEvent;
@@ -352,8 +352,8 @@ class AttendeeRoster extends Component
 
         RateLimiter::hit($limiterKey, 60);
 
-        SendTicketEmail::dispatch($attendee->order_id);
-        $this->flashMessage = "Ticket email dispatched to '{$attendee->email}'.";
+        app(TicketEmailer::class)->sendSoon((int) $attendee->order_id);
+        $this->flashMessage = "Ticket email sent to '{$attendee->email}'.";
     }
 
     public function voidPass(int $attendeeId): void

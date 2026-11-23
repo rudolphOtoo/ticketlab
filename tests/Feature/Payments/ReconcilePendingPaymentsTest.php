@@ -84,7 +84,7 @@ function verify_calls(): int
     ))->count();
 }
 
-test('it runs every 10 minutes on the scheduler, executing', function (): void {
+test('it runs on every scheduler call (every 5 minutes), executing, for orders pending 10 minutes', function (): void {
     $event = collect(app(Schedule::class)->events())
         ->first(static fn($event): bool => str_contains((string) $event->command, 'payments:reconcile-pending'));
 
@@ -92,9 +92,10 @@ test('it runs every 10 minutes on the scheduler, executing', function (): void {
         ->not
         ->toBeNull()
         ->and($event->expression)
-        ->toBe('*/10 * * * *')
+        ->toBe('* * * * *')
         ->and((string) $event->command)
-        ->toContain('--execute');
+        ->toContain('--execute')
+        ->toContain('--older-than=10');
 });
 
 test('orders newer than --older-than are not touched and Paystack is not asked', function (): void {

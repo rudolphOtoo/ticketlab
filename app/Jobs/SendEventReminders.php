@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\MailCategory;
+use App\Jobs\Concerns\WaitsForMailQuota;
+use App\Jobs\Middleware\MailQuotaGate;
 use App\Mail\EventReminderMail;
 use App\Models\Broadcast;
 use Illuminate\Bus\Batchable;
@@ -18,8 +21,7 @@ class SendEventReminders implements ShouldQueue
 {
     use Batchable;
     use Queueable;
-
-    public int $tries = 3;
+    use WaitsForMailQuota;
 
     /** @var list<int> */
     public array $backoff = [30, 120];
@@ -29,6 +31,14 @@ class SendEventReminders implements ShouldQueue
         public string $email,
         public string $recipientName,
     ) {}
+
+    /**
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [new MailQuotaGate(MailCategory::Broadcast)];
+    }
 
     public function handle(): void
     {

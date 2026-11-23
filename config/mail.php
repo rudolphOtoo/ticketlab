@@ -45,7 +45,8 @@ return [
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            // Short, so a slow or unreachable relay fails fast inside the serverless request and the retry takes over.
+            'timeout' => (int) env('MAIL_TIMEOUT', 8),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(
                 (string) env('APP_URL', 'http://localhost'),
                 PHP_URL_HOST,
@@ -115,5 +116,43 @@ return [
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+    ],
+
+    /*
+     |--------------------------------------------------------------------------
+     | Daily sending cap (Brevo)
+     |--------------------------------------------------------------------------
+     |
+     | Brevo's free plan sends 300 emails a day across every kind of email, reset daily, with no rollover; Starter
+     | removes the cap (set a large BREVO_DAILY_LIMIT). Every email we send takes one slot of today's count
+     | (App\Services\Mail\MailQuota), and each kind may only take a slot while today's total is under its share of
+     | the cap, so ticket emails always find room:
+     |
+     |   ticket        100%  (300)   the buyer's passes
+     |   transactional  90%  (270)   organisation-admin invitations, payout alerts, contact-form enquiries
+     |   zone_choice    70%  (210)   "choose your zone" requests
+     |   broadcast      50%  (150)   Broadcast Hub messages, spread over the following days when larger
+     |
+     | An email without room waits for the next day (it is never dropped). Emails Laravel sends itself (password
+     | resets, verification links) are never held back, but they are counted.
+     |
+     */
+
+    'quota' => [
+        'daily_limit' => (int) env('BREVO_DAILY_LIMIT', 300),
+
+        // Brevo resets the count at midnight in the account's timezone (Ghana: UTC).
+        'timezone' => env('MAIL_QUOTA_TIMEZONE', 'UTC'),
+
+        // Percent of the daily limit each kind may use, counted against everything sent today.
+        'shares' => [
+            'ticket' => 100,
+            'transactional' => 90,
+            'zone_choice' => 70,
+            'broadcast' => 50,
+        ],
+
+        // The platform dashboard turns amber from this share of the limit.
+        'warn_percent' => 80,
     ],
 ];

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\MailCategory;
+use App\Jobs\Concerns\WaitsForMailQuota;
+use App\Jobs\Middleware\MailQuotaGate;
 use App\Mail\EnquiryMail;
 use App\Models\Organization;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,8 +19,7 @@ use Illuminate\Support\Facades\Mail;
 class SendEnquiryEmail implements ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
+    use WaitsForMailQuota;
 
     /**
      * @param array{name: string, email: string, subject: string, message: string} $enquiry
@@ -26,6 +28,14 @@ class SendEnquiryEmail implements ShouldQueue
         public int $organizationId,
         public array $enquiry,
     ) {}
+
+    /**
+     * @return list<object>
+     */
+    public function middleware(): array
+    {
+        return [new MailQuotaGate(MailCategory::Transactional)];
+    }
 
     public function handle(): void
     {

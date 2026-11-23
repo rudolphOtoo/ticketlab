@@ -10,6 +10,8 @@ use App\Models\Broadcast;
 use App\Models\Event;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Services\Mail\BroadcastSchedule;
+use App\Services\Mail\MailQuota;
 use App\Support\ActiveEvent;
 use Illuminate\Bus\Batch;
 use Illuminate\Contracts\View\View;
@@ -86,6 +88,8 @@ class BroadcastHub extends Component
             'recipients_count' => $recipients->count(),
         ]);
 
+        $plan = BroadcastSchedule::plan($recipients->count(), app(MailQuota::class));
+
         $jobs = $recipients
             ->values()
             ->map(static fn(Attendee $recipient, int $index): SendEventReminders => new SendEventReminders(
@@ -94,7 +98,7 @@ class BroadcastHub extends Component
                 $recipient->name,
             )
                 ->onQueue('broadcasts')
-                ->delay(now()->addSeconds((int) floor($index / 25) * 5)))
+                ->delay($plan->sendAt($index)))
             ->all();
 
         $batch = Bus::batch($jobs)->name("Broadcast: {$this->subject}")->allowFailures()->dispatch();
@@ -102,7 +106,7 @@ class BroadcastHub extends Component
         $broadcast->update(['batch_id' => $batch->id]);
 
         $this->reset(['subject', 'body']);
-        $this->flashMessage = "Broadcast queued to {$broadcast->recipients_count} recipients.";
+        $this->flashMessage = "Broadcast queued to {$broadcast->recipients_count} recipients. " . $plan->summary();
     }
 
     public function cancelBroadcast(int $broadcastId): void

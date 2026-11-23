@@ -34,6 +34,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property OrderStatus $payment_status
  * @property CarbonImmutable|null $paid_at
  * @property array<string, mixed>|null $metadata
+ * @property CarbonImmutable|null $ticket_emailed_at
+ * @property CarbonImmutable|null $ticket_email_due_at
+ * @property int $ticket_email_attempts
+ * @property string|null $ticket_email_error
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read int $gross_pesewas
@@ -83,6 +87,9 @@ class Order extends Model
             'payment_status' => OrderStatus::class,
             'paid_at' => 'datetime',
             'metadata' => 'array',
+            'ticket_emailed_at' => 'datetime',
+            'ticket_email_due_at' => 'datetime',
+            'ticket_email_attempts' => 'integer',
         ];
     }
 

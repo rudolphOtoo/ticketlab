@@ -123,6 +123,37 @@
 
     </div>
 
+    <!-- Email: today's sends against the provider's daily cap (config mail.quota) -->
+    <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 shadow-2xs" data-mail-health>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold text-[var(--text-secondary)]">Emails today</p>
+                <p class="mt-1 text-xl font-black tracking-tight {{ $mail['warn'] ? 'text-amber-700 dark:text-amber-400' : 'text-[var(--text-primary)]' }}">
+                    {{ $mail['sent'] }} <span class="text-sm font-semibold text-[var(--text-tertiary)]">/ {{ $mail['limit'] }}</span>
+                </p>
+            </div>
+            <ul class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--text-tertiary)]">
+                @foreach ($mail['categories'] as $category)
+                    <li>{{ $category['label'] }}: <span class="font-semibold text-[var(--text-secondary)]">{{ $category['sent'] }}</span></li>
+                @endforeach
+            </ul>
+            <ul class="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                <li class="{{ $mail['tickets_waiting'] > 0 ? 'font-bold text-amber-700 dark:text-amber-400' : 'text-[var(--text-tertiary)]' }}">
+                    {{ $mail['tickets_waiting'] }} ticket {{ $mail['tickets_waiting'] === 1 ? 'email' : 'emails' }} waiting
+                </li>
+                <li class="{{ $mail['tickets_failed'] > 0 ? 'font-bold text-rose-500' : 'text-[var(--text-tertiary)]' }}">
+                    {{ $mail['tickets_failed'] }} given up
+                </li>
+                <li class="{{ $mail['deferred'] > 0 ? 'font-bold text-amber-700 dark:text-amber-400' : 'text-[var(--text-tertiary)]' }}">
+                    {{ $mail['deferred'] }} moved to tomorrow
+                </li>
+            </ul>
+        </div>
+        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]" role="progressbar" aria-label="Daily email limit used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ min(100, $mail['percent']) }}">
+            <div class="h-full rounded-full {{ $mail['warn'] ? 'bg-amber-500' : 'bg-emerald-500' }}" style="width: {{ min(100, $mail['percent']) }}%"></div>
+        </div>
+    </div>
+
     <!-- Runtime Deployment Engine (Dynamic Dual-Mode Controller) -->
     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 sm:p-6 shadow-2xs space-y-5">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">

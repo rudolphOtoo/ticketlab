@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Enums\MailCategory;
+use App\Jobs\Concerns\WaitsForMailQuota;
+use App\Jobs\Middleware\MailQuotaGate;
 use App\Models\Subdivision;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -17,6 +20,7 @@ use Illuminate\Notifications\Notification;
 class PayoutAccountRejected extends Notification implements ShouldQueue
 {
     use Queueable;
+    use WaitsForMailQuota;
 
     public function __construct(
         public Subdivision $zone,
@@ -31,6 +35,14 @@ class PayoutAccountRejected extends Notification implements ShouldQueue
     public function via(User $notifiable): array
     {
         return ['mail'];
+    }
+
+    /**
+     * @return list<object>
+     */
+    public function middleware(User $notifiable, string $channel): array
+    {
+        return $channel === 'mail' ? [new MailQuotaGate(MailCategory::Transactional)] : [];
     }
 
     public function toMail(User $notifiable): MailMessage

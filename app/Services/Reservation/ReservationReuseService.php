@@ -58,6 +58,12 @@ class ReservationReuseService
         $reusable = $released['reservation'];
         $available = $released['available'];
 
+        // Short of stock: other buyers' holds may have expired since the last cron run (every 5 minutes). Give their
+        // seats back now, under the tier's lock, so a sell-out never shows seats that are really free.
+        if ($available < ($quantity - (int) ($reusable->quantity ?? 0))) {
+            $available = $this->reclaimExpiredHolds($ticket);
+        }
+
         // Still under the tier's row lock: each zone sells out on its own, within the tier's overall total.
         $this->assertZoneHasSeats($ticket, $subdivisionId, $quantity, $reusable);
 
@@ -97,6 +103,28 @@ class ReservationReuseService
         }
 
         return ['reservation' => $reusable, 'available' => $available];
+    }
+
+    /**
+     * Expires every lapsed hold on this tier and restocks its seats. Runs under the tier's row lock (taken first,
+     * as the release command does), so it never races the cron or another checkout.
+     */
+    private function reclaimExpiredHolds(TicketType $ticket): int
+    {
+        $expired = Reservation::query()
+            ->where('ticket_type_id', $ticket->getKey())
+            ->where('status', ReservationStatus::Active)
+            ->where('expires_at', '<=', now())
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($expired as $reservation) {
+            $reservation->update(['status' => ReservationStatus::Expired]);
+            $ticket->restock((int) $reservation->quantity);
+        }
+
+        return (int) $ticket->available_quantity;
     }
 
     private function assertZoneHasSeats(

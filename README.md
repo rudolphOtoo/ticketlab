@@ -101,7 +101,8 @@ Set in the super admin dashboard (`/platform`):
 | `LEGACY_MEDIA_URL` | Only if images were uploaded before Cloudinary: the public address of that bucket, so old paths keep loading |
 | `MEDIA_DISK`, `CLOUDINARY_FOLDER` | Only until `media:convert-legacy-cloudinary --execute` has run: `cloudinary` and the earlier Flysystem disk's folder, so images that setup stored (`logos/abc.jpg`) keep loading from Cloudinary |
 | `CSP_MODE` | `off` (default), `report-only` or `enforce`: sends the Content-Security-Policy from `config/csp.php`, which already allows Cloudinary (`res.cloudinary.com` images, `api.cloudinary.com` uploads) and Paystack. Try `report-only` on a preview first |
-| `MAIL_*` | Ticket emails, invitations, zone-choice requests and payout alerts |
+| `MAIL_*` | Brevo SMTP relay for ticket emails, invitations, zone-choice requests, broadcasts and payout alerts (see [Email (Brevo)](#email-brevo)); `MAIL_TIMEOUT` (default 8 s) |
+| `BREVO_DAILY_LIMIT` | Emails a day the provider allows (default 300, Brevo's free plan); each kind of email may use only its share |
 | `SMS_ENABLED`, `SMS_DRIVER`, `MNOTIFY_*` | Optional SMS passes |
 
 `PAYSTACK_SPLIT_PAYMENTS` and `PAYSTACK_UNROUTED_ZONE_POLICY` are no longer read; remove them.
@@ -115,34 +116,77 @@ Jobs go to four queues, and the worker must run all of them, in this priority or
 php artisan queue:work --queue=transactional,emails,broadcasts,default
 ```
 
-The scheduler (`php artisan schedule:run` every minute) does the following:
-- releases expired seat holds every 5 minutes;
-- reconciles pending payments every 10 minutes;
-- re-checks a batch of payout subaccounts every hour (each zone about once a day);
-- on Vercel, also runs the queue worker each minute.
+The scheduler runs these tasks, in this order, each time it is called (every 5 minutes on Vercel). Each one exits
+after a single query when it has nothing to do:
+- `reservations:release-expired`: puts seats of lapsed 15-minute holds back on sale. Checkout also reclaims a tier's
+  lapsed holds itself when stock runs short, so a sell-out never waits for this run;
+- `tickets:email-pending`: retries ticket emails that are still owed (they are normally sent right after payment);
+- `payments:reconcile-pending --execute --older-than=10`: settles orders whose webhook never arrived;
+- `payouts:recheck-subaccounts`: re-checks the zones not checked for 20 hours, a small batch at a time;
+- the queue worker (invitations, zone-choice emails, broadcasts, payout alerts), last.
 
 ### Scheduler on Vercel
 
-Vercel Hobby only allows daily crons, so an **external cron** (for example cron-job.org) calls the scheduler every minute:
+Vercel Hobby only allows daily crons, so an **external cron** (cron-job.org) calls the scheduler **every 5 minutes**:
 
-- URL: `https://<your-domain>/api/run-scheduler`, method `GET`, every 1 minute.
+- URL: `https://<your-domain>/api/run-scheduler`, method `GET`, every 5 minutes.
 - Header: `Authorization: Bearer <SCHEDULER_TOKEN>`. The old `?token=` query parameter still works for this release
   only and logs a deprecation warning. It will be removed, and query strings end up in logs, so don't use it.
 
-Every due task runs **inside that one HTTP request**, and `vercel.json` sets the function's `maxDuration` to
-**60 seconds** (the request is killed after that). So every task is bounded, and the worst case of everything that can
-be due in the same minute stays under 60 seconds (`config/scheduler.php`, checked by a test):
+The endpoint runs without the web middleware (no session, cookies or CSP). It first checks with a few `EXISTS`
+queries whether anything is due (`App\Support\Scheduler\SchedulerWork`), and answers `{"message":"Nothing due"}` at
+once when nothing is. Only then does it run `schedule:run`.
 
-| Task | Bound | Worst case |
-|---|---|---|
-| `payments:reconcile-pending` | at most 25 orders, oldest first; stops after 15 s; each Paystack call times out at 10 s | 25 s |
-| `payouts:recheck-subaccounts` | at most 20 zones, longest unchecked first; stops after 8 s; each lookup times out at 5 s | 13 s |
-| queue worker | `--stop-when-empty --max-time=15 --max-jobs=50` | 15 s |
-| `reservations:release-expired` | a few queries | < 1 s |
+Every task is scheduled `everyMinute()`, which here means "on every call". A wall-clock expression such as hourly
+(`0 * * * *`) would be skipped whenever cron-job.org fires a minute late. Each task's own selection decides what is
+really due.
 
-Work that doesn't fit waits for the next run. Each task is `withoutOverlapping()`, with a lock in the shared
-`SCHEDULER_LOCK_STORE` (database by default) that expires after 2–10 minutes. Laravel's default lock lasts 24 hours,
-which would block a task for a day if the platform killed the request holding it.
+All tasks run **inside that one HTTP request**, and `vercel.json` sets the function's `maxDuration` to **60 seconds**.
+The run gets one deadline (`SCHEDULER_RUN_BUDGET`, 50 s), which each task inherits and cuts its own budget to. Tasks run
+most important first, so a busy run only skips the least important work until the next call
+(`config/scheduler.php`, checked by tests):
+
+| Task | Bound |
+|---|---|
+| `reservations:release-expired` | a few queries |
+| `tickets:email-pending` | at most 20 orders; stops after 6 s; each send is one PDF plus an 8 s SMTP timeout |
+| `payments:reconcile-pending` | at most 25 orders, oldest first; stops after 12 s; each Paystack call times out at 8 s |
+| `payouts:recheck-subaccounts` | at most 20 zones; stops after 5 s; each lookup times out at 8 s |
+| queue worker (last) | `--stop-when-empty --max-time=12 --max-jobs=50`; a job cut off by the limit is retried later |
+
+Each task is `withoutOverlapping()`, with a lock in the shared `SCHEDULER_LOCK_STORE` (database by default) that
+expires after 2–10 minutes. Laravel's default lock lasts 24 hours, which would block a task for a day if the platform
+killed the request holding it.
+
+## Email (Brevo)
+
+Email goes through **Brevo's SMTP relay** with Laravel's built-in SMTP mailer (no extra package):
+`MAIL_MAILER=smtp`, `MAIL_HOST` (from Brevo → SMTP & API), `MAIL_PORT=587`, `MAIL_USERNAME` (the SMTP login),
+`MAIL_PASSWORD` (the **SMTP key**, not the API key) and `MAIL_TIMEOUT=8`. The short timeout lets a slow relay fail
+fast inside the serverless request, so the retry takes over.
+
+**The ticket page and its PDF are the main way to get a ticket; the email is the backup copy.** After payment the
+buyer lands on `/tickets/{reference}`, which shows the link to keep, a **Download PDF** button, where the email copy
+stands, and **Resend my ticket** (at most 3 an hour, 2 minutes apart, always to the order's own address).
+
+- **Sent right after payment is confirmed** (webhook, the buyer's return, or reconcile), once the response has gone
+  out (`TicketEmailer`). The order records whether its email is still owed (`ticket_email_due_at`), so the cron only
+  retries what is left: a failed send (after 2, 10, 30 and 120 minutes, then it gives up), a request killed
+  mid-send (its 3-minute claim expires), or an email waiting for the next day's quota. A claim with a conditional
+  update makes sure the immediate send and a retry never both send it.
+- **Daily cap.** Brevo's free plan sends **300 emails a day** across every kind, resetting daily with no rollover
+  (`BREVO_DAILY_LIMIT`, default 300; Starter has no cap, so set a large number). Each email takes a slot of today's
+  count (`mail_quota_days`). Each kind may only take one while today's total is under its share, so tickets always
+  find room: **ticket 100% (300), invitations and alerts 90% (270), zone choice 70% (210), broadcasts 50% (150)**
+  (`config/mail.php` → `quota.shares`). Password-reset and verification emails are counted but never held back.
+- **Over the cap, emails wait for the next day**, never dropped. A queued email is put back until just after
+  midnight (`MailQuotaGate`), and waiting never counts as a failed try. A ticket email shows "goes out after midnight"
+  on the ticket page.
+- **Broadcasts larger than the day's share are spread over the following days** when they are sent, and the admin is
+  told how ("50 are emailed today, then up to 150 a day over the next 3 days"). Later days start 45 minutes after
+  midnight, after the deferred ticket emails.
+- The **platform dashboard** shows emails sent today against the limit (amber from 80%), per kind, ticket emails
+  waiting or given up, and emails moved to tomorrow.
 
 ## Media (Cloudinary)
 
@@ -171,6 +215,9 @@ to the server's disk, and there is no private file storage at all.
   on Cloudinary) load from Cloudinary while `MEDIA_DISK=cloudinary` is set. `php artisan media:convert-legacy-cloudinary`
   (dry run; `--execute` writes) checks each with the Admin API and rewrites it to `cloudinary:v{version}/{public_id}`.
   It never deletes anything; see step 11 of the production runbook.
+- **Checking an account:** `php artisan media:check-cloudinary` uploads, reads, delivers, renames and deletes one 1×1
+  test image under `ticketlab/{APP_ENV}/orgs/0/healthcheck/`, and says which step fails and why (e.g. an API key
+  without upload permission). The API key needs create, read, update and delete permission.
 - **Flyer backgrounds** in the Marketing Studio stay in the browser (the flyer is drawn there); they are never uploaded.
 - **Ledger PDFs** are never stored. Locking a session saves the figures the PDF shows (event, expected capacity,
   per-zone admissions) on the ledger; each download draws the PDF from them and streams it to the authorised admin,

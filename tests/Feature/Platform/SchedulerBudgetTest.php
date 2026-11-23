@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Scheduler\SchedulerBudget;
 use Illuminate\Console\Scheduling\CacheEventMutex;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
@@ -57,21 +58,52 @@ test('a held overlap lock skips the task, and expires on its own after a killed 
 test('the queue worker stops when empty and within its time and job limits', function () {
     $worker = (string) scheduled('queue:work')->command;
 
-    expect($worker)->toContain('--stop-when-empty')->toContain('--max-time=15')->toContain('--max-jobs=50');
+    expect($worker)->toContain('--stop-when-empty')->toContain('--max-time=12')->toContain('--max-jobs=50');
 });
 
-test('the worst-case time of tasks that can run in the same minute fits the function limit', function () {
-    $worstCase =
-        config('scheduler.reconcile.time_budget_seconds')
-        + config('scheduler.paystack_timeout_seconds')
-        + config('scheduler.payout_recheck.time_budget_seconds')
-        + 5
-        + config('scheduler.worker.max_time_seconds');
+test('every task runs on every scheduler call, most important first, with the worker last', function () {
+    $commands = array_map(
+        static fn(Event $event): string => (string) preg_replace('/^.*artisan\S*\s+/', '', (string) $event->command),
+        app(Schedule::class)->events(),
+    );
 
+    // cron-job.org calls every 5 minutes; a wall-clock expression such as "0 * * * *" would be skipped by a late call.
+    foreach (app(Schedule::class)->events() as $event) {
+        expect($event->expression)->toBe('* * * * *');
+    }
+
+    expect(array_map(static fn(string $command): string => strtok($command, ' '), $commands))->toBe([
+        'reservations:release-expired',
+        'tickets:email-pending',
+        'payments:reconcile-pending',
+        'payouts:recheck-subaccounts',
+        'queue:work',
+    ]);
+});
+
+test('a scheduler run has one deadline under the function limit, and each budget is cut to what is left', function () {
     $vercel = json_decode((string) file_get_contents(base_path('vercel.json')), true);
 
     expect($vercel['functions']['api/index.php']['maxDuration'])
         ->toBe(config('scheduler.function_max_duration'))
-        ->and($worstCase)
-        ->toBeLessThan(config('scheduler.function_max_duration'));
+        ->and(config('scheduler.run_budget_seconds'))
+        ->toBeLessThanOrEqual(config('scheduler.function_max_duration') - 10);
+
+    // Outside a run (a manual command): the configured budget.
+    expect(SchedulerBudget::clamp(12))->toBe(12)->and(SchedulerBudget::allows(1_000))->toBeTrue();
+
+    SchedulerBudget::start(20);
+
+    try {
+        expect(SchedulerBudget::clamp(12))->toBe(12)->and(SchedulerBudget::clamp(30))->toBeLessThanOrEqual(20);
+
+        // The run's time is up (time() is real, so set a deadline in the past).
+        putenv(SchedulerBudget::VARIABLE . '=' . (time() - 1));
+
+        expect(SchedulerBudget::clamp(12))->toBe(0)->and(SchedulerBudget::allows(1))->toBeFalse();
+    } finally {
+        SchedulerBudget::clear();
+    }
+
+    expect(SchedulerBudget::secondsLeft())->toBeNull();
 });

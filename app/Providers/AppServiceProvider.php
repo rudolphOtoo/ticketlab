@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Enums\MailCategory;
 use App\Http\Middleware\EnsureSubdivisionAccess;
+use App\Services\Mail\MailQuota;
 use App\Services\Media\CloudinaryClient;
 use App\Services\Media\SdkCloudinaryClient;
 use App\Services\Sms\Contracts\SmsGatewayInterface;
 use App\Services\Sms\SmsManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -53,6 +58,22 @@ class AppServiceProvider extends ServiceProvider
 
         // Re-run tenant/role checks on every Livewire update request, not only the initial page load.
         Livewire::addPersistentMiddleware([EnsureSubdivisionAccess::class]);
+
+        // Emails Laravel sends itself (password resets, verification links) also count against the provider's daily
+        // cap; they are never held back. Emails behind MailQuotaGate or TicketEmailer already took their slot.
+        Event::listen(MessageSent::class, static function (): void {
+            if (MailQuota::isInsideCountedSend()) {
+                return;
+            }
+
+            try {
+                app(MailQuota::class)->count(MailCategory::Other);
+            } catch (\Throwable $exception) {
+                Log::warning('Could not count a sent email against the daily cap.', [
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        });
     }
 
     /**

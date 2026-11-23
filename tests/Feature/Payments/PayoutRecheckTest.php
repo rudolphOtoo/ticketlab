@@ -26,11 +26,12 @@ beforeEach(function (): void {
     $this->zoneAdmin = User::factory()->create()->assignMembership('admin', $this->org->id, $this->zone->id);
 });
 
-test('the re-check runs hourly on the scheduler, a small batch each time', function (): void {
+test('the re-check runs on every scheduler call, and only zones due for a check are taken', function (): void {
     $event = collect(app(Schedule::class)->events())
         ->first(static fn($event): bool => str_contains((string) $event->command, 'payouts:recheck-subaccounts'));
 
-    expect($event)->not->toBeNull()->and($event->expression)->toBe('0 * * * *');
+    // Every call (cron-job.org, every 5 minutes): the command's own interval_hours decides which zones are due.
+    expect($event)->not->toBeNull()->and($event->expression)->toBe('* * * * *');
 });
 
 test('a code paystack now rejects stops sales for that zone and alerts the organisation admins once', function (): void {
