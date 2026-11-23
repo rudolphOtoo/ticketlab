@@ -432,8 +432,10 @@
 
             <!-- Order Summary Sticky Card (Right Rail): worked out in the browser from the same fee formula as the server -->
             {{-- On desktop the summary is sticky and changes on every tap; containing its layout and paint keeps those
-                 repaints inside it. The padding (offset by the negative margin) leaves room for the card's shadow. --}}
-            <aside class="lg:sticky lg:top-2 lg:self-start lg:-m-4 lg:p-4 lg:[contain:layout_paint]">
+                 repaints inside it. The padding (offset by the negative margin) leaves room for the card's shadow.
+                 It sticks below the fixed navbar: top-20 plus that padding puts the card at 6rem, the same space the
+                 page keeps clear at the top (sm:pt-24); the navbar ends at 62-74px. --}}
+            <aside class="lg:sticky lg:top-20 lg:self-start lg:-m-4 lg:p-4 lg:[contain:layout_paint]">
                 <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md space-y-5" data-order-summary>
                     <p class="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">Order Summary</p>
 
