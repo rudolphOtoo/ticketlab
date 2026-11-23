@@ -34,7 +34,7 @@ In your Vercel Project Dashboard (**Settings -> Environment Variables**), set th
 | `SESSION_DRIVER` | `cookie` | `cookie` or `database` (file driver fails on serverless) |
 | `CACHE_STORE` | `database` | `database` or `array` |
 | `QUEUE_CONNECTION` | `database` | Stores jobs in database |
-| `MEDIA_DISK` / `PRIVATE_DISK` | `r2` / `r2-private` | Uploads go to Cloudflare R2 (Vercel's disk is temporary). See README "Media storage" for the `R2_*` and `MEDIA_URL` variables |
+| `CLOUDINARY_URL` | `cloudinary://<api_key>:<api_secret>@<cloud_name>` | Images upload from the browser straight to Cloudinary (Vercel's disk is temporary). See README "Media (Cloudinary)" |
 | `SCHEDULER_LOCK_STORE` | `database` | Shared lock store for scheduled tasks; never `file` |
 | `SCHEDULER_TOKEN` | `<random-secret-token>` | Protects `/api/run-scheduler` & `/api/run-migrate`; sent as `Authorization: Bearer <token>` |
 | `PAYSTACK_PUBLIC_KEY` | `pk_test_...` | Test public key |

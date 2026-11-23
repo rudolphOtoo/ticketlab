@@ -30,9 +30,12 @@
                 <div class="overflow-hidden rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-md">
                     @if ($event->bannerUrl())
                         <div class="relative">
-                            <img
-                                src="{{ $event->bannerUrl() }}"
-                                alt="{{ $event->title }}"
+                            <x-media-image
+                                :value="$event->banner_path"
+                                preset="hero"
+                                :alt="$event->title"
+                                sizes="(min-width: 1024px) 720px, 100vw"
+                                :eager="true"
                                 class="h-64 w-full object-cover sm:h-80"
                                 onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';"
                             />
@@ -280,7 +283,7 @@
                                     <div class="flex items-start gap-3">
                                         <div class="size-12 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center font-bold text-sm text-[var(--text-secondary)] shrink-0 overflow-hidden border border-[var(--border-hairline)]">
                                             @if ($speaker->photoUrl())
-                                                <img src="{{ $speaker->photoUrl() }}" alt="{{ $speaker->name }}" class="size-full object-cover">
+                                                <x-media-image :value="$speaker->photo_path" preset="logo" sizes="48px" :alt="$speaker->name" class="size-full object-cover" />
                                             @else
                                                 {{ substr($speaker->name, 0, 1) }}
                                             @endif
@@ -708,7 +711,7 @@
                     <div class="flex items-center gap-3">
                         <div class="size-14 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center font-bold text-lg text-[var(--text-secondary)] overflow-hidden shrink-0 border border-[var(--border-hairline)]">
                             @if ($viewingSpeaker->photoUrl())
-                                <img src="{{ $viewingSpeaker->photoUrl() }}" alt="{{ $viewingSpeaker->name }}" class="size-full object-cover">
+                                <x-media-image :value="$viewingSpeaker->photo_path" preset="logo" sizes="56px" :alt="$viewingSpeaker->name" class="size-full object-cover" />
                             @else
                                 {{ substr($viewingSpeaker->name, 0, 1) }}
                             @endif

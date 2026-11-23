@@ -4,162 +4,178 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use App\Jobs\GenerateImageVariants;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Cache;
+use App\Services\Media\CloudinaryClient;
+use App\Services\Media\CloudinaryImage;
+use App\Services\Media\ImagePreset;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
+use Throwable;
 
 /**
- * Public media: organisation logos, event banners, speaker photos, gallery images and flyers.
+ * Public images: organisation logos, event banners, speaker photos, gallery images and flyer backgrounds.
  *
- * Media columns hold either a URL (pasted links and legacy values, kept working as they are) or a path on the media
- * disk (uploads). Uploads always go through Storage on filesystems.media_disk: "public" locally and "r2" (a public
- * Cloudflare R2 bucket behind MEDIA_URL) in production, so nothing is ever written to a serverless instance's disk.
+ * A media column holds one of three things, and all keep working:
+ * - a Cloudinary image, "cloudinary:v{version}/{public_id}" (every upload since the move to Cloudinary);
+ * - a pasted link ("https://…"), shown as it is;
+ * - a path from before Cloudinary ("orgs/1/logos/abc.png"), served from LEGACY_MEDIA_URL (the old public bucket's
+ *   address) when set, otherwise from the local public disk.
  *
- * Every upload is namespaced per organisation (orgs/{org_id}/...), served with long cache headers, and gets WebP
- * copies in three sizes generated on the queue. Until those exist, the original is served.
+ * Uploads go from the browser straight to Cloudinary (see CloudinaryUploads), into a folder per organisation:
+ * ticketlab/{APP_ENV}/orgs/{org_id}/...
  */
 final class MediaUrl
 {
-    /** Validation for every image upload: real jpg/png/webp images up to 5 MB (no SVG, which can carry scripts). */
-    public const array UPLOAD_RULES = ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'];
+    /** Formats accepted for uploads; Cloudinary enforces them through the signed allowed_formats parameter. */
+    public const array FORMATS = ['jpg', 'png', 'webp'];
 
-    /** WebP copies generated for every upload, by name and maximum width in pixels (never upscaled). */
-    public const array SIZES = ['thumb' => 200, 'medium' => 800, 'large' => 1600];
+    /** Largest accepted upload, checked in the browser and again on save from what Cloudinary stored. */
+    public const int MAX_BYTES = 5 * 1024 * 1024;
 
-    /** Files never change at a given path (names are random), so browsers and the CDN may cache them for a year. */
-    public const string CACHE_CONTROL = 'public, max-age=31536000, immutable';
-
-    public static function disk(): string
-    {
-        return StorageDisks::assertUsable((string) config('filesystems.media_disk', 'public'), 'MEDIA_DISK');
-    }
-
+    /**
+     * Cloudinary folder for an organisation's uploads of one kind (logos, gallery, flyers).
+     */
     public static function organizationDirectory(int $organizationId, string $kind): string
     {
-        return "orgs/{$organizationId}/{$kind}";
+        return self::root() . "/orgs/{$organizationId}/{$kind}";
     }
 
     /**
-     * Where an event's uploads of one kind live, so every asset can be traced back to its organisation and event.
+     * Cloudinary folder for one event's uploads of one kind (banners, speakers, gallery, flyers).
      */
     public static function eventDirectory(int $organizationId, int $eventId, string $kind): string
     {
-        return "orgs/{$organizationId}/events/{$eventId}/{$kind}";
+        return self::root() . "/orgs/{$organizationId}/events/{$eventId}/{$kind}";
     }
 
     /**
-     * Public URL for a stored path or pasted link. With a size, the WebP copy of that size once it exists.
+     * Where a logo uploaded during onboarding waits until its organisation exists; it is then moved into the
+     * organisation's own folder. The key is random per onboarding form, so forms never share a folder.
      */
-    public static function resolve(?string $path, ?string $size = null): ?string
+    public static function onboardingDirectory(string $formKey): string
     {
-        if ($path === null || trim($path) === '') {
+        return self::root() . '/onboarding/' . $formKey;
+    }
+
+    /**
+     * URL for a stored value at a size; null when there is nothing to show (empty, unknown scheme, missing file).
+     */
+    public static function resolve(?string $value, ImagePreset|string|null $size = null): ?string
+    {
+        if ($value === null || trim($value) === '') {
             return null;
         }
 
-        if (self::isExternal($path)) {
-            return $path;
+        $preset = ImagePreset::fromLegacy($size ?? ImagePreset::Hero);
+        $image = CloudinaryImage::fromStored($value);
+
+        if ($image !== null) {
+            $client = app(CloudinaryClient::class);
+
+            return $client->isConfigured() ? $image->url($client->cloudName(), $preset->maxWidth()) : null;
         }
 
-        // Neither a link we accept nor an upload path (e.g. "javascript:…"): never rendered.
-        if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $path) === 1) {
+        if (self::isExternal($value)) {
+            return $value;
+        }
+
+        // Neither a link we accept nor a stored path (e.g. "javascript:…"): never rendered.
+        if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $value) === 1) {
             return null;
         }
 
-        if ($size !== null && array_key_exists($size, self::SIZES) && self::hasVariants($path)) {
-            $path = self::variantPath($path, $size);
-        }
-
-        // Local files are served by this app: verify the file physically exists on disk.
-        if (config('filesystems.disks.' . self::disk() . '.driver') === 'local') {
-            if (!Storage::disk(self::disk())->exists($path)) {
-                return null;
-            }
-
-            $url = Storage::disk(self::disk())->url($path);
-            $relative = parse_url($url, PHP_URL_PATH);
-
-            return is_string($relative) ? $relative : $url;
-        }
-
-        return Storage::disk(self::disk())->url($path);
+        return self::legacyUrl($value);
     }
 
     /**
-     * Store an upload on the media disk with long cache headers and queue its WebP copies. Returns the stored path.
+     * "url 400w, url 800w" for a Cloudinary image; null for links and old paths, which exist in one size only.
      */
-    public static function store(UploadedFile $file, string $directory): string
+    public static function srcset(?string $value, ImagePreset $preset): ?string
     {
-        $extension = strtolower($file->guessExtension() ?? $file->getClientOriginalExtension());
-        $path = Storage::disk(self::disk())->putFileAs(
-            $directory,
-            $file,
-            Str::random(40) . '.' . ($extension !== '' ? $extension : 'jpg'),
-            [
-                'CacheControl' => self::CACHE_CONTROL,
-                'ContentType' => $file->getMimeType() ?? 'application/octet-stream',
-            ],
-        );
+        $image = CloudinaryImage::fromStored($value);
+        $client = app(CloudinaryClient::class);
 
-        if ($path === false) {
-            throw new RuntimeException("Could not store the uploaded file in [{$directory}].");
+        if ($image === null || !$client->isConfigured()) {
+            return null;
         }
 
-        GenerateImageVariants::dispatch(self::disk(), $path);
-
-        return $path;
+        return implode(', ', array_map(
+            static fn(int $width): string => $image->url($client->cloudName(), $width) . ' ' . $width . 'w',
+            $preset->widths(),
+        ));
     }
 
     /**
-     * Remove an uploaded file and its WebP copies; pasted links are left alone.
+     * Deletes an image we stored: the Cloudinary asset (and its CDN copies), or an old local upload. Pasted links
+     * are left alone. A failure is logged, never shown: the page change the admin made has already been saved.
      */
-    public static function deleteStored(?string $path): void
+    public static function deleteStored(?string $value): void
     {
-        if ($path === null || $path === '' || self::isExternal($path)) {
+        if ($value === null || trim($value) === '' || self::isExternal($value)) {
             return;
         }
 
-        Storage::disk(self::disk())->delete([
-            $path,
-            ...array_map(static fn(string $size): string => self::variantPath($path, $size), array_keys(self::SIZES)),
-        ]);
-        Cache::forget(self::variantsKey($path));
+        $image = CloudinaryImage::fromStored($value);
+
+        if ($image === null) {
+            Storage::disk('public')->delete($value);
+
+            return;
+        }
+
+        try {
+            app(CloudinaryClient::class)->destroy($image->publicId);
+        } catch (Throwable $exception) {
+            Log::warning('Could not delete a replaced image on Cloudinary; it is now unused.', [
+                'public_id' => $image->publicId,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
-    /**
-     * "orgs/1/logos/abc.png" → "orgs/1/logos/abc@medium.webp".
-     */
-    public static function variantPath(string $path, string $size): string
+    public static function isExternal(?string $value): bool
     {
-        $directory = pathinfo($path, PATHINFO_DIRNAME);
-        $name = pathinfo($path, PATHINFO_FILENAME) . '@' . $size . '.webp';
-
-        return $directory === '.' || $directory === '' ? $name : $directory . '/' . $name;
-    }
-
-    public static function markVariantsReady(string $path): void
-    {
-        Cache::forever(self::variantsKey($path), true);
-    }
-
-    public static function hasVariants(string $path): bool
-    {
-        return Cache::get(self::variantsKey($path)) === true;
-    }
-
-    public static function isExternal(?string $path): bool
-    {
-        if ($path === null || trim($path) === '') {
+        if ($value === null || trim($value) === '') {
             return false;
         }
 
-        return Str::startsWith($path, ['http://', 'https://', '//', '/', 'data:']);
+        return Str::startsWith($value, ['http://', 'https://', '//', '/', 'data:']);
     }
 
-    private static function variantsKey(string $path): string
+    /**
+     * Pasted links must be https: anything else would be mixed content or an unsafe scheme.
+     */
+    public static function isAcceptableLink(?string $value): bool
     {
-        return 'media:variants:' . sha1(self::disk() . '|' . $path);
+        return (
+            is_string($value)
+            && Str::startsWith($value, 'https://')
+            && filter_var($value, FILTER_VALIDATE_URL) !== false
+        );
+    }
+
+    private static function root(): string
+    {
+        $environment = preg_replace('/[^a-z0-9-]+/', '-', strtolower((string) config('app.env', 'production')));
+
+        return 'ticketlab/' . trim((string) $environment, '-');
+    }
+
+    private static function legacyUrl(string $path): ?string
+    {
+        $base = config('filesystems.legacy_media_url');
+
+        if (is_string($base) && trim($base) !== '') {
+            return rtrim($base, '/') . '/' . ltrim($path, '/');
+        }
+
+        if (!Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        $url = Storage::disk('public')->url($path);
+        $relative = parse_url($url, PHP_URL_PATH);
+
+        return is_string($relative) ? $relative : $url;
     }
 }

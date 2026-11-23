@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use App\Services\Media\ImagePreset;
 use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventSpeakerFactory;
@@ -83,7 +84,8 @@ class EventSpeaker extends Model
         return $this->belongsTo(Event::class);
     }
 
-    public function photoUrl(string $size = 'medium'): ?string
+    /** Speaker portraits are shown small (48 to 100 CSS pixels), so the logo preset is the default. */
+    public function photoUrl(ImagePreset|string $size = ImagePreset::Logo): ?string
     {
         return MediaUrl::resolve($this->photo_path, $size);
     }

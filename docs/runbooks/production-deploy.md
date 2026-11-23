@@ -24,10 +24,9 @@ Do the steps in order. Do not start a step until the previous one has passed its
       zone's bank or MoMo account. Write down each `ACCT_…` code next to its zone name.
 - [ ] Paystack **live** webhook URL is `https://<your-domain>/api/paystack/webhook`. The old `/api/payzephyr/webhook`
       is removed in this release and now returns 404.
-- [ ] **Cloudflare R2** is set up as in the README ("Media storage"): a public bucket with the custom domain (`MEDIA_URL`),
-      a private bucket with CORS for `https://<your-domain>` and a lifecycle rule for `livewire-tmp/`, and one API token
-      for both. Upload a test file to each bucket from the dashboard, and open the public one at
-      `https://<MEDIA_URL>/<file>`.
+- [ ] **Cloudinary** account ready (README "Media (Cloudinary)"): copy the API environment variable
+      `cloudinary://<api_key>:<api_secret>@<cloud_name>` from Settings → API Keys. No bucket, preset, CORS or lifecycle
+      rule is needed.
 - [ ] **cron-job.org** job (Vercel Hobby only allows daily crons): URL `https://<your-domain>/api/run-scheduler`,
       method GET, every 1 minute, with a request header `Authorization: Bearer <SCHEDULER_TOKEN>`. Keep the job
       **disabled** until step 3. It runs the queue worker (ticket emails, invitations, zone-choice emails), seat-hold
@@ -63,7 +62,7 @@ timings) without touching real data or real buyers.
   - `DATABASE_URL` = the rehearsal branch;
   - **test** Paystack keys;
   - `MAIL_MAILER=log`, so no buyer is emailed;
-  - `MEDIA_DISK=public`, `PRIVATE_DISK=local`;
+  - the same `CLOUDINARY_URL` (preview images go under `ticketlab/preview/…`, apart from production's);
   - a separate `SCHEDULER_TOKEN`.
 
   Do **not** point cron-job.org at the preview.
@@ -90,10 +89,9 @@ timings) without touching real data or real buyers.
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=info`.
 - [ ] `PAYSTACK_SECRET_KEY=sk_live_…` and `PAYSTACK_PUBLIC_KEY=pk_live_…`.
 - [ ] **Remove** `PAYSTACK_SPLIT_PAYMENTS` and `PAYSTACK_UNROUTED_ZONE_POLICY` (no longer read).
-- [ ] Storage: `MEDIA_DISK=r2`, `PRIVATE_DISK=r2-private`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-      `R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`, `R2_PUBLIC_BUCKET`, `R2_PRIVATE_BUCKET`,
-      `MEDIA_URL=https://media.<your-domain>`. Nothing is written to Vercel's disk after this. Images uploaded earlier to
-      the old local disk were already lost between instances; re-upload them, or paste their links.
+- [ ] Images: `CLOUDINARY_URL=cloudinary://…`. **Remove** `MEDIA_DISK`, `PRIVATE_DISK`, `LIVEWIRE_DISK`, `R2_*` and
+      `MEDIA_URL` (no longer read). If images were uploaded to R2 before this release, set `LEGACY_MEDIA_URL` to the old
+      `MEDIA_URL` value so they keep loading; re-uploading them moves them to Cloudinary.
 - [ ] `CACHE_STORE=database` and `SCHEDULER_LOCK_STORE=database` (or `redis`). Never `file`: locks must be shared
       between serverless instances.
 - [ ] Worker queues: nothing to set. The worker runs `transactional,emails,broadcasts,default` from `config/queue.php`,
@@ -227,10 +225,11 @@ Run from your laptop with the same Neon variables as step 3.
       ```
       Every listed order should show `success` (to be confirmed), `failed`/`abandoned` (seats released), or `ongoing`.
       Anything "held for review" needs a person: look up the reference in the Paystack dashboard.
-- [ ] **Media.** Upload a logo for GMSU on `/platform/organizations` → Edit. It appears from `MEDIA_URL`, and a minute
-      later as a `@thumb.webp` copy (the queue worker made the WebP copies).
-- [ ] **Ledger PDF.** Download one as the GMSU organisation admin. The link opens a `r2.cloudflarestorage.com` URL that
-      stops working after 5 minutes.
+- [ ] **Media.** Upload a logo for GMSU on `/platform/organizations` → Edit. The progress bar runs, the preview shows,
+      and after Save the logo loads from `res.cloudinary.com/<cloud>/image/upload/f_auto,q_auto,c_limit,w_200/…`. In
+      the Cloudinary Media Library it sits in `ticketlab/production/orgs/<id>/logos/`. Upload another: the first one is
+      deleted there.
+- [ ] **Ledger PDF.** Download one as the GMSU organisation admin. It downloads directly (no link, nothing stored).
 - [ ] **Rotate `SCHEDULER_TOKEN`** now that the header-based cron is live:
   1. generate a new long random value;
   2. set it in Vercel (Production) and redeploy;

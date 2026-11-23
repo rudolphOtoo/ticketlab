@@ -117,7 +117,7 @@
                             @if ($spotlightEvent->bannerUrl())
                                 <div class="h-40 -mx-6 sm:-mx-7 -mt-6 sm:-mt-7 mb-5 overflow-hidden relative bg-[var(--bg-subtle)]">
                                     <img
-                                        src="{{ $spotlightEvent->bannerUrl() }}"
+                                        src="{{ $spotlightEvent->bannerUrl('card') }}"
                                         alt=""
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                         onerror="this.closest('div').style.display='none';"
@@ -275,7 +275,7 @@
                             <div class="relative h-36 bg-[var(--bg-subtle)] overflow-hidden">
                                 @if ($item->bannerUrl())
                                     <img
-                                        src="{{ $item->bannerUrl() }}"
+                                        src="{{ $item->bannerUrl('card') }}"
                                         alt=""
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                         onerror="this.parentElement.style.display='none';"

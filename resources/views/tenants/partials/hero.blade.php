@@ -17,7 +17,7 @@
 <header class="relative flex min-h-[88vh] items-center overflow-hidden px-4 pb-16 pt-28 sm:px-6 lg:px-8">
     @if ($bannerUrl)
         <div class="pointer-events-none absolute inset-0 -z-20">
-            <img src="{{ $bannerUrl }}" alt="" class="size-full object-cover opacity-25 dark:opacity-20" />
+            <x-media-image :value="$event?->banner_path" preset="hero" sizes="100vw" :eager="true" class="size-full object-cover opacity-25 dark:opacity-20" />
             <div class="absolute inset-0 bg-gradient-to-b from-[var(--bg-canvas)]/40 via-[var(--bg-canvas)]/80 to-[var(--bg-canvas)]"></div>
         </div>
     @endif

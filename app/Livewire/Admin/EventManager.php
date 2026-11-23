@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
+use App\Livewire\Concerns\UploadsImages;
 use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Organization;
@@ -18,21 +19,17 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use League\Flysystem\UnableToRetrieveMetadata;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
-use Throwable;
 
 #[Layout('layouts.admin')]
 #[Title('Event Lifecycle Manager')]
 class EventManager extends Component
 {
     use RequiresOrganizationWideAdmin;
-    use WithFileUploads;
+    use UploadsImages;
 
     public bool $isModalOpen = false;
 
@@ -57,8 +54,6 @@ class EventManager extends Component
     public string $status = 'draft';
 
     public bool $is_public = true;
-
-    public ?TemporaryUploadedFile $banner = null;
 
     public ?string $existingBannerUrl = null;
 
@@ -86,6 +81,7 @@ class EventManager extends Component
 
     public function openCreateModal(): void
     {
+        $this->discardPendingImage('banner');
         $this->resetValidation();
         $this->reset([
             'editingEventId',
@@ -94,7 +90,6 @@ class EventManager extends Component
             'slugTouched',
             'description',
             'venue',
-            'banner',
             'bannerUrlInput',
             'existingBannerUrl',
         ]);
@@ -113,6 +108,7 @@ class EventManager extends Component
             return;
         }
 
+        $this->discardPendingImage('banner');
         $this->resetValidation();
         $this->fill([
             'editingEventId' => $event->id,
@@ -125,7 +121,6 @@ class EventManager extends Component
             'end_at' => $event->end_at->format('Y-m-d\TH:i'),
             'status' => $event->status,
             'is_public' => $event->is_public,
-            'banner' => null,
             'bannerUrlInput' => MediaUrl::isExternal($event->banner_path) ? $event->banner_path : null,
             'existingBannerUrl' => $event->bannerUrl(),
             'isModalOpen' => true,
@@ -136,7 +131,7 @@ class EventManager extends Component
     {
         $this->isModalOpen = false;
         $this->editingEventId = null;
-        $this->banner = null;
+        $this->discardPendingImage('banner');
         $this->bannerUrlInput = null;
     }
 
@@ -145,36 +140,26 @@ class EventManager extends Component
         $organizationId = $this->organizationId();
         $this->slug = Str::slug($this->slug !== '' ? $this->slug : $this->title);
 
-        try {
-            $this->validate([
-                'title' => ['required', 'string', 'max:150'],
-                'slug' => [
-                    'required',
-                    'string',
-                    'max:160',
-                    'alpha_dash',
-                    Rule::unique(Event::class, 'slug')
-                        ->where('organization_id', $organizationId)
-                        ->ignore($this->editingEventId),
-                ],
-                'description' => ['nullable', 'string', 'max:2000'],
-                'venue' => ['nullable', 'string', 'max:150'],
-                'start_at' => ['required', 'date'],
-                'end_at' => ['required', 'date', 'after_or_equal:start_at'],
-                'status' => ['required', Rule::in(['draft', 'published'])],
-                'is_public' => ['boolean'],
-                'banner' => ['nullable', ...MediaUrl::UPLOAD_RULES],
-                'bannerUrlInput' => ['nullable', 'url', 'max:2048'],
-            ]);
-        } catch (UnableToRetrieveMetadata) {
-            $this->banner = null;
-            $this->addError(
-                'banner',
-                'The temporary file was lost between serverless instances. Please select the image again or paste an image URL below.',
-            );
-
-            return;
-        }
+        $this->validate([
+            'title' => ['required', 'string', 'max:150'],
+            'slug' => [
+                'required',
+                'string',
+                'max:160',
+                'alpha_dash',
+                Rule::unique(Event::class, 'slug')
+                    ->where('organization_id', $organizationId)
+                    ->ignore($this->editingEventId),
+            ],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'venue' => ['nullable', 'string', 'max:150'],
+            'start_at' => ['required', 'date'],
+            'end_at' => ['required', 'date', 'after_or_equal:start_at'],
+            'status' => ['required', Rule::in(['draft', 'published'])],
+            'is_public' => ['boolean'],
+            // Pasted links must be https; uploads arrive already checked through acceptImageUpload().
+            'bannerUrlInput' => ['nullable', 'url:https', 'max:2048'],
+        ]);
 
         $event = $this->editingEventId === null
             ? new Event(['organization_id' => $organizationId])
@@ -203,10 +188,7 @@ class EventManager extends Component
 
         $event->fill($attributes)->save();
 
-        // Stored after saving so a new event's banner is filed under its own id.
-        if (!$this->saveBanner($event)) {
-            return;
-        }
+        $this->saveBanner($event);
 
         // Only an organisation's first event becomes the working event; later ones never switch the admin away.
         if ($this->editingEventId === null && $this->events()->count() === 1) {
@@ -323,38 +305,36 @@ class EventManager extends Component
     }
 
     /**
-     * An uploaded banner takes precedence over a pasted URL. Returns false when the upload could not be stored.
+     * An uploaded banner takes precedence over a pasted link. The banner it replaces is deleted from Cloudinary.
      */
-    private function saveBanner(Event $event): bool
+    private function saveBanner(Event $event): void
     {
-        if ($this->banner === null) {
-            $url = trim($this->bannerUrlInput ?? '');
+        $previousBanner = $event->banner_path;
+        $newBanner = $this->pendingImage('banner') ?? trim($this->bannerUrlInput ?? '');
 
-            if ($url !== '' && $url !== $event->banner_path) {
-                // Switching from an uploaded banner to a pasted link deletes the old upload and its WebP copies.
-                $previousBanner = $event->banner_path;
-                $event->update(['banner_path' => $url]);
-                MediaUrl::deleteStored($previousBanner);
-            }
-
-            return true;
+        if ($newBanner === '' || $newBanner === $previousBanner) {
+            return;
         }
 
-        try {
-            $previousBanner = $event->banner_path;
-            $event->update(['banner_path' => MediaUrl::store(
-                $this->banner,
-                MediaUrl::eventDirectory($event->organization_id, $event->id, 'banners'),
-            )]);
-            MediaUrl::deleteStored($previousBanner);
-        } catch (Throwable $e) {
-            $this->banner = null;
-            $this->addError('banner', 'Failed to store image: ' . $e->getMessage());
+        $event->update(['banner_path' => $newBanner]);
+        $this->pendingImageSaved('banner');
+        MediaUrl::deleteStored($previousBanner);
+    }
 
-            return false;
+    /**
+     * Banners of a new event go to the organisation's folder (the event has no id yet); edits to the event's own.
+     */
+    protected function imageUploadFolder(string $field): ?string
+    {
+        if ($field !== 'banner') {
+            return null;
         }
 
-        return true;
+        $organizationId = $this->organizationId();
+
+        return $this->editingEventId === null
+            ? MediaUrl::organizationDirectory($organizationId, 'banners')
+            : MediaUrl::eventDirectory($organizationId, $this->editingEventId, 'banners');
     }
 
     private function organizationId(): int

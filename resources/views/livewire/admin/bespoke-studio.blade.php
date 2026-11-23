@@ -410,22 +410,20 @@
                                 <input
                                     type="url"
                                     wire:model="new_image_url"
-                                    placeholder="https://images.unsplash.com/photo-... or your storage URL"
+                                    placeholder="https://… (an https image link)"
                                     class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3.5 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-hidden"
                                 />
                                 @error('new_image_url') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
                             </div>
                         @else
                             <div class="sm:col-span-2">
-                                <label class="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">Select Image File (Max 4MB: WebP, PNG, JPG) *</label>
-                                <input
-                                    type="file"
-                                    wire:model="new_image_file"
-                                    accept="image/*"
-                                    class="w-full text-xs text-[var(--text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-primary)] file:text-[var(--color-primary-fg)] cursor-pointer"
-                                />
-                                <div wire:loading wire:target="new_image_file" class="text-[11px] text-[var(--color-primary)] mt-1">Uploading image...</div>
-                                @error('new_image_file') <p class="text-xs text-rose-500 mt-1">{{ $message }}</p> @enderror
+                                <label for="gallery-upload" class="block text-[11px] font-semibold text-[var(--text-secondary)] mb-1">Image file *</label>
+                                <div class="flex items-center gap-3">
+                                    @if ($this->pendingImage('new_image_file'))
+                                        <x-media-image :value="$this->pendingImage('new_image_file')" preset="card" sizes="96px" alt="Uploaded image, ready to add" class="size-16 shrink-0 rounded-lg object-cover" data-gallery-upload-preview />
+                                    @endif
+                                    <x-image-upload field="new_image_file" id="gallery-upload" label="Upload gallery image" class="flex-1" />
+                                </div>
                             </div>
                         @endif
 
@@ -523,7 +521,7 @@
                                 <div wire:key="gallery-{{ $img['id'] }}" class="group relative rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] overflow-hidden shadow-2xs transition-all duration-200 hover:translate-y-[-2px] hover:shadow-md">
                                     <div class="aspect-4/3 w-full overflow-hidden bg-black/10">
                                         <img
-                                            src="{{ \App\Support\MediaUrl::resolve($img['url']) }}"
+                                            src="{{ \App\Support\MediaUrl::resolve($img['url'], 'card') }}"
                                             alt="{{ $img['title'] }}"
                                             class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                             loading="lazy"

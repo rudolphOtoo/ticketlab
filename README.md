@@ -97,10 +97,8 @@ Set in the super admin dashboard (`/platform`):
 | `QUEUE_CONNECTION` | `database` |
 | `SCHEDULER_TOKEN` | Protects `/api/run-scheduler` and `/api/run-migrate`, sent as `Authorization: Bearer <token>`. Both refuse every request while it's unset |
 | `SCHEDULER_LOCK_STORE` | Cache store for scheduler and command locks: `database` (default) or `redis`. Never `file`, which isn't shared between serverless instances |
-| `MEDIA_DISK` | Public media disk: `public` locally, `r2` in production (see [Media storage](#media-storage-cloudflare-r2)) |
-| `PRIVATE_DISK` | Private files and temporary uploads: `local` locally, `r2-private` in production |
-| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` | Cloudflare R2 API token and account endpoint (`https://<account-id>.r2.cloudflarestorage.com`) |
-| `R2_PUBLIC_BUCKET`, `R2_PRIVATE_BUCKET`, `MEDIA_URL` | The two buckets, and the custom domain serving the public one (e.g. `https://media.example.com`) |
+| `CLOUDINARY_URL` | `cloudinary://<api_key>:<api_secret>@<cloud_name>` for image uploads (see [Media (Cloudinary)](#media-cloudinary)). Empty: uploads are refused, pasted https links still work |
+| `LEGACY_MEDIA_URL` | Only if images were uploaded before Cloudinary: the public address of that bucket, so old paths keep loading |
 | `MAIL_*` | Ticket emails, invitations, zone-choice requests and payout alerts |
 | `SMS_ENABLED`, `SMS_DRIVER`, `MNOTIFY_*` | Optional SMS passes |
 
@@ -144,26 +142,49 @@ Work that doesn't fit waits for the next run. Each task is `withoutOverlapping()
 `SCHEDULER_LOCK_STORE` (database by default) that expires after 2–10 minutes. Laravel's default lock lasts 24 hours,
 which would block a task for a day if the platform killed the request holding it.
 
-## Media storage (Cloudflare R2)
+## Media (Cloudinary)
 
-- **Public media** (organisation logos, event banners, speaker photos, gallery, flyers):
-  - Stored on `MEDIA_DISK` under `orgs/{org_id}/…`, with `Cache-Control: public, max-age=31536000, immutable`. File names are random, so a path never changes content.
-  - Uploads accept jpg/png/webp only, up to 5 MB.
-  - A queued job makes WebP copies at 200, 800 and 1600 px wide (never upscaled), and pages serve those once ready.
-  - Replacing or removing an image deletes the old file and its copies.
-  - Pasted image links still work.
-- **Private files** (ledger PDFs, and Livewire's temporary uploads) live on `PRIVATE_DISK`. They never get a public URL: after the authorisation check, a **5-minute signed link** is handed out.
-- **CSV and JSON exports** are never stored. They stream straight to the authorised admin.
+Images (organisation logos, event banners, speaker photos, gallery) are stored on **Cloudinary**. Nothing is written
+to the server's disk, and there is no private file storage at all.
 
-In production nothing is written to the server's disk. On Vercel that disk is temporary and per instance.
+- **Upload: signed, straight from the browser.** The admin picks a file; the page asks our server to sign an upload
+  (folder, allowed formats, timestamp) and posts the file directly to Cloudinary. The image never passes through our
+  serverless function or its `/tmp`, which is not shared between requests or instances. Livewire then receives only
+  `public_id`, `version` and Cloudinary's response signature, and the server checks before saving that Cloudinary
+  signed it, that it sits in this organisation's folder, and that it is a JPG, PNG or WebP of at most 5 MB (anything
+  else is deleted). Code: `App\Services\Media\CloudinaryUploads`, `App\Livewire\Concerns\UploadsImages`,
+  `resources/js/media/image-upload.js`.
+- **Folders per organisation:** `ticketlab/{APP_ENV}/orgs/{org_id}/…` (`…/events/{event_id}/banners|speakers|gallery`,
+  `…/logos`). A logo uploaded during onboarding waits in `ticketlab/{APP_ENV}/onboarding/{random}` and is moved into
+  the new organisation's folder when it is created.
+- **What is stored:** `cloudinary:v{version}/{public_id}` in the existing image columns, never a URL. Pages build the
+  URL with `f_auto,q_auto,c_limit,w_{width}` (`c_limit` never enlarges): logos 200 px, cards 800 px, heroes 1600 px.
+  The event page, heroes, speakers and gallery get a `srcset` (`<x-media-image>`), so phones download small copies.
+- **Replacing or removing** an image deletes the old one on Cloudinary (with CDN invalidation). An upload that is
+  replaced before saving, or whose form is cancelled, is deleted too. A gallery image is deleted when the gallery is
+  saved without it, so the live site never shows a deleted image.
+- **Pasted links** (https only) and **older values** keep working: links are shown as they are; paths saved before
+  Cloudinary (`orgs/1/logos/abc.png`) load from `LEGACY_MEDIA_URL` when set, else from the local `public` disk.
+- **Flyer backgrounds** in the Marketing Studio stay in the browser (the flyer is drawn there); they are never uploaded.
+- **Ledger PDFs** are never stored. Locking a session saves the figures the PDF shows (event, expected capacity,
+  per-zone admissions) on the ledger; each download draws the PDF from them and streams it to the authorised admin,
+  like the CSV and JSON exports.
+- **Tests** never call Cloudinary: `tests/Pest.php` binds `Tests\Support\FakeCloudinaryClient`.
 
-**R2 setup (once):**
-1. **Buckets.** In Cloudflare → R2, create two buckets, e.g. `ticketlab-media` (public) and `ticketlab-private`. Keep the private one without public access.
-2. **Custom domain.** On the public bucket → Settings → Custom Domains, connect e.g. `media.example.com`. That's `MEDIA_URL`.
-3. **API token.** R2 → Manage API tokens → create a token with *Object Read & Write* on both buckets. Copy the access key ID, secret, and the S3 endpoint `https://<account-id>.r2.cloudflarestorage.com`.
-4. **CORS on the private bucket.** Livewire uploads straight to it from the browser, so add a policy allowing `PUT` and `POST` from `https://<your-domain>` with header `content-type`.
-5. **Lifecycle rule on the private bucket.** Delete objects under `livewire-tmp/` after 1 day; abandoned temporary uploads are cleaned up there.
-6. **Environment.** `MEDIA_DISK=r2`, `PRIVATE_DISK=r2-private`, `R2_*`, `MEDIA_URL` (see Environment above).
+**Cloudinary setup (once):**
+1. Create a Cloudinary account (the free plan is enough to start) and open **Settings → API Keys**.
+2. Copy the **API environment variable** (`cloudinary://<api_key>:<api_secret>@<cloud_name>`) into `CLOUDINARY_URL`
+   on Vercel (Production and Preview) and in your local `.env`. Each `APP_ENV` gets its own top folder, so preview and
+   production images never mix.
+3. Nothing else: no upload preset, bucket, CORS or lifecycle rule is needed. The signed parameters do the preset's job
+   (folder and formats) and are versioned in code; the 5 MB limit is checked on save.
+
+**Why not Cloudflare R2 any more** (what went wrong in our setup):
+1. It needed six settings across two buckets plus CORS and a lifecycle rule, and a half-filled set crashed inside the
+   S3 driver with a `TypeError` until a guard was added (`0900340`).
+2. Image resizing ran as a queued GD job, but the Vercel PHP runtime has no GD and the queue only runs from the
+   cron, so pages went on serving the original uploads of up to 5 MB.
+3. The S3 adapter brought the AWS SDK: 64 MB of the 123 MB of production packages in the serverless function.
 
 ## Local development
 

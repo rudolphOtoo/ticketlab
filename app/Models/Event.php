@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToOrganization;
+use App\Services\Media\ImagePreset;
 use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
@@ -116,9 +117,10 @@ class Event extends Model
     }
 
     /**
-     * The banner at the given WebP size once generated ("large" for heroes, "medium" for cards), else the original.
+     * The banner's URL at a preset size ("hero" or "card"; Cloudinary scales it, never up). For a srcset, render
+     * <x-media-image :value="$event->banner_path"> instead.
      */
-    public function bannerUrl(string $size = 'large'): ?string
+    public function bannerUrl(ImagePreset|string $size = ImagePreset::Hero): ?string
     {
         return MediaUrl::resolve($this->banner_path, $size);
     }

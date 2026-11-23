@@ -6,9 +6,7 @@ use App\Livewire\Admin\BespokeStudio;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\User;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 test('admin can add gallery images via direct link and save gallery settings', function () {
@@ -89,8 +87,7 @@ test('public gallery sub-page renders configured images and category tags', func
         ->assertSee('Atmosphere');
 });
 
-test('uploaded gallery images render from public storage and are deleted on removal', function () {
-    Storage::fake('public');
+test('uploaded gallery images render from Cloudinary and an unsaved one is deleted on removal', function () {
     $org = Organization::factory()->create();
     $admin = User::factory()->create()->assignMembership('admin', $org->id);
 
@@ -98,18 +95,17 @@ test('uploaded gallery images render from public storage and are deleted on remo
         ->test(BespokeStudio::class)
         ->set('activeTab', 'gallery')
         ->set('new_image_source_mode', 'upload')
-        ->set('new_image_file', UploadedFile::fake()->image('stage.jpg'))
-        ->set('new_image_tag', 'Stage')
-        ->call('addGalleryImage')
-        ->assertHasNoErrors();
+        ->set('new_image_tag', 'Stage');
+
+    upload_image($studio, 'new_image_file')->call('addGalleryImage')->assertHasNoErrors();
 
     $image = $studio->get('gallery_images')[0];
-    $path = $image['url'];
+    $publicId = App\Services\Media\CloudinaryImage::fromStored($image['url'])?->publicId;
 
-    Storage::disk('public')->assertExists($path);
-    $studio->assertSeeHtml('src="/storage/' . $path . '"');
+    expect($image['url'])->toStartWith('cloudinary:v');
+    $studio->assertSeeHtml('src="https://res.cloudinary.com/demo-cloud/image/upload/f_auto,q_auto,c_limit,w_800/');
 
     $studio->call('removeGalleryImage', $image['id']);
 
-    Storage::disk('public')->assertMissing($path);
+    expect(cloudinary()->destroyed)->toBe([$publicId]);
 });

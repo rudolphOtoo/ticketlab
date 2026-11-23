@@ -4,24 +4,28 @@ declare(strict_types=1);
 
 namespace App\Livewire\Platform;
 
+use App\Livewire\Concerns\UploadsImages;
 use App\Models\AuditLog;
 use App\Models\Organization;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\OrganizationAdminInvitation;
+use App\Services\Media\CloudinaryClient;
+use App\Services\Media\CloudinaryImage;
 use App\Services\Payment\PaystackSubaccountResolver;
 use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
+use Throwable;
 
 /**
  * Super admin onboarding: one step creates the organisation, its zones (each with its Paystack payout
@@ -31,7 +35,7 @@ use Livewire\WithFileUploads;
 #[Title('Onboard an organisation')]
 class OnboardOrganization extends Component
 {
-    use WithFileUploads;
+    use UploadsImages;
 
     public string $name = '';
 
@@ -47,7 +51,9 @@ class OnboardOrganization extends Component
 
     public string $logoUrl = '';
 
-    public ?TemporaryUploadedFile $logo = null;
+    /** Names this form's onboarding upload folder until the organisation (and its own folder) exists. */
+    #[Locked]
+    public string $uploadToken = '';
 
     public string $brandColor = '#18181b';
 
@@ -63,6 +69,7 @@ class OnboardOrganization extends Component
     public function mount(): void
     {
         self::superAdmin();
+        $this->uploadToken = Str::lower(Str::random(24));
     }
 
     public function updatedName(string $value): void
@@ -115,7 +122,6 @@ class OnboardOrganization extends Component
             'contactEmail' => ['required', 'email', 'max:255'],
             'contactPhone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ()-]{7,20}$/'],
             'logoUrl' => ['nullable', 'url:https', 'max:2048'],
-            'logo' => ['nullable', ...MediaUrl::UPLOAD_RULES],
             'brandColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'timezone' => ['required', 'timezone:all'],
             'zones' => ['required', 'array', 'min:1', 'max:50'],
@@ -135,6 +141,8 @@ class OnboardOrganization extends Component
         $organization = DB::transaction(function () use ($actor, &$admin): Organization {
             return $this->persist($actor, $admin);
         });
+
+        $this->moveLogoIntoOrganization($organization);
 
         // Sent after commit, so the link never points at an account that was rolled back.
         $admin?->notify(new OrganizationAdminInvitation($organization));
@@ -167,11 +175,9 @@ class OnboardOrganization extends Component
             ],
         ]);
 
-        // An uploaded logo wins over a pasted link; it is filed under the new organisation's own folder.
-        if ($this->logo !== null) {
-            $organization->forceFill([
-                'logo_url' => MediaUrl::store($this->logo, MediaUrl::organizationDirectory($organization->id, 'logos')),
-            ])->save();
+        // An uploaded logo wins over a pasted link (moved into the organisation's folder after commit).
+        if ($this->pendingImage('logo') !== null) {
+            $organization->forceFill(['logo_url' => $this->pendingImage('logo')])->save();
         }
 
         foreach ($this->zones as $zone) {
@@ -206,6 +212,40 @@ class OnboardOrganization extends Component
         ]);
 
         return $organization;
+    }
+
+    protected function imageUploadFolder(string $field): ?string
+    {
+        self::superAdmin();
+
+        return $field === 'logo' ? MediaUrl::onboardingDirectory($this->uploadToken) : null;
+    }
+
+    /**
+     * The logo was uploaded before the organisation existed; it now moves into orgs/{id}/logos. If Cloudinary
+     * refuses, the logo keeps working from the onboarding folder and the move is logged for a later retry.
+     */
+    private function moveLogoIntoOrganization(Organization $organization): void
+    {
+        $image = CloudinaryImage::fromStored($this->pendingImage('logo'));
+        $this->pendingImageSaved('logo');
+
+        if ($image === null) {
+            return;
+        }
+
+        $target = MediaUrl::organizationDirectory($organization->id, 'logos') . '/' . basename($image->publicId);
+
+        try {
+            $version = app(CloudinaryClient::class)->rename($image->publicId, $target);
+            $organization->forceFill(['logo_url' => new CloudinaryImage($target, $version)->toStored()])->save();
+        } catch (Throwable $exception) {
+            Log::warning('Onboarding logo stayed in the onboarding folder; it still displays.', [
+                'organization_id' => $organization->id,
+                'public_id' => $image->publicId,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     public function render(): View

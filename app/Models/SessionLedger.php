@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $total_online_momo
  * @property string $total_cash
  * @property int $total_attendees
- * @property string|null $snapshot_pdf_path
+ * @property array{event_id: int|null, event_title: string|null, event_venue: string|null, capacity_total: int, zone_breakdown: list<array{name: string, code: string, admitted: int}>}|null $snapshot
  * @property string|null $notes
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
@@ -42,7 +42,7 @@ class SessionLedger extends Model
         'total_online_momo',
         'total_cash',
         'total_attendees',
-        'snapshot_pdf_path',
+        'snapshot',
         'notes',
     ];
 
@@ -54,6 +54,7 @@ class SessionLedger extends Model
             'total_online_momo' => 'decimal:2',
             'total_cash' => 'decimal:2',
             'total_attendees' => 'integer',
+            'snapshot' => 'array',
         ];
     }
 

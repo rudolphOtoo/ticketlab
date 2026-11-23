@@ -8,22 +8,16 @@ use App\Models\Event;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\ActiveEvent;
-use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
 
 #[Layout('layouts.admin')]
 #[Title('Marketing Studio')]
 class MarketingStudio extends Component
 {
-    use WithFileUploads;
-
     public ?int $selectedEventId = null;
 
     public string $selectedAspectRatio = '1:1';
@@ -53,15 +47,6 @@ class MarketingStudio extends Component
 
     public int $qrMargin = 2;
 
-    public ?TemporaryUploadedFile $backgroundImage = null;
-
-    /** Same-origin URL of the uploaded flyer background; server-set only so exports never draw a foreign image. */
-    #[Locked]
-    public ?string $backgroundUrl = null;
-
-    #[Locked]
-    public ?string $backgroundPath = null;
-
     public function mount(): void
     {
         $this->authorizedUser();
@@ -88,42 +73,6 @@ class MarketingStudio extends Component
         $this->accentColor = $this->normalizeHexColor($this->accentColor, '#6366f1');
         $this->qrFgColor = $this->normalizeHexColor($this->qrFgColor, '#121316');
         $this->qrBgColor = $this->normalizeHexColor($this->qrBgColor, '#ffffff');
-    }
-
-    public function updatedBackgroundImage(): void
-    {
-        $user = $this->authorizedUser();
-
-        $this->validate(['backgroundImage' => ['required', ...MediaUrl::UPLOAD_RULES]]);
-
-        $upload = $this->backgroundImage;
-
-        if ($upload === null) {
-            return;
-        }
-
-        $event = $this->event();
-        $directory = match (true) {
-            $event !== null => MediaUrl::eventDirectory($event->organization_id, $event->id, 'flyers'),
-            $user->organization_id !== null => MediaUrl::organizationDirectory($user->organization_id, 'flyers'),
-            default => 'platform/flyers',
-        };
-
-        $this->removeBackground();
-        $this->backgroundPath = MediaUrl::store($upload, $directory);
-        // Local uploads resolve root-relative, so the canvas loads them same-origin whatever APP_URL says.
-        $this->backgroundUrl = MediaUrl::resolve($this->backgroundPath);
-        $this->backgroundImage = null;
-    }
-
-    public function removeBackground(): void
-    {
-        if ($this->backgroundPath !== null && $this->backgroundPath !== '') {
-            MediaUrl::deleteStored($this->backgroundPath);
-        }
-        $this->backgroundPath = null;
-        $this->backgroundUrl = null;
-        $this->backgroundImage = null;
     }
 
     public function setAspectRatio(string $ratio): void

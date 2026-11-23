@@ -33,15 +33,6 @@ $app = Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(fn(Request $request) => $request->is('api/*') || $request->expectsJson());
-
-        // Shield Livewire from uncaught Flysystem metadata errors when temporary files are lost across serverless instances.
-        $exceptions->render(function (\League\Flysystem\UnableToRetrieveMetadata $e, Request $request) {
-            if ($request->hasHeader('x-livewire')) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'banner' => 'The uploaded temporary file could not be retrieved from this serverless instance. Please re-select the image or paste a direct image URL.',
-                ]);
-            }
-        });
     })
     ->create();
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
+use App\Livewire\Concerns\UploadsImages;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\PlatformSetting;
@@ -14,20 +15,17 @@ use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use League\Flysystem\UnableToRetrieveMetadata;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
 
 #[Layout('layouts.admin')]
 #[Title('Bespoke Portal CMS & Navigation')]
 class BespokeStudio extends Component
 {
     use RequiresOrganizationWideAdmin;
-    use WithFileUploads;
+    use UploadsImages;
 
     #[Locked]
     public ?int $organizationId = null;
@@ -117,7 +115,6 @@ class BespokeStudio extends Component
 
     public string $new_image_source_mode = 'link'; // 'link' or 'upload'
     public string $new_image_url = '';
-    public ?TemporaryUploadedFile $new_image_file = null;
     public string $new_image_title = '';
     public string $new_image_caption = '';
     public string $new_image_tag = 'Atmosphere';
@@ -379,41 +376,37 @@ class BespokeStudio extends Component
         $this->new_image_url = '';
         $this->new_image_title = '';
         $this->new_image_caption = '';
-        $this->new_image_file = null;
+        // Now part of the gallery list: removing it from the list (not this reset) decides whether it is deleted.
+        $this->pendingImageSaved('new_image_file');
 
         $this->flashMessage = 'Image added to gallery. Click "Save Gallery" to publish changes.';
     }
 
     private function storeUploadedImage(): string
     {
-        try {
-            $this->validate([
-                'new_image_file' => ['required', ...MediaUrl::UPLOAD_RULES],
-                ...$this->imageDetailRules(),
-            ]);
-        } catch (UnableToRetrieveMetadata) {
-            $this->new_image_file = null;
-            throw ValidationException::withMessages([
-                'new_image_file' => 'The uploaded temporary file was lost between serverless instances. Please re-select the image or paste an image URL.',
-            ]);
+        $this->validate($this->imageDetailRules());
+
+        return (
+            $this->pendingImage('new_image_file') ?? throw ValidationException::withMessages([
+                'new_image_file' => 'Upload an image first.',
+            ])
+        );
+    }
+
+    protected function imageUploadFolder(string $field): ?string
+    {
+        if ($field !== 'new_image_file' || $this->organizationId === null) {
+            return null;
         }
 
-        $file = $this->new_image_file ?? throw ValidationException::withMessages([
-            'new_image_file' => 'Choose an image to upload.',
-        ]);
-        $this->new_image_file = null;
-
-        $organizationId = (int) $this->organizationId;
-        $directory = $this->activeEventId !== null
-            ? MediaUrl::eventDirectory($organizationId, $this->activeEventId, 'gallery')
-            : MediaUrl::organizationDirectory($organizationId, 'gallery');
-
-        return MediaUrl::store($file, $directory);
+        return $this->activeEventId !== null
+            ? MediaUrl::eventDirectory($this->organizationId, $this->activeEventId, 'gallery')
+            : MediaUrl::organizationDirectory($this->organizationId, 'gallery');
     }
 
     private function linkedImageUrl(): string
     {
-        $this->validate(['new_image_url' => ['required', 'url', 'max:2048'], ...$this->imageDetailRules()]);
+        $this->validate(['new_image_url' => ['required', 'url:https', 'max:2048'], ...$this->imageDetailRules()]);
 
         return trim($this->new_image_url);
     }
@@ -441,12 +434,13 @@ class BespokeStudio extends Component
             return;
         }
 
+        // An image the live site does not show yet (added but never saved) is deleted now. A published one stays
+        // until "Save Gallery", so the live site never shows a deleted image.
         foreach ($this->gallery_images as $image) {
-            if ($image['id'] !== $imageId) {
+            if ($image['id'] !== $imageId || in_array($image['url'], $this->publishedGalleryUrls(), true)) {
                 continue;
             }
 
-            // Uploads are stored as media-disk paths; deleteStored leaves external links alone.
             MediaUrl::deleteStored($image['url']);
         }
 
@@ -461,6 +455,8 @@ class BespokeStudio extends Component
             'gallery_lead' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $dropped = array_diff($this->publishedGalleryUrls(), array_column($this->gallery_images, 'url'));
+
         $this->persistBespokeKey('gallery', [
             'enabled' => $this->gallery_enabled,
             'heading' => $this->gallery_heading,
@@ -468,7 +464,24 @@ class BespokeStudio extends Component
             'images' => $this->gallery_images,
         ]);
 
+        // Only after the new list is saved: images it no longer contains are deleted.
+        foreach ($dropped as $url) {
+            MediaUrl::deleteStored($url);
+        }
+
         $this->flashMessage = 'Gallery sub-page and showcase saved successfully.';
+    }
+
+    /**
+     * The image values the saved gallery holds, i.e. what the live site shows.
+     *
+     * @return list<string>
+     */
+    private function publishedGalleryUrls(): array
+    {
+        $organization = $this->organization();
+
+        return $organization === null ? [] : array_column(EventGallery::all($organization), 'url');
     }
 
     /**

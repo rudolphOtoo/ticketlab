@@ -33,10 +33,9 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <!-- Storage never follows a developer's .env: tests that need R2 configure and fake it themselves. -->
-        <env name="MEDIA_DISK" value="public"/>
-        <env name="PRIVATE_DISK" value="local"/>
-        <env name="LIVEWIRE_DISK" value="local"/>
+        <!-- Tests never reach Cloudinary: tests/Pest.php binds a fake client, whatever the local .env holds. -->
+        <env name="CLOUDINARY_URL" value=""/>
+        <env name="LEGACY_MEDIA_URL" value=""/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

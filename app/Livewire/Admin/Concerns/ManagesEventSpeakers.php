@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\Admin\Concerns;
 
+use App\Livewire\Concerns\UploadsImages;
 use App\Models\EventSpeaker;
 use App\Support\MediaUrl;
-use League\Flysystem\UnableToRetrieveMetadata;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
 
 trait ManagesEventSpeakers
 {
-    use WithFileUploads;
+    use UploadsImages;
 
     public ?int $organizationId = null;
 
@@ -30,9 +28,8 @@ trait ManagesEventSpeakers
 
     public string $speaker_bio = '';
 
+    /** The photo shown in the form: the speaker's current photo or a pasted https link. */
     public string $speaker_photo_path = '';
-
-    public ?TemporaryUploadedFile $speaker_photo = null;
 
     public bool $speaker_is_featured = false;
 
@@ -40,6 +37,7 @@ trait ManagesEventSpeakers
 
     public function openCreateSpeakerModal(): void
     {
+        $this->discardPendingImage('speaker_photo');
         $this->resetValidation();
         $this->editingSpeakerId = null;
         $this->speaker_name = '';
@@ -47,7 +45,6 @@ trait ManagesEventSpeakers
         $this->speaker_topic = '';
         $this->speaker_bio = '';
         $this->speaker_photo_path = '';
-        $this->speaker_photo = null;
         $this->speaker_is_featured = false;
         $this->speaker_sort_order = 0;
         $this->isSpeakerModalOpen = true;
@@ -55,6 +52,7 @@ trait ManagesEventSpeakers
 
     public function editSpeaker(int $id): void
     {
+        $this->discardPendingImage('speaker_photo');
         $this->resetValidation();
         $speaker = $this->findScopedSpeaker($id);
 
@@ -69,7 +67,6 @@ trait ManagesEventSpeakers
             'speaker_topic' => $speaker->topic ?? '',
             'speaker_bio' => $speaker->bio ?? '',
             'speaker_photo_path' => $speaker->photo_path ?? '',
-            'speaker_photo' => null,
             'speaker_is_featured' => $speaker->is_featured,
             'speaker_sort_order' => $speaker->sort_order,
             'isSpeakerModalOpen' => true,
@@ -78,26 +75,15 @@ trait ManagesEventSpeakers
 
     public function saveSpeaker(): void
     {
-        try {
-            $this->validate([
-                'speaker_name' => ['required', 'string', 'max:100'],
-                'speaker_title_role' => ['nullable', 'string', 'max:100'],
-                'speaker_topic' => ['nullable', 'string', 'max:150'],
-                'speaker_bio' => ['nullable', 'string', 'max:1000'],
-                'speaker_photo_path' => ['nullable', 'string', 'max:2048'],
-                'speaker_photo' => ['nullable', ...MediaUrl::UPLOAD_RULES],
-                'speaker_is_featured' => ['boolean'],
-                'speaker_sort_order' => ['required', 'integer', 'min:0'],
-            ]);
-        } catch (UnableToRetrieveMetadata) {
-            $this->speaker_photo = null;
-            $this->addError(
-                'speaker_photo',
-                'The uploaded photo was lost between serverless instances. Please re-select the image or paste a photo URL.',
-            );
-
-            return;
-        }
+        $this->validate([
+            'speaker_name' => ['required', 'string', 'max:100'],
+            'speaker_title_role' => ['nullable', 'string', 'max:100'],
+            'speaker_topic' => ['nullable', 'string', 'max:150'],
+            'speaker_bio' => ['nullable', 'string', 'max:1000'],
+            'speaker_photo_path' => ['nullable', 'string', 'max:2048'],
+            'speaker_is_featured' => ['boolean'],
+            'speaker_sort_order' => ['required', 'integer', 'min:0'],
+        ]);
 
         $event = $this->getCurrentEvent();
 
@@ -105,26 +91,55 @@ trait ManagesEventSpeakers
             return;
         }
 
-        $previousPhoto = null;
+        $current = $this->editingSpeakerId === null
+            ? null
+            : $this->findScopedSpeaker($this->editingSpeakerId)?->photo_path;
+        $photo = $this->chosenSpeakerPhoto($current);
 
-        // A fresh upload wins over a pasted URL; uploads are filed under the event the speaker belongs to.
-        if ($this->speaker_photo !== null) {
-            $previousPhoto = $this->speaker_photo_path;
-            $this->speaker_photo_path = MediaUrl::store(
-                $this->speaker_photo,
-                MediaUrl::eventDirectory($event->organization_id, $event->id, 'speakers'),
-            );
+        if ($photo === false) {
+            $this->addError('speaker_photo_path', 'Paste an https image link, or upload a photo.');
+
+            return;
         }
 
-        $this->flashMessage = $this->persistSpeaker($event->id, $previousPhoto) ?? $this->flashMessage;
+        $this->speaker_photo_path = $photo ?? '';
+        $this->flashMessage = $this->persistSpeaker($event->id, $current) ?? $this->flashMessage;
 
+        $this->pendingImageSaved('speaker_photo');
         $this->isSpeakerModalOpen = false;
         $this->editingSpeakerId = null;
-        $this->speaker_photo = null;
     }
 
     /**
-     * Create or update the speaker behind the modal and return the confirmation to flash.
+     * The photo to save: a checked upload wins; otherwise the field, which may only keep the speaker's current photo
+     * or name a new https link. False when it names anything else: the field is editable in the browser, so a stored
+     * path typed into it (another organisation's image, say) is refused rather than saved or later deleted.
+     */
+    private function chosenSpeakerPhoto(?string $current): string|false|null
+    {
+        if ($this->pendingImage('speaker_photo') !== null) {
+            return $this->pendingImage('speaker_photo');
+        }
+
+        $field = trim($this->speaker_photo_path);
+
+        return match (true) {
+            $field === '' => null,
+            $field === $current, MediaUrl::isAcceptableLink($field) => $field,
+            default => false,
+        };
+    }
+
+    protected function imageUploadFolder(string $field): ?string
+    {
+        $event = $field === 'speaker_photo' ? $this->getCurrentEvent() : null;
+
+        return $event === null ? null : MediaUrl::eventDirectory($event->organization_id, $event->id, 'speakers');
+    }
+
+    /**
+     * Create or update the speaker behind the modal and return the confirmation to flash. $previousPhoto is the
+     * speaker's stored photo (from the database, never from the form), deleted once the replacement is saved.
      */
     private function persistSpeaker(int $eventId, ?string $previousPhoto): ?string
     {
@@ -133,7 +148,7 @@ trait ManagesEventSpeakers
             'title_role' => $this->speaker_title_role,
             'topic' => $this->speaker_topic,
             'bio' => $this->speaker_bio,
-            'photo_path' => $this->speaker_photo_path,
+            'photo_path' => $this->speaker_photo_path !== '' ? $this->speaker_photo_path : null,
             'is_featured' => $this->speaker_is_featured,
             'sort_order' => $this->speaker_sort_order,
         ];
@@ -153,11 +168,18 @@ trait ManagesEventSpeakers
         $speaker->update($attributes);
 
         // Only clean up the old upload once the replacement is actually saved on the speaker.
-        if ($previousPhoto !== $this->speaker_photo_path) {
+        if ($previousPhoto !== $speaker->photo_path) {
             MediaUrl::deleteStored($previousPhoto);
         }
 
         return "Speaker '{$speaker->name}' updated.";
+    }
+
+    public function closeSpeakerModal(): void
+    {
+        $this->discardPendingImage('speaker_photo');
+        $this->isSpeakerModalOpen = false;
+        $this->editingSpeakerId = null;
     }
 
     public function deleteSpeaker(int $id): void

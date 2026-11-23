@@ -17,7 +17,6 @@ use App\Services\Ledger\SessionReportService;
 use App\Support\ActiveEvent;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -75,17 +74,19 @@ class DailySessionLedger extends Component
             $orgId = $session->organization_id;
             $totals = $this->ledgerTotals($orgId);
 
-            $zoneBreakdown = Subdivision::query()
-                ->where('organization_id', $orgId)
-                ->when($session->subdivision_id, static fn($q, int $zoneId) => $q->whereKey($zoneId))
-                ->withCount(['attendees as admitted' => static fn($q) => $q->whereNotNull('checked_in_at')])
-                ->get()
-                ->map(static fn(Subdivision $sub) => [
-                    'name' => $sub->name,
-                    'code' => $sub->slug,
-                    'admitted' => (int) $sub->getAttribute('admitted'),
-                ])
-                ->all();
+            $zoneBreakdown = array_values(
+                Subdivision::query()
+                    ->where('organization_id', $orgId)
+                    ->when($session->subdivision_id, static fn($q, int $zoneId) => $q->whereKey($zoneId))
+                    ->withCount(['attendees as admitted' => static fn($q) => $q->whereNotNull('checked_in_at')])
+                    ->get()
+                    ->map(static fn(Subdivision $sub) => [
+                        'name' => $sub->name,
+                        'code' => $sub->slug,
+                        'admitted' => (int) $sub->getAttribute('admitted'),
+                    ])
+                    ->all(),
+            );
 
             $session->update([
                 'locked_at' => now(),
@@ -95,7 +96,7 @@ class DailySessionLedger extends Component
                 'total_attendees' => $totals['checked_in'],
             ]);
 
-            $reportService->generateReport($session, $event, $capacityTotal, $zoneBreakdown);
+            $reportService->snapshot($session, $event, $capacityTotal, $zoneBreakdown);
 
             return true;
         });
@@ -106,25 +107,14 @@ class DailySessionLedger extends Component
     }
 
     /**
-     * The authorisation check is activeSession(): only this admin's organisation (and zone) can be reached. Only then
-     * is a short-lived signed link (cloud storage) or a streamed file (local disk) handed out.
+     * The authorisation check is activeSession(): only this admin's organisation (and zone) can be reached. The PDF
+     * is then drawn and streamed straight back; it is never stored.
      */
     public function downloadPdfReport(SessionReportService $reportService): ?StreamedResponse
     {
         $session = $this->activeSession();
-        if (!$session) {
-            return null;
-        }
 
-        $download = $reportService->downloadReport($session);
-
-        if ($download instanceof RedirectResponse) {
-            $this->redirect($download->getTargetUrl());
-
-            return null;
-        }
-
-        return $download;
+        return $session === null ? null : $reportService->download($session);
     }
 
     private function orgId(): ?int

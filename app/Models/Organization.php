@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\Media\ImagePreset;
 use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\OrganizationFactory;
@@ -133,10 +134,10 @@ class Organization extends Model
     }
 
     /**
-     * The logo's URL: an uploaded logo (as a WebP copy of the given size once generated), or a pasted https or
-     * same-site link. Anything else (javascript:, data:, protocol-relative) is never rendered.
+     * The logo's URL: an uploaded logo (Cloudinary, at the preset's width), or a pasted https or same-site link.
+     * Anything else (javascript:, data:, protocol-relative) is never rendered.
      */
-    public function logoUrl(string $size = 'thumb'): ?string
+    public function logoUrl(ImagePreset|string $size = ImagePreset::Logo): ?string
     {
         $logo = $this->logo_url;
 

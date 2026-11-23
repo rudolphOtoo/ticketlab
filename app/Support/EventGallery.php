@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\Event;
 use App\Models\Organization;
+use App\Services\Media\ImagePreset;
 use Illuminate\Support\Str;
 
 /**
@@ -43,7 +44,8 @@ final class EventGallery
                 continue;
             }
 
-            $items[] = [...$item, 'src' => (string) MediaUrl::resolve($item['url'], 'large')];
+            // Full size for the lightbox; the grid renders <x-media-image> with a srcset from 'url'.
+            $items[] = [...$item, 'src' => (string) MediaUrl::resolve($item['url'], ImagePreset::Hero)];
         }
 
         return $items;

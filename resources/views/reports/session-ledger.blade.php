@@ -152,7 +152,7 @@
             </td>
             <td>
                 <div class="meta-label">Venue</div>
-                <div class="meta-value">{{ $event?->venue ?? 'Main Auditorium' }}</div>
+                <div class="meta-value">{{ $venue ?? 'Main Auditorium' }}</div>
             </td>
             <td>
                 <div class="meta-label">Status</div>

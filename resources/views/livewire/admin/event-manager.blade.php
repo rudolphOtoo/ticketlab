@@ -66,7 +66,7 @@
                     <!-- Expandable Banner Preview -->
                     @if ($event->bannerUrl())
                         <div x-show="showBanner" x-collapse x-cloak class="mt-3 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)]">
-                            <img src="{{ $event->bannerUrl() }}" alt="" class="aspect-[16/7] w-full object-cover" loading="lazy" onerror="this.onerror=null; this.closest('div').style.display='none';" />
+                            <x-media-image :value="$event->banner_path" preset="card" alt="" class="aspect-[16/7] w-full object-cover" />
                         </div>
                     @endif
 
@@ -166,31 +166,26 @@
                     </div>
 
                     <div>
-                        <label for="event-banner" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Banner Image <span class="font-normal text-[var(--text-tertiary)]">(JPG, PNG or WebP · max 4 MB)</span></label>
+                        <label for="event-banner" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Banner Image</label>
                         <div class="flex items-center gap-3">
-                            <div class="aspect-[16/7] w-40 shrink-0 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] flex items-center justify-center relative">
-                                @if ($banner && in_array($banner->getMimeType(), ['image/jpeg', 'image/png', 'image/webp'], true))
-                                    <img src="{{ $banner->temporaryUrl() }}" alt="" class="size-full object-cover" />
-                                @elseif ($bannerUrlInput)
-                                    <span class="text-[10px] text-[var(--text-tertiary)] font-medium">Previewing…</span>
-                                    <img src="{{ $bannerUrlInput }}" alt="" class="absolute inset-0 size-full object-cover" onerror="this.remove();" />
+                            <div class="aspect-[16/7] w-40 shrink-0 overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] flex items-center justify-center relative" data-banner-preview>
+                                @php $previewBanner = $this->pendingImage('banner') ?? (\App\Support\MediaUrl::isAcceptableLink($bannerUrlInput) ? $bannerUrlInput : null); @endphp
+                                @if ($previewBanner !== null)
+                                    <x-media-image :value="$previewBanner" preset="card" sizes="160px" class="absolute inset-0 size-full object-cover" />
                                 @elseif ($existingBannerUrl)
-                                    <span class="text-[10px] text-[var(--text-tertiary)] font-medium">No banner</span>
                                     <img src="{{ $existingBannerUrl }}" alt="" class="absolute inset-0 size-full object-cover" onerror="this.remove();" />
                                 @else
                                     <span class="text-[10px] text-[var(--text-tertiary)] font-medium">No banner</span>
                                 @endif
                             </div>
                             <div class="flex-1 space-y-2">
-                                <input id="event-banner" type="file" accept="image/jpeg,image/png,image/webp" wire:model="banner" class="text-xs text-[var(--text-secondary)] file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--text-primary)]" />
+                                <x-image-upload field="banner" id="event-banner" label="Upload banner image" />
                                 <div class="flex items-center gap-2 text-[11px] text-[var(--text-tertiary)]">
                                     <span>or</span>
-                                    <input type="url" wire:model.live.debounce.300ms="bannerUrlInput" placeholder="…paste image URL (e.g. Unsplash, S3)" class="flex-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-none" />
+                                    <input type="url" wire:model.live.debounce.300ms="bannerUrlInput" placeholder="…paste an https image link" class="flex-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--color-primary)] focus:outline-none" />
                                 </div>
                             </div>
                         </div>
-                        <div wire:loading wire:target="banner" class="mt-1 text-[11px] text-[var(--text-tertiary)]">Uploading…</div>
-                        @error('banner') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                         @error('bannerUrlInput') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
                     </div>
 

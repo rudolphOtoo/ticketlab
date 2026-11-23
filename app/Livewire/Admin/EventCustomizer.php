@@ -11,6 +11,7 @@ use App\Livewire\Admin\Concerns\ManagesEventSpeakers;
 use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Models\Event;
 use App\Support\ActiveEvent;
+use App\Support\MediaUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
@@ -143,6 +144,14 @@ class EventCustomizer extends Component
             ]);
         }
 
+        // The field is editable in the browser: it may keep the event's current banner or name an https link, never
+        // another stored image. Banner uploads go through the Event Manager.
+        $banner = trim($this->banner_path);
+
+        if ($banner !== '' && $banner !== $event->banner_path && !MediaUrl::isAcceptableLink($banner)) {
+            throw ValidationException::withMessages(['banner_path' => 'Paste an https image link.']);
+        }
+
         $customization = [
             'headline' => $this->headline,
             'tagline' => $this->tagline,
@@ -159,7 +168,7 @@ class EventCustomizer extends Component
             'venue' => $this->venue,
             'start_at' => filled($this->start_at) ? $this->start_at : null,
             'end_at' => filled($this->end_at) ? $this->end_at : null,
-            'banner_path' => $this->banner_path,
+            'banner_path' => $banner !== '' ? $banner : null,
             'is_public' => $this->is_public,
             'customization' => $customization,
         ]);

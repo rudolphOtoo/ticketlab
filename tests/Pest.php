@@ -8,9 +8,12 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * Never reach the real Paystack account from the suite, whatever keys the local .env holds.
+ * Never reach the real Paystack account (or Cloudinary) from the suite, whatever keys the local .env holds.
  */
 $paystackSandbox = function (): void {
+    // Never reach Cloudinary either: every test gets a fresh in-memory fake (cloudinary() returns it).
+    app()->instance(App\Services\Media\CloudinaryClient::class, new Tests\Support\FakeCloudinaryClient());
+
     config(['services.paystack.secret_key' => 'sk_test_suite', 'services.paystack.public_key' => 'pk_test_suite']);
     app()->instance('paystack.initialize.queue', new ArrayObject());
     Http::preventStrayRequests();
@@ -157,3 +160,38 @@ Livewire\Features\SupportTesting\Testable::macro('checkoutAsShown', function ():
         'startCheckout',
     );
 });
+
+/**
+ * The fake Cloudinary client bound for this test.
+ */
+function cloudinary(): Tests\Support\FakeCloudinaryClient
+{
+    $client = app(App\Services\Media\CloudinaryClient::class);
+
+    return $client instanceof Tests\Support\FakeCloudinaryClient
+        ? $client
+        : throw new RuntimeException('The fake Cloudinary client is not bound.');
+}
+
+/**
+ * Uploads an image to the fake Cloudinary the way the browser does (into the folder the component signs) and hands
+ * the result to the component's acceptImageUpload().
+ *
+ * @param array{bytes?: int, format?: string} $image
+ */
+function upload_image(
+    Livewire\Features\SupportTesting\Testable $component,
+    string $field,
+    array $image = [],
+): Livewire\Features\SupportTesting\Testable {
+    $signed = $component->instance()->signImageUpload($field);
+    $result = cloudinary()->upload($signed['fields']['folder'], $image['bytes'] ?? 120_000, $image['format'] ?? 'jpg');
+
+    return $component->call(
+        'acceptImageUpload',
+        $field,
+        $result['public_id'],
+        $result['version'],
+        $result['signature'],
+    );
+}

@@ -22,6 +22,13 @@ return [
         // to the main account: a zone without a verified subaccount cannot sell paid tickets.
     ],
 
+    // Public images (logos, banners, speaker photos, gallery, flyer backgrounds). One setting:
+    // cloudinary://<api_key>:<api_secret>@<cloud_name>. Unset, uploads are refused with a clear message and
+    // pasted https links still work. Assets live under ticketlab/{APP_ENV}/orgs/{org_id}/...
+    'cloudinary' => [
+        'url' => env('CLOUDINARY_URL'),
+    ],
+
     // Shared secret for the serverless cron and migration endpoints; both refuse every request while it is unset.
     'scheduler' => [
         'token' => env('SCHEDULER_TOKEN'),

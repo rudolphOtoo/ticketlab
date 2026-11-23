@@ -13,7 +13,8 @@
     qrFg: @entangle('qrFgColor'),
     qrBg: @entangle('qrBgColor'),
     featuredSpeakerId: @entangle('featuredSpeakerId'),
-    background: @entangle('backgroundUrl'),
+    // The flyer background is chosen and drawn in the browser only (a local blob URL); it is never uploaded.
+    background: null,
     speakers: @js($speakers->mapWithKeys(fn ($spk) => [$spk->id => ['name' => $spk->name, 'title' => $spk->title_role, 'topic' => $spk->topic]])),
     priceText: @js($lowestTicketPrice !== null ? 'Tickets from GHS ' . number_format((float) $lowestTicketPrice, 2) : 'Free Admission'),
     orgName: @js($organization?->name ?? 'TicketLab')
@@ -321,9 +322,6 @@ function marketingStudio(config) {
             this.hasBackground = false;
             const input = document.getElementById('flyer-background');
             if (input) input.value = '';
-            if (this.$wire && typeof this.$wire.removeBackground === 'function') {
-                this.$wire.removeBackground();
-            }
             this.renderFlyer();
         },
 

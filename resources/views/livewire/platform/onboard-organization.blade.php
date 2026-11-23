@@ -42,8 +42,10 @@
             </div>
             <div>
                 <span class="{{ $labelClass }}">Logo (optional)</span>
-                <input id="org-logo-file" type="file" wire:model="logo" accept="image/jpeg,image/png,image/webp" class="block text-xs" aria-label="Upload logo" />
-                @error('logo') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                @if ($this->pendingImage('logo'))
+                    <x-media-image :value="$this->pendingImage('logo')" preset="logo" alt="Uploaded logo" class="mb-1.5 size-12 rounded-lg object-cover" data-logo-preview />
+                @endif
+                <x-image-upload field="logo" id="org-logo-file" label="Upload logo" />
                 <input id="org-logo" type="url" wire:model="logoUrl" placeholder="or paste an https link" aria-label="Logo link" class="mt-1.5 {{ $inputClass }}" />
                 @error('logoUrl') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
             </div>

@@ -15,7 +15,7 @@
                 >
                     <div class="aspect-[16/8] bg-[var(--bg-subtle)]">
                         @if ($listed->bannerUrl())
-                            <img src="{{ $listed->bannerUrl() }}" alt="{{ $listed->title }}" class="size-full object-cover" loading="lazy" />
+                            <img src="{{ $listed->bannerUrl('card') }}" alt="{{ $listed->title }}" class="size-full object-cover" loading="lazy" />
                         @endif
                     </div>
                     <div class="flex flex-1 flex-col gap-1 p-4">

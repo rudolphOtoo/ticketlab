@@ -23,7 +23,7 @@
                 >
                     <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--bg-subtle)] text-lg font-bold text-[var(--text-secondary)]">
                         @if ($speaker->photoUrl())
-                            <img src="{{ $speaker->photoUrl() }}" alt="{{ $speaker->name }}" class="size-full object-cover" loading="lazy" />
+                            <x-media-image :value="$speaker->photo_path" preset="logo" sizes="64px" :alt="$speaker->name" class="size-full object-cover" />
                         @else
                             {{ mb_substr($speaker->name, 0, 1) }}
                         @endif

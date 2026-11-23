@@ -51,33 +51,22 @@ test('qr endpoint validates its input', function (array $query): void {
     'oversized' => [['content' => str_repeat('a', 1025)]],
 ]);
 
-test('marketing studio stores an uploaded flyer background on the public disk', function (): void {
+test('the flyer background stays in the browser: the studio takes no uploads and stores nothing', function (): void {
     Storage::fake('public');
 
-    $component = Livewire::actingAs($this->admin)
-        ->test(MarketingStudio::class)
-        ->set('backgroundImage', UploadedFile::fake()->image('flyer.jpg', 1080, 1080))
-        ->assertHasNoErrors();
+    $this
+        ->actingAs($this->admin)
+        ->get(route('admin.studio.marketing'))
+        ->assertOk()
+        ->assertSee('onBackgroundSelected($event)', false)
+        ->assertDontSee('wire:model="backgroundImage"', false);
 
-    $path = $component->get('backgroundPath');
-
-    expect($path)
-        ->toMatch('#^orgs/\d+/events/' . $component->get('selectedEventId') . '/flyers/#')
-        ->and($component->get('backgroundUrl'))
-        ->toStartWith('/storage/orgs/');
-    Storage::disk('public')->assertExists($path);
-
-    $component->call('removeBackground')->assertSet('backgroundUrl', null);
-    Storage::disk('public')->assertMissing($path);
-});
-
-test('marketing studio rejects non-image backgrounds', function (): void {
-    Storage::fake('public');
-
-    Livewire::actingAs($this->admin)
-        ->test(MarketingStudio::class)
-        ->set('backgroundImage', UploadedFile::fake()->create('notes.pdf', 10, 'application/pdf'))
-        ->assertHasErrors(['backgroundImage']);
+    expect(method_exists(MarketingStudio::class, 'signImageUpload'))
+        ->toBeFalse()
+        ->and(Storage::disk('public')->allFiles())
+        ->toBe([])
+        ->and(cloudinary()->images)
+        ->toBe([]);
 });
 
 test('marketing studio wires the real qr endpoint into the canvas engine', function (): void {
@@ -89,28 +78,24 @@ test('marketing studio wires the real qr endpoint into the canvas engine', funct
         ->assertDontSee('drawQrMatrix');
 });
 
-test('speaker photos upload to the public speakers directory', function (): void {
-    Storage::fake('public');
-
-    Livewire::actingAs($this->admin)
+test('speaker photos upload to the event\'s speakers folder on Cloudinary', function (): void {
+    $component = Livewire::actingAs($this->admin)
         ->test(EventCustomizer::class)
         ->call('openCreateSpeakerModal')
-        ->set('speaker_name', 'Dr. Abena Owusu')
-        ->set('speaker_photo', UploadedFile::fake()->image('abena.png', 400, 400))
-        ->call('saveSpeaker')
-        ->assertHasNoErrors();
+        ->set('speaker_name', 'Dr. Abena Owusu');
+
+    upload_image($component, 'speaker_photo')->call('saveSpeaker')->assertHasNoErrors();
 
     $speaker = EventSpeaker::query()->where('name', 'Dr. Abena Owusu')->firstOrFail();
 
     expect($speaker->photo_path)
-        ->toStartWith("orgs/{$speaker->organization_id}/events/{$speaker->event_id}/speakers/")
-        // The queued WebP copy is served once generated (synchronously here).
+        ->toStartWith('cloudinary:v')
+        ->toContain("/orgs/{$speaker->organization_id}/events/{$speaker->event_id}/speakers/")
         ->and($speaker->photoUrl())
-        ->toBe('/storage/' . App\Support\MediaUrl::variantPath((string) $speaker->photo_path, 'medium'));
-    Storage::disk('public')->assertExists((string) $speaker->photo_path);
+        ->toStartWith('https://res.cloudinary.com/demo-cloud/image/upload/f_auto,q_auto,c_limit,w_200/');
 });
 
-test('replacing a speaker photo deletes the previous upload', function (): void {
+test('replacing a speaker photo from before Cloudinary deletes the old local file', function (): void {
     Storage::fake('public');
     $old = UploadedFile::fake()->image('old.png')->store("speakers/{$this->org->id}", 'public');
     $speaker = EventSpeaker::factory()->create([
@@ -119,27 +104,20 @@ test('replacing a speaker photo deletes the previous upload', function (): void 
         'photo_path' => $old,
     ]);
 
-    Livewire::actingAs($this->admin)
-        ->test(EventCustomizer::class)
-        ->call('editSpeaker', $speaker->id)
-        ->set('speaker_photo', UploadedFile::fake()->image('new.png'))
-        ->call('saveSpeaker')
-        ->assertHasNoErrors();
+    $component = Livewire::actingAs($this->admin)->test(EventCustomizer::class)->call('editSpeaker', $speaker->id);
+    upload_image($component, 'speaker_photo')->call('saveSpeaker')->assertHasNoErrors();
 
     Storage::disk('public')->assertMissing($old);
-    Storage::disk('public')->assertExists((string) $speaker->fresh()->photo_path);
+    expect($speaker->fresh()->photo_path)->toStartWith('cloudinary:v');
 });
 
-test('speaker photo uploads must be images', function (): void {
-    Storage::fake('public');
-
-    Livewire::actingAs($this->admin)
+test('speaker photo uploads must be jpg, png or webp images', function (): void {
+    $component = Livewire::actingAs($this->admin)
         ->test(EventCustomizer::class)
         ->call('openCreateSpeakerModal')
-        ->set('speaker_name', 'Bad Upload')
-        ->set('speaker_photo', UploadedFile::fake()->create('cv.pdf', 20, 'application/pdf'))
-        ->call('saveSpeaker')
-        ->assertHasErrors(['speaker_photo']);
+        ->set('speaker_name', 'Bad Upload');
+
+    upload_image($component, 'speaker_photo', ['format' => 'pdf'])->assertHasErrors(['speaker_photo']);
 });
 
 test('customizer live preview reflects unsaved copy and palette edits', function (): void {

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureSubdivisionAccess;
+use App\Services\Media\CloudinaryClient;
+use App\Services\Media\SdkCloudinaryClient;
 use App\Services\Sms\Contracts\SmsGatewayInterface;
 use App\Services\Sms\SmsManager;
 use Carbon\CarbonImmutable;
@@ -24,6 +26,12 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(SmsGatewayInterface::class, SmsManager::class);
+        $this->app->singleton(
+            CloudinaryClient::class,
+            static fn(): CloudinaryClient => new SdkCloudinaryClient(
+                is_string(config('services.cloudinary.url')) ? config('services.cloudinary.url') : null,
+            ),
+        );
 
         // Development-only packages: never register in production or when not installed.
         if (!$this->app->isProduction()) {

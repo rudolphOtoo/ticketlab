@@ -187,10 +187,13 @@ test('admin can lock financial session and generate tamper-proof PDF audit repor
         ->toBe(50.00)
         ->and($session->total_attendees)
         ->toBe(1)
-        ->and($session->snapshot_pdf_path)
-        ->not->toBeNull();
+        ->and($session->snapshot)
+        ->toHaveKeys(['event_id', 'capacity_total', 'zone_breakdown'])
+        ->and($session->snapshot['event_id'])
+        ->toBe($event->id);
 
-    Storage::disk('local')->assertExists($session->snapshot_pdf_path);
+    // The PDF is drawn from the snapshot on download; nothing is written to disk.
+    expect(Storage::disk('local')->allFiles())->toBe([]);
 });
 
 test('locked session offers PDF download and prevents double locking', function () {
@@ -217,14 +220,20 @@ test('locked session offers PDF download and prevents double locking', function 
         'total_online_momo' => 2000.00,
         'total_cash' => 500.00,
         'total_attendees' => 45,
-        'snapshot_pdf_path' => 'reports/test_snapshot.pdf',
+        'snapshot' => [
+            'event_id' => null,
+            'event_title' => null,
+            'event_venue' => null,
+            'capacity_total' => 50,
+            'zone_breakdown' => [],
+        ],
     ]);
-
-    Storage::disk('local')->put('reports/test_snapshot.pdf', '%PDF-1.4 mock content');
 
     Livewire::actingAs($user)
         ->test(DailySessionLedger::class)
         ->set('activeSessionId', $session->id)
         ->call('downloadPdfReport')
-        ->assertFileDownloaded('Session_Ledger_Session_Day_1_Final.pdf');
+        ->assertFileDownloaded('Session_Ledger_Session_Day_1_Final.pdf', contentType: 'application/pdf');
+
+    expect(Storage::disk('local')->allFiles())->toBe([]);
 });

@@ -6,67 +6,61 @@ namespace App\Services\Ledger;
 
 use App\Models\Event;
 use App\Models\SessionLedger;
-use App\Support\PrivateFiles;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * Session ledger PDFs, which are financial records. Nothing is stored as a file: locking a session saves the figures
+ * the PDF shows on the ledger row, and each download draws the PDF from them and streams it straight to the
+ * (already authorised) admin, like the CSV exports. There is no private storage to secure or clean up.
+ */
 class SessionReportService
 {
     /**
-     * Generate and store an immutable PDF audit snapshot for the given session ledger.
+     * Freeze what the PDF shows. Called once, inside the locking transaction.
      *
-     * @param array<int, array{name: string, code: string, admitted: int}> $zoneBreakdown
+     * @param list<array{name: string, code: string, admitted: int}> $zoneBreakdown
      */
-    public function generateReport(
+    public function snapshot(
         SessionLedger $ledger,
         ?Event $event = null,
         int $capacityTotal = 0,
         array $zoneBreakdown = [],
-    ): string {
-        $organization = $ledger->organization;
-        $timestamp = now()->format('Ymd_His');
-        // Private disk, namespaced per organisation: ledger PDFs are financial records and never get a public URL.
-        $fileName = sprintf('orgs/%d/ledgers/session_%d_%s.pdf', $ledger->organization_id, $ledger->id, $timestamp);
-
-        $pdf = Pdf::loadView('reports.session-ledger', [
-            'ledger' => $ledger,
-            'event' => $event,
-            'organization' => $organization,
-            'capacityTotal' => $capacityTotal,
-            'zoneBreakdown' => $zoneBreakdown,
-        ]);
-
-        $pdf->setPaper('a4', 'portrait');
-
-        $pdfContent = $pdf->output();
-        PrivateFiles::put($fileName, $pdfContent, 'application/pdf');
-
+    ): void {
         $ledger->update([
-            'snapshot_pdf_path' => $fileName,
+            'snapshot' => [
+                'event_id' => $event?->id,
+                'event_title' => $event?->title,
+                'event_venue' => $event?->venue,
+                'capacity_total' => $capacityTotal,
+                'zone_breakdown' => $zoneBreakdown,
+            ],
         ]);
-
-        return $fileName;
     }
 
     /**
-     * The ledger PDF for an already authorised caller: a short-lived signed link on cloud storage, or a streamed
-     * download from a local disk. Regenerated if the stored copy is missing.
+     * The ledger PDF for a caller who has already passed the scope check. Ledgers locked before snapshots existed
+     * show their frozen totals without a zone breakdown.
      */
-    public function downloadReport(SessionLedger $ledger): StreamedResponse|RedirectResponse
+    public function download(SessionLedger $ledger): StreamedResponse
     {
-        $path = $ledger->snapshot_pdf_path;
+        $snapshot = $ledger->snapshot ?? [];
 
-        if (!PrivateFiles::exists($path)) {
-            $path = $this->generateReport($ledger);
-        }
+        $pdf = Pdf::loadView('reports.session-ledger', [
+            'ledger' => $ledger,
+            'venue' => $snapshot['event_venue'] ?? null,
+            'capacityTotal' => (int) ($snapshot['capacity_total'] ?? 0),
+            'zoneBreakdown' => $snapshot['zone_breakdown'] ?? [],
+        ])->setPaper('a4', 'portrait');
 
-        $downloadName = sprintf('Session_Ledger_%s.pdf', str_replace(' ', '_', $ledger->session_name));
-        $signed = PrivateFiles::temporaryDownloadUrl((string) $path, $downloadName);
+        $fileName = sprintf('Session_Ledger_%s.pdf', preg_replace('/[^A-Za-z0-9_-]+/', '_', $ledger->session_name));
 
-        return $signed !== null
-            ? redirect()->away($signed)
-            : Storage::disk(PrivateFiles::disk())->download((string) $path, $downloadName);
+        return response()->streamDownload(
+            static function () use ($pdf): void {
+                echo $pdf->output();
+            },
+            $fileName,
+            ['Content-Type' => 'application/pdf', 'Cache-Control' => 'private, no-store'],
+        );
     }
 }

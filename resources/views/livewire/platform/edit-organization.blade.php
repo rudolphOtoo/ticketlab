@@ -44,15 +44,19 @@
             </div>
             <div class="sm:col-span-2 space-y-2" data-logo-field>
                 <span class="{{ $labelClass }}">Logo</span>
-                @if ($organization->logoUrl())
+                @if ($this->pendingImage('logo'))
                     <div class="flex items-center gap-3">
-                        <img src="{{ $organization->logoUrl() }}" alt="{{ $organization->name }} logo" class="size-12 rounded-lg border border-[var(--border-hairline)] object-contain" />
+                        <x-media-image :value="$this->pendingImage('logo')" preset="logo" alt="New logo (save to use it)" class="size-12 rounded-lg border border-[var(--border-hairline)] object-contain" data-logo-preview />
+                        <span class="text-[11px] text-[var(--text-tertiary)]">New logo. Save to use it.</span>
+                    </div>
+                @elseif ($organization->logo_url)
+                    <div class="flex items-center gap-3">
+                        <x-media-image :value="$organization->logo_url" preset="logo" :alt="$organization->name . ' logo'" class="size-12 rounded-lg border border-[var(--border-hairline)] object-contain" />
                         <button type="button" wire:click="removeLogo" wire:confirm="Remove the logo?" class="cursor-pointer text-xs font-semibold text-rose-600">Remove</button>
                     </div>
                 @endif
-                <input id="org-logo-file" type="file" wire:model="logo" accept="image/jpeg,image/png,image/webp" class="block text-xs" aria-label="Upload logo" />
-                <p class="text-[11px] text-[var(--text-tertiary)]">JPG, PNG or WebP, up to 5 MB. Or paste an https link:</p>
-                @error('logo') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
+                <x-image-upload field="logo" id="org-logo-file" label="Upload logo" />
+                <p class="text-[11px] text-[var(--text-tertiary)]">Or paste an https link:</p>
                 <input id="org-logo" type="url" wire:model="logoUrl" placeholder="https://…" aria-label="Logo link" class="{{ $inputClass }}" />
                 @error('logoUrl') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
             </div>

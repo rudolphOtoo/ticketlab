@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Platform;
 
+use App\Livewire\Concerns\UploadsImages;
 use App\Models\AuditLog;
 use App\Models\Organization;
 use App\Models\Subdivision;
@@ -18,8 +19,6 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
 
 /**
  * Super admin edits an organisation's identity and adds zones.
@@ -31,7 +30,7 @@ use Livewire\WithFileUploads;
 #[Title('Edit organisation')]
 class EditOrganization extends Component
 {
-    use WithFileUploads;
+    use UploadsImages;
 
     #[Locked]
     public int $organizationId;
@@ -45,8 +44,6 @@ class EditOrganization extends Component
     public string $contactPhone = '';
 
     public string $logoUrl = '';
-
-    public ?TemporaryUploadedFile $logo = null;
 
     public string $brandColor = '#18181b';
 
@@ -84,7 +81,6 @@ class EditOrganization extends Component
             'contactEmail' => ['required', 'email', 'max:255'],
             'contactPhone' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ()-]{7,20}$/'],
             'logoUrl' => ['nullable', 'url:https', 'max:2048'],
-            'logo' => ['nullable', ...MediaUrl::UPLOAD_RULES],
             'brandColor' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'timezone' => ['required', 'timezone:all'],
         ]);
@@ -108,12 +104,12 @@ class EditOrganization extends Component
             ],
         ])->save();
 
-        // A replaced uploaded logo (and its WebP copies) is deleted; pasted links are never touched.
+        // A replaced uploaded logo is deleted from Cloudinary; pasted links are never touched.
         if ($previousLogo !== $logo) {
             MediaUrl::deleteStored($previousLogo);
         }
 
-        $this->logo = null;
+        $this->pendingImageSaved('logo');
         $this->audit($actor, 'organization.updated', ['before' => $before]);
         $this->flashMessage = "{$organization->name} was updated.";
     }
@@ -126,10 +122,17 @@ class EditOrganization extends Component
         MediaUrl::deleteStored($organization->logo_url);
         $organization->forceFill(['logo_url' => null])->save();
         $this->logoUrl = '';
-        $this->logo = null;
+        $this->discardPendingImage('logo');
 
         $this->audit($actor, 'organization.logo_removed', []);
         $this->flashMessage = 'The logo was removed.';
+    }
+
+    protected function imageUploadFolder(string $field): ?string
+    {
+        self::superAdmin();
+
+        return $field === 'logo' ? MediaUrl::organizationDirectory($this->organizationId, 'logos') : null;
     }
 
     /**
@@ -137,8 +140,8 @@ class EditOrganization extends Component
      */
     private function nextLogo(Organization $organization, ?string $current): ?string
     {
-        if ($this->logo !== null) {
-            return MediaUrl::store($this->logo, MediaUrl::organizationDirectory($organization->id, 'logos'));
+        if ($this->pendingImage('logo') !== null) {
+            return $this->pendingImage('logo');
         }
 
         if ($this->logoUrl !== '') {

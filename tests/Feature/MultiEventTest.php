@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Support\ActiveEvent;
 use App\Support\DedicatedSite;
 use App\Support\EventGallery;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
@@ -154,46 +153,36 @@ test('admins choose which published event headlines the public site', function (
  */
 
 test('banners and speaker photos are filed under the event that owns them', function (): void {
-    Storage::fake('public');
     $first = create_event_as($this->admin, 'Summit 2026');
     $second = create_event_as($this->admin, 'Summit 2027');
 
-    Livewire::actingAs($this->admin)
-        ->test(EventManager::class)
-        ->call('editEvent', $second->id)
-        ->set('banner', UploadedFile::fake()->image('banner.jpg', 1600, 700))
-        ->call('save')
-        ->assertHasNoErrors();
+    $manager = Livewire::actingAs($this->admin)->test(EventManager::class)->call('editEvent', $second->id);
+    upload_image($manager, 'banner')->call('save')->assertHasNoErrors();
 
-    Livewire::actingAs($this->admin)
+    $customizer = Livewire::actingAs($this->admin)
         ->test(EventCustomizer::class)
         ->call('openCreateSpeakerModal')
-        ->set('speaker_name', 'Ama Darko')
-        ->set('speaker_photo', UploadedFile::fake()->image('ama.png', 300, 300))
-        ->call('saveSpeaker')
-        ->assertHasNoErrors();
+        ->set('speaker_name', 'Ama Darko');
+    upload_image($customizer, 'speaker_photo')->call('saveSpeaker')->assertHasNoErrors();
 
     expect($second->fresh()->banner_path)
-        ->toStartWith("orgs/{$this->org->id}/events/{$second->id}/banners/")
+        ->toContain("/orgs/{$this->org->id}/events/{$second->id}/banners/")
         ->and(EventSpeaker::query()->sole()->photo_path)
-        ->toStartWith("orgs/{$this->org->id}/events/{$first->id}/speakers/");
+        ->toContain("/orgs/{$this->org->id}/events/{$first->id}/speakers/");
 });
 
 test('gallery images are filed under the active event and filtered by it', function (): void {
-    Storage::fake('public');
     $first = create_event_as($this->admin, 'Summit 2026');
     $second = create_event_as($this->admin, 'Summit 2027');
 
     $addImage = function (string $title): void {
-        Livewire::actingAs($this->admin)
+        $studio = Livewire::actingAs($this->admin)
             ->test(BespokeStudio::class)
             ->set('new_image_source_mode', 'upload')
-            ->set('new_image_file', UploadedFile::fake()->image(str($title)->slug() . '.jpg'))
             ->set('new_image_title', $title)
-            ->set('new_image_tag', 'Stage')
-            ->call('addGalleryImage')
-            ->call('saveGalleryPage')
-            ->assertHasNoErrors();
+            ->set('new_image_tag', 'Stage');
+
+        upload_image($studio, 'new_image_file')->call('addGalleryImage')->call('saveGalleryPage')->assertHasNoErrors();
     };
 
     $addImage('First Keynote');
@@ -205,11 +194,11 @@ test('gallery images are filed under the active event and filtered by it', funct
     expect($images['First Keynote']['event_id'])
         ->toBe($first->id)
         ->and($images['First Keynote']['url'])
-        ->toStartWith("orgs/{$this->org->id}/events/{$first->id}/gallery/")
+        ->toContain("/orgs/{$this->org->id}/events/{$first->id}/gallery/")
         ->and($images['Second Keynote']['event_id'])
         ->toBe($second->id)
         ->and($images['Second Keynote']['url'])
-        ->toStartWith("orgs/{$this->org->id}/events/{$second->id}/gallery/");
+        ->toContain("/orgs/{$this->org->id}/events/{$second->id}/gallery/");
 
     // The admin grid follows the active event unless "All events" is chosen.
     Livewire::actingAs($this->admin)
@@ -270,43 +259,30 @@ test('gallery items cannot be rewritten from the browser', function (): void {
  |--------------------------------------------------------------------------
  */
 
-test('uploaded banners and speaker photos render on the public event page from storage', function (): void {
-    Storage::fake('public');
-    // A mismatched APP_URL (common on hosted deploys) must not break public image links.
-    config(['app.url' => 'http://localhost', 'filesystems.disks.public.url' => 'http://localhost/storage']);
+test('uploaded banners and speaker photos render on the public event page from Cloudinary', function (): void {
     $event = Event::factory()->create(['organization_id' => $this->org->id]);
     ActiveEvent::set($event);
 
-    Livewire::actingAs($this->admin)
-        ->test(EventManager::class)
-        ->call('editEvent', $event->id)
-        ->set('banner', UploadedFile::fake()->image('banner.jpg', 1600, 700))
-        ->call('save');
-    Livewire::actingAs($this->admin)
+    $manager = Livewire::actingAs($this->admin)->test(EventManager::class)->call('editEvent', $event->id);
+    upload_image($manager, 'banner')->call('save');
+    $customizer = Livewire::actingAs($this->admin)
         ->test(EventCustomizer::class)
         ->call('openCreateSpeakerModal')
-        ->set('speaker_name', 'Kofi Annan Jr')
-        ->set('speaker_photo', UploadedFile::fake()->image('kofi.png', 300, 300))
-        ->call('saveSpeaker');
+        ->set('speaker_name', 'Kofi Annan Jr');
+    upload_image($customizer, 'speaker_photo')->call('saveSpeaker');
 
-    $banner = (string) $event->fresh()->banner_path;
-    $photo = (string) EventSpeaker::query()->sole()->photo_path;
-
-    Storage::disk('public')->assertExists([$banner, $photo]);
-
-    // The queued job made WebP copies, so pages serve those (large banner, medium speaker photo).
-    $bannerWebp = App\Support\MediaUrl::variantPath($banner, 'large');
-    $photoWebp = App\Support\MediaUrl::variantPath($photo, 'medium');
-    Storage::disk('public')->assertExists([$bannerWebp, $photoWebp]);
+    $banner = App\Services\Media\CloudinaryImage::fromStored($event->fresh()->banner_path);
+    $photo = App\Services\Media\CloudinaryImage::fromStored(EventSpeaker::query()->sole()->photo_path);
+    $base = 'https://res.cloudinary.com/demo-cloud/image/upload/f_auto,q_auto,c_limit,';
 
     $this
         ->get(route('public.event.show', ['org_slug' => 'summit-org', 'event_slug' => $event->slug]))
         ->assertOk()
-        ->assertSee('src="/storage/' . $bannerWebp . '"', false)
-        ->assertSee('src="/storage/' . $photoWebp . '"', false);
+        ->assertSee('src="' . $base . "w_1600/v{$banner?->version}/{$banner?->publicId}\"", false)
+        ->assertSee('src="' . $base . "w_200/v{$photo?->version}/{$photo?->publicId}\"", false);
 
     $this->get(route('public.tenant.home', ['org_slug' => 'summit-org']))->assertOk()->assertSee(
-        '/storage/' . $bannerWebp,
+        $base . "w_1600/v{$banner?->version}/{$banner?->publicId}",
         false,
     );
 });

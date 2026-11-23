@@ -369,12 +369,12 @@
                             </div>
                             @php
                                 $previewAccent = preg_match('/^#[0-9a-fA-F]{6}$/', $accent_hex) === 1 ? $accent_hex : '#18181b';
-                                $previewBanner = \App\Support\MediaUrl::resolve($banner_path) ?? $currentEvent?->bannerUrl();
+                                $previewBanner = \App\Support\MediaUrl::resolve($banner_path, 'card') ?? $currentEvent?->bannerUrl('card');
                                 $previewStart = filled($start_at) ? rescue(static fn() => \Illuminate\Support\Carbon::parse($start_at), null, false) : null;
                             @endphp
                             <div class="relative overflow-hidden rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)]" style="--preview-accent: {{ $previewAccent }}">
                                 @if ($previewBanner)
-                                    <img src="{{ $previewBanner }}" alt="" class="absolute inset-0 size-full object-cover opacity-20" />
+                                    <img src="{{ $previewBanner }}" alt="" class="absolute inset-0 size-full object-cover opacity-20" loading="lazy" />
                                 @endif
                                 <div class="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full opacity-25 blur-xl" style="background-color: var(--preview-accent)"></div>
                                 <div class="relative space-y-3 p-5">
@@ -446,7 +446,7 @@
                             <div class="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3 shadow-xs flex items-start justify-between gap-2.5 subtle-hover-glow transition">
                                 <div class="flex items-start gap-2.5">
                                     @if ($spk->photoUrl())
-                                        <img src="{{ $spk->photoUrl() }}" alt="{{ $spk->name }}" class="size-9 rounded-lg object-cover border border-[var(--border-hairline)]" />
+                                        <img src="{{ $spk->photoUrl('logo') }}" alt="{{ $spk->name }}" class="size-9 rounded-lg object-cover border border-[var(--border-hairline)]" />
                                     @else
                                         <div class="size-9 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-hairline)] flex items-center justify-center font-bold text-[11px] text-[var(--text-primary)]">
                                             {{ substr($spk->name, 0, 2) }}
@@ -704,7 +704,7 @@
 
     <!-- Speaker Modal -->
     @if ($isSpeakerModalOpen)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs" @keydown.window.escape="$wire.set('isSpeakerModalOpen', false)">
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs" @keydown.window.escape="$wire.closeSpeakerModal()">
             <div class="w-full max-w-md rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] shadow-2xl p-6 space-y-4 animate-physical-modal">
                 <h3 class="text-sm font-bold text-[var(--text-primary)]">{{ $editingSpeakerId ? 'Edit Speaker' : 'Add New Speaker' }}</h3>
                 <form wire:submit="saveSpeaker" class="space-y-3">
@@ -722,20 +722,15 @@
                         <input type="text" wire:model="speaker_topic" class="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)]" />
                     </div>
                     <div>
-                        <label for="speaker_photo" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Photo <span class="font-normal text-[var(--text-tertiary)]">(JPG, PNG or WebP · max 2 MB)</span></label>
+                        <label for="speaker_photo" class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Photo</label>
                         <div class="flex items-center gap-3">
-                            <div class="size-14 shrink-0 overflow-hidden rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)]">
-                                @if ($speaker_photo && in_array($speaker_photo->getMimeType(), ['image/jpeg', 'image/png', 'image/webp'], true))
-                                    <img src="{{ $speaker_photo->temporaryUrl() }}" alt="" class="size-full object-cover" />
-                                @elseif (\App\Support\MediaUrl::resolve($speaker_photo_path))
-                                    <img src="{{ \App\Support\MediaUrl::resolve($speaker_photo_path) }}" alt="" class="size-full object-cover" />
-                                @endif
+                            <div class="size-14 shrink-0 overflow-hidden rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)]" data-speaker-photo-preview>
+                                <x-media-image :value="$this->pendingImage('speaker_photo') ?? $speaker_photo_path" preset="logo" sizes="56px" class="size-full object-cover" />
                             </div>
-                            <input id="speaker_photo" type="file" accept="image/jpeg,image/png,image/webp" wire:model="speaker_photo" class="text-xs text-[var(--text-secondary)] file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[var(--bg-subtle)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--text-primary)]" />
+                            <x-image-upload field="speaker_photo" id="speaker_photo" label="Upload speaker photo" class="flex-1" />
                         </div>
-                        <div wire:loading wire:target="speaker_photo" class="mt-1 text-[11px] text-[var(--text-tertiary)]">Uploading…</div>
-                        @error('speaker_photo') <p class="text-xs text-rose-500 mt-0.5">{{ $message }}</p> @enderror
-                        <input type="url" wire:model="speaker_photo_path" placeholder="…or paste an image URL" class="mt-2 w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)]" />
+                        @error('speaker_photo_path') <p class="text-xs text-rose-500 mt-0.5">{{ $message }}</p> @enderror
+                        <input type="url" wire:model="speaker_photo_path" placeholder="…or paste an https image link" class="mt-2 w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)]" />
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Bio</label>
@@ -746,7 +741,7 @@
                         <label for="speaker_featured" class="text-xs font-medium text-[var(--text-primary)] cursor-pointer">Highlight as Featured Speaker</label>
                     </div>
                     <div class="flex justify-end gap-2 pt-3 border-t border-[var(--border-hairline)]">
-                        <button type="button" wire:click="$set('isSpeakerModalOpen', false)" class="px-3.5 py-1.5 rounded-xl border border-[var(--border-hairline)] text-xs text-[var(--text-secondary)]">Cancel</button>
+                        <button type="button" wire:click="closeSpeakerModal" class="px-3.5 py-1.5 rounded-xl border border-[var(--border-hairline)] text-xs text-[var(--text-secondary)]">Cancel</button>
                         <button type="submit" class="px-4 py-1.5 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-fg)] text-xs font-semibold">Save Speaker</button>
                     </div>
                 </form>

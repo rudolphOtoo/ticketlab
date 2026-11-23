@@ -13,8 +13,6 @@ use App\Models\Organization;
 use App\Models\TicketType;
 use App\Models\User;
 use App\Support\ActiveEvent;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function (): void {
@@ -23,30 +21,27 @@ beforeEach(function (): void {
 });
 
 test('admin creates an event with an auto-generated slug and uploaded banner', function (): void {
-    Storage::fake('public');
-
-    Livewire::actingAs($this->admin)
+    $component = Livewire::actingAs($this->admin)
         ->test(EventManager::class)
         ->call('openCreateModal')
         ->set('title', 'Kingdom Summit 2027')
         ->assertSet('slug', 'kingdom-summit-2027')
         ->set('venue', 'Perez Dome')
         ->set('status', 'published')
-        ->set('is_public', false)
-        ->set('banner', UploadedFile::fake()->image('banner.jpg', 1600, 700))
-        ->call('save')
-        ->assertHasNoErrors();
+        ->set('is_public', false);
+
+    upload_image($component, 'banner')->call('save')->assertHasNoErrors();
 
     $event = Event::query()->where('slug', 'kingdom-summit-2027')->firstOrFail();
 
+    // A new event has no id while its banner uploads, so it goes in the organisation's banner folder.
     expect($event)
         ->organization_id->toBe($this->org->id)
         ->status->toBe('published')
-        ->is_public->toBeFalse()->and($event->banner_path)->toStartWith(
-            "orgs/{$this->org->id}/events/{$event->id}/banners/",
+        ->is_public->toBeFalse()->and($event->banner_path)->toStartWith('cloudinary:v')->toContain(
+            "/orgs/{$this->org->id}/banners/",
         );
 
-    Storage::disk('public')->assertExists($event->banner_path);
     expect(session(ActiveEvent::SESSION_KEY))->toBe($event->id);
 });
 

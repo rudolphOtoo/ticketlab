@@ -234,10 +234,11 @@ test('t2-w5: full ground operations gate rehearsal and session closeout lifecycl
             100.00,
         )->and((float) $savedLedger->total_online_momo)->toBe(450.00)->and($savedLedger->total_attendees)->toBe(
             1,
-        )->and($savedLedger->snapshot_pdf_path)
+        )->and($savedLedger->snapshot)
         ->not->toBeNull();
 
-    Storage::disk('local')->assertExists($savedLedger->snapshot_pdf_path);
+    // Ledger PDFs are streamed from the snapshot on download, never stored.
+    expect(Storage::disk('local')->allFiles())->toBe([]);
 
     // 9. Streaming Roster CSV Export
     $exportResponse = Livewire::actingAs($superadmin)->test(AttendeeRoster::class)->call('exportCsv');
