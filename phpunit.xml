@@ -35,6 +35,8 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <!-- Tests never reach Cloudinary: tests/Pest.php binds a fake client, whatever the local .env holds. -->
         <env name="CLOUDINARY_URL" value=""/>
+        <env name="MEDIA_DISK" value=""/>
+        <env name="CLOUDINARY_FOLDER" value=""/>
         <env name="LEGACY_MEDIA_URL" value=""/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
