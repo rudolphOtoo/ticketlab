@@ -18,6 +18,50 @@ use Illuminate\Support\Facades\Route;
 /** Every CSP violation the page reports, collected from the moment the listener is added. */
 const RECORD_CSP_VIOLATIONS = "window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective + ' ' + e.blockedURI))";
 
+/**
+ * The local Vite dev server's address, or null when none is running (no public/hot, or a stale one left behind by a
+ * dev server that has stopped). CI never has one.
+ */
+function running_vite_dev_server(): ?string
+{
+    $hotFile = public_path('hot');
+
+    if (!is_file($hotFile)) {
+        return null;
+    }
+
+    $url = rtrim(trim((string) file_get_contents($hotFile)), '/');
+
+    // curl, not the Http client: the suite blocks stray Http requests.
+    $curl = curl_init($url . '/@vite/client');
+    curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 2, CURLOPT_CONNECTTIMEOUT => 2]);
+    $client = curl_exec($curl);
+
+    return is_string($client) && str_contains($client, 'vite') ? $url : null;
+}
+
+/**
+ * Waits until the page stops being reloaded by the Vite dev server: right after a first load Vite often optimises
+ * dependencies and reloads the page, and any file change triggers a full reload too. A reload would wipe what the
+ * test recorded, so the test only starts once the same document has survived two checks a second apart.
+ */
+function wait_until_vite_is_idle(object $page, int $timeoutSeconds = 15): void
+{
+    $stableChecks = 0;
+    $deadline = microtime(true) + $timeoutSeconds;
+
+    while ($stableChecks < 2) {
+        if (microtime(true) > $deadline) {
+            throw new RuntimeException("The Vite dev server kept reloading the page for {$timeoutSeconds} s.");
+        }
+
+        $sameDocument = $page->script('window.__viteIdleMark === true');
+        $page->script('window.__viteIdleMark = true');
+        $stableChecks = $sameDocument ? $stableChecks + 1 : 0;
+        $page->wait(1);
+    }
+}
+
 test('the default policy allows Cloudinary images and browser uploads', function (): void {
     config(['csp.mode' => 'enforce']);
 
@@ -27,6 +71,11 @@ test('the default policy allows Cloudinary images and browser uploads', function
 });
 
 test('with the CSP enforced, a logo upload goes through and saves', function (string $assets): void {
+    if ($assets === 'dev server' && running_vite_dev_server() === null) {
+        // Without a dev server this would only repeat the built-assets run.
+        $this->markTestSkipped('No Vite dev server is running (npm run dev); the built-assets variant covers this.');
+    }
+
     if ($assets === 'built') {
         // As in CI and production: public/build, same origin, no Vite dev server even if one runs locally.
         Illuminate\Support\Facades\Vite::useHotFile(storage_path('framework/testing/no-vite-hot-file'));
@@ -59,6 +108,11 @@ test('with the CSP enforced, a logo upload goes through and saves', function (st
     ));
 
     $page = visit(route('platform.organizations.edit', $organization));
+
+    if ($assets === 'dev server') {
+        wait_until_vite_is_idle($page);
+    }
+
     $page->script(RECORD_CSP_VIOLATIONS);
     $page->attach('#org-logo-file', $png)->assertVisible('[data-logo-preview]');
 
