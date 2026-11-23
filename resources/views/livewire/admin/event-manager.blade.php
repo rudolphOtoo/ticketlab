@@ -46,6 +46,9 @@
                             @unless ($event->is_public)
                                 <x-ui.badge color="zinc" pill size="sm">Unlisted</x-ui.badge>
                             @endunless
+                            @if ($event->isArchived())
+                                <x-ui.badge color="zinc" pill size="sm">Archived</x-ui.badge>
+                            @endif
                         </div>
 
                         @if ($event->bannerUrl())
@@ -97,19 +100,44 @@
                                 <button type="button" wire:click="activate({{ $event->id }})" class="cursor-pointer rounded-lg border border-[var(--border-hairline)] px-2.5 py-1 hover:bg-[var(--bg-subtle)] text-[var(--text-primary)] transition">Set Active</button>
                             @endif
                             <button type="button" wire:click="editEvent({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Edit</button>
-                            @if ($event->id === $featuredEventId)
-                                <span class="rounded-lg bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-400">Featured on site</span>
-                            @elseif ($event->status === 'published')
-                                <button type="button" wire:click="featureEvent({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Feature on site</button>
+                            @if ($event->isArchived())
+                                <button type="button" wire:click="unarchiveEvent({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Unarchive</button>
+                            @else
+                                @if ($event->id === $featuredEventId)
+                                    <span class="rounded-lg bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-400">Featured on site</span>
+                                @elseif ($event->status === 'published')
+                                    <button type="button" wire:click="featureEvent({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Feature on site</button>
+                                @endif
+                                <button type="button" wire:click="togglePublished({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">
+                                    {{ $event->status === 'published' ? 'Unpublish' : 'Publish' }}
+                                </button>
+                                <button type="button" wire:click="archiveEvent({{ $event->id }})" wire:confirm="Archive '{{ $event->title }}'? It leaves the public site and stops selling. Passes, ticket pages and reports keep working, and you can unarchive it." class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">Archive</button>
                             @endif
-                            <button type="button" wire:click="togglePublished({{ $event->id }})" class="cursor-pointer rounded-lg px-2.5 py-1 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] transition">
-                                {{ $event->status === 'published' ? 'Unpublish' : 'Publish' }}
-                            </button>
-                            <button type="button" wire:click="deleteEvent({{ $event->id }})" wire:confirm="Delete '{{ $event->title }}'? This cannot be undone." class="ml-auto cursor-pointer rounded-lg px-2.5 py-1 text-rose-600 hover:bg-rose-500/10 transition">Delete</button>
+                            <button type="button" wire:click="confirmDelete({{ $event->id }})" class="ml-auto cursor-pointer rounded-lg px-2.5 py-1 text-rose-600 hover:bg-rose-500/10 transition">Delete</button>
                         </div>
                     </div>
                 </article>
             @endforeach
+        </div>
+    @endif
+
+    @if ($deletingEventId !== null && ($deleting = $events->firstWhere('id', $deletingEventId)))
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs" @keydown.window.escape="$wire.cancelDelete()">
+            <form wire:submit="deleteEvent({{ $deleting->id }})" role="dialog" aria-modal="true" aria-labelledby="delete-event-title" data-delete-event class="w-full max-w-md space-y-4 rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-2xl">
+                <div>
+                    <h2 id="delete-event-title" class="text-base font-bold">Delete '{{ $deleting->title }}'?</h2>
+                    <p class="mt-1 text-xs text-[var(--text-secondary)]">It has no orders, seat holds or passes. Its tiers, programme and banner are deleted too. This can't be undone.</p>
+                </div>
+                <div>
+                    <label for="delete-event-name" class="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Type <strong class="select-all text-[var(--text-primary)]">{{ $deleting->title }}</strong> to confirm</label>
+                    <input id="delete-event-name" type="text" wire:model="deleteConfirmation" autocomplete="off" autofocus class="{{ $inputClass }}" />
+                    @error('deleteConfirmation') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                </div>
+                <div class="flex justify-end gap-2 text-xs font-semibold">
+                    <button type="button" wire:click="cancelDelete" class="cursor-pointer rounded-xl px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]">Keep it</button>
+                    <button type="submit" class="cursor-pointer rounded-xl bg-rose-600 px-4 py-2 text-white hover:bg-rose-700">Delete event</button>
+                </div>
+            </form>
         </div>
     @endif
 

@@ -66,6 +66,11 @@
                     <span class="text-[11px] text-[var(--text-secondary)]">Event: <strong class="text-[var(--text-primary)]">{{ $event?->title ?? 'No active event' }}</strong></span>
                 </div>
 
+                @if ($event?->salesClosedReason())
+                    <p data-sales-closed class="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300">{{ $event->salesClosedReason() }}</p>
+                @endif
+                @error('tier') <p class="text-xs font-semibold text-[var(--status-danger)]">{{ $message }}</p> @enderror
+
                 <div class="flex flex-wrap items-center gap-2 text-xs" data-sale-zone>
                     <span class="font-semibold text-[var(--text-secondary)]">{{ $zoneLabel }}:</span>
                     @if ($zonePinned)

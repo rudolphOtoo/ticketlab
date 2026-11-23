@@ -6,10 +6,10 @@ namespace App\Livewire\Admin;
 
 use App\Livewire\Admin\Concerns\RequiresOrganizationWideAdmin;
 use App\Livewire\Concerns\UploadsImages;
-use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Events\EventLifecycle;
 use App\Services\Payment\PayoutReadiness;
 use App\Support\ActiveEvent;
 use App\Support\DedicatedSite;
@@ -60,6 +60,12 @@ class EventManager extends Component
     public ?string $bannerUrlInput = null;
 
     public ?string $flashMessage = null;
+
+    /** The event whose delete dialog is open; it asks for the event's name. */
+    #[Locked]
+    public ?int $deletingEventId = null;
+
+    public string $deleteConfirmation = '';
 
     public function mount(): void
     {
@@ -238,7 +244,11 @@ class EventManager extends Component
      */
     public function featureEvent(int $eventId): void
     {
-        $event = $this->events()->whereKey($eventId)->where('status', 'published')->first();
+        $event = $this
+            ->events()
+            ->whereKey($eventId)
+            ->where(Event::publiclyVisible(...))
+            ->first();
 
         if ($event === null) {
             $this->flashMessage = 'Only published events can be featured on the public site.';
@@ -274,7 +284,7 @@ class EventManager extends Component
         $this->flashMessage = "'{$event->title}' is now {$event->status}.";
     }
 
-    public function deleteEvent(int $eventId): void
+    public function archiveEvent(int $eventId, EventLifecycle $lifecycle): void
     {
         $event = $this->events()->whereKey($eventId)->first();
 
@@ -282,26 +292,96 @@ class EventManager extends Component
             return;
         }
 
-        $tierIds = $event->ticketTypes()->select('id');
+        $lifecycle->archive($event, $this->actor());
+        $this->flashMessage =
+            "'{$event->title}' is archived: hidden from the public site and no longer on sale. "
+            . 'Its passes, ticket pages and reports keep working.';
+    }
 
-        // Issued passes are financial records; an event that has sold anything can only be unpublished.
-        if (Attendee::query()->whereIn('ticket_type_id', $tierIds)->exists()) {
-            $this->flashMessage = "'{$event->title}' has issued passes and cannot be deleted. Move it to draft instead.";
+    public function unarchiveEvent(int $eventId, EventLifecycle $lifecycle): void
+    {
+        $event = $this->events()->whereKey($eventId)->first();
+
+        if ($event === null) {
+            return;
+        }
+
+        $lifecycle->unarchive($event, $this->actor());
+        $this->flashMessage = "'{$event->title}' is back as {$event->status}.";
+    }
+
+    /**
+     * Opens the delete dialog, or explains straight away why this event can't be deleted.
+     */
+    public function confirmDelete(int $eventId, EventLifecycle $lifecycle): void
+    {
+        $event = $this->events()->whereKey($eventId)->first();
+
+        if ($event === null) {
+            return;
+        }
+
+        $blocker = $lifecycle->deleteBlocker($event);
+
+        if ($blocker !== null) {
+            $this->flashMessage = $blocker;
 
             return;
         }
 
-        MediaUrl::deleteStored($event->banner_path);
-        $title = $event->title;
-        $wasActive = ActiveEvent::id($event->organization_id) === $event->id;
-        $event->delete();
+        $this->resetValidation('deleteConfirmation');
+        $this->deleteConfirmation = '';
+        $this->deletingEventId = $event->id;
+    }
 
-        // The next resolve falls back to (and pins) another event instead of the one just deleted.
-        if ($wasActive) {
-            ActiveEvent::forget();
+    public function cancelDelete(): void
+    {
+        $this->deletingEventId = null;
+        $this->deleteConfirmation = '';
+    }
+
+    /**
+     * Deletes the event once its name has been typed exactly. Refused whenever it has orders, seat holds or passes.
+     */
+    public function deleteEvent(int $eventId, EventLifecycle $lifecycle): void
+    {
+        $event = $this->events()->whereKey($eventId)->first();
+
+        if ($event === null) {
+            return;
         }
 
-        $this->flashMessage = "'{$title}' was deleted.";
+        $blocker = $lifecycle->deleteBlocker($event);
+
+        if ($blocker !== null) {
+            $this->cancelDelete();
+            $this->flashMessage = $blocker;
+
+            return;
+        }
+
+        $this->resetValidation('deleteConfirmation');
+
+        if (trim($this->deleteConfirmation) !== $event->title) {
+            $this->addError('deleteConfirmation', 'Type the event name exactly as shown to delete it.');
+
+            return;
+        }
+
+        $blocker = $lifecycle->delete($event, $this->actor());
+        $this->cancelDelete();
+        $this->flashMessage = $blocker ?? "'{$event->title}' was deleted.";
+    }
+
+    private function actor(): User
+    {
+        $user = Auth::user();
+
+        if (!$user instanceof User) {
+            abort(403);
+        }
+
+        return $user;
     }
 
     /**
@@ -364,6 +444,8 @@ class EventManager extends Component
             ->events()
             ->withCount('ticketTypes')
             ->withSum('ticketTypes as capacity_total', 'total_capacity')
+            // Archived events go to the end of the list.
+            ->orderByRaw('archived_at is not null')
             ->orderByDesc('start_at')
             ->get();
 

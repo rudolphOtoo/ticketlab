@@ -47,7 +47,7 @@ final readonly class DedicatedSite
     {
         $published = Event::query()
             ->where('organization_id', $organization->id)
-            ->where('status', 'published')
+            ->where(Event::publiclyVisible(...))
             ->orderBy('start_at')
             ->get();
 
@@ -68,7 +68,7 @@ final readonly class DedicatedSite
     {
         $published = Event::query()
             ->where('organization_id', $organization->id)
-            ->where('status', 'published')
+            ->where(Event::publiclyVisible(...))
             ->orderBy('start_at')
             ->get(['id', 'is_public', 'start_at', 'end_at']);
 

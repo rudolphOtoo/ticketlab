@@ -111,7 +111,7 @@ class EventShow extends Component
             ->with('ticketTypes')
             ->where('organization_id', $organization->id)
             ->where('slug', $event_slug)
-            ->where('status', 'published')
+            ->where(Event::publiclyVisible(...))
             ->firstOrFail();
 
         $this->organizationId = $organization->id;
@@ -134,7 +134,7 @@ class EventShow extends Component
         ?PendingOrderService $pendingOrders = null,
     ): void {
         $pendingOrders ??= app(PendingOrderService::class);
-        $event = $this->event();
+        $event = $this->eventOnSale();
         $organization = $event->organization;
         // Only the questions the buyer was shown: a switched-off required field must never block checkout.
         $formFields = $event->formFields->where('is_active', true)->values();
@@ -431,6 +431,21 @@ class EventShow extends Component
     /**
      * Each attempt holds seats and opens a Paystack transaction, so scripted retries are capped per client.
      */
+    /**
+     * The page may have been open since before the event was archived; nothing is sold after that.
+     */
+    private function eventOnSale(): Event
+    {
+        $event = $this->event();
+        $closed = $event->salesClosedReason();
+
+        if ($closed !== null) {
+            throw ValidationException::withMessages(['payment' => $closed]);
+        }
+
+        return $event;
+    }
+
     private function checkoutThrottled(): bool
     {
         $limiterKey = 'checkout:' . (request()->ip() ?? 'unknown');

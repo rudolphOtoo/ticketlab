@@ -282,6 +282,14 @@ class CashDeskTerminal extends Component
             return null;
         }
 
+        $closed = $event->salesClosedReason();
+
+        if ($closed !== null) {
+            $this->addError('tier', $closed);
+
+            return null;
+        }
+
         $zoneId = $this->saleZoneId();
         $zone = $zoneId === null
             ? null

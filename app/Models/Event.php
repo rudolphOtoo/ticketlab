@@ -9,6 +9,7 @@ use App\Services\Media\ImagePreset;
 use App\Support\MediaUrl;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $status
  * @property bool $is_public
  * @property array<string, mixed>|null $customization
+ * @property CarbonImmutable|null $archived_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Organization $organization
@@ -63,7 +65,31 @@ class Event extends Model
             'end_at' => 'datetime',
             'is_public' => 'boolean',
             'customization' => 'array',
+            'archived_at' => 'datetime',
         ];
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    /**
+     * Why no pass may be sold now, online or at the cash desk, or null when sales are open.
+     */
+    public function salesClosedReason(): ?string
+    {
+        return $this->isArchived() ? 'This event is archived, so sales are closed.' : null;
+    }
+
+    /**
+     * Events the public may see: published and not archived. Use as ->where(Event::publiclyVisible(...)).
+     *
+     * @param Builder<self> $query
+     */
+    public static function publiclyVisible(Builder $query): void
+    {
+        $query->where('status', 'published')->whereNull('archived_at');
     }
 
     /**
