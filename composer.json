@@ -88,6 +88,7 @@
             "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
+            "@php -r \"copy('vendor/livewire/livewire/dist/livewire.esm.js', 'resources/js/vendor/livewire.esm.js');\"",
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
             "@php artisan boost:update --ansi"
         ],

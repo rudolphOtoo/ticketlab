@@ -224,3 +224,8 @@
         </button>
     </div>
 </div>
+
+@assets
+    {{-- The QR library is its own entry so no other page downloads it; @assets loads it once, also after wire:navigate. --}}
+    @vite('resources/js/scanner.js')
+@endassets

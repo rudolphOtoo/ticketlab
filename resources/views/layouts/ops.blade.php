@@ -89,6 +89,5 @@
             @endforeach
         </nav>
     </div>
-    @livewireScripts
 </body>
 </html>

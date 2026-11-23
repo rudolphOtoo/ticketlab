@@ -168,4 +168,7 @@ html:not(.dark)::view-transition-old(root) {
 }
 </style>
 
+{{-- Livewire's script is bundled into app.js (see resources/js/app.js); this passes it the CSRF token and the
+     update URL, and tells Livewire not to inject its own script. --}}
+@livewireScriptConfig
 @vite(['resources/css/app.css', 'resources/js/app.js'])

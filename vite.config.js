@@ -10,6 +10,8 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/passkeys.js',
+                // The door scanner's QR library, loaded only by the scanner view.
+                'resources/js/scanner.js',
             ],
             refresh: true,
             // Instrument Sans (SIL Open Font License), Latin subset, woff2 only, kept in the repo. bunny() emitted
