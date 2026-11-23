@@ -29,6 +29,11 @@ return [
         'url' => env('CLOUDINARY_URL'),
         // Where browsers post uploads. Only tests change it (to a local stand-in); the CSP allows exactly this origin.
         'upload_base' => env('CLOUDINARY_UPLOAD_BASE', 'https://api.cloudinary.com'),
+        // The earlier Cloudinary setup (codebar-ag Flysystem disk). While MEDIA_DISK=cloudinary is still set, plain
+        // paths such as "logos/abc.jpg" are served from Cloudinary under CLOUDINARY_FOLDER, as that disk did. Both
+        // are removed once `php artisan media:convert-legacy-cloudinary --execute` reports nothing left to convert.
+        'legacy_disk' => env('MEDIA_DISK'),
+        'legacy_folder' => env('CLOUDINARY_FOLDER'),
     ],
 
     // Shared secret for the serverless cron and migration endpoints; both refuse every request while it is unset.

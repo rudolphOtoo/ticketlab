@@ -51,6 +51,14 @@ final class FakeCloudinaryClient implements CloudinaryClient
         ];
     }
 
+    /**
+     * An image that already exists on Cloudinary under $publicId, e.g. one stored by the earlier Flysystem disk.
+     */
+    public function seed(string $publicId, int $version = 1_650_000_000, string $format = 'jpg'): void
+    {
+        $this->images[$publicId] = ['bytes' => 90_000, 'format' => $format, 'version' => $version];
+    }
+
     public function responseSignature(string $publicId, int $version): string
     {
         return sha1('public_id=' . $publicId . '&version=' . $version . self::SECRET);
@@ -88,7 +96,11 @@ final class FakeCloudinaryClient implements CloudinaryClient
     {
         $image = $this->images[$publicId] ?? null;
 
-        return $image === null ? null : ['bytes' => $image['bytes'], 'format' => $image['format']];
+        return (
+            $image === null
+                ? null
+                : ['bytes' => $image['bytes'], 'format' => $image['format'], 'version' => $image['version']]
+        );
     }
 
     public function rename(string $fromPublicId, string $toPublicId): int

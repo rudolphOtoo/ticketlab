@@ -7,6 +7,7 @@ namespace App\Support;
 use App\Services\Media\CloudinaryClient;
 use App\Services\Media\CloudinaryImage;
 use App\Services\Media\ImagePreset;
+use App\Services\Media\LegacyCloudinaryPath;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -18,8 +19,11 @@ use Throwable;
  * A media column holds one of three things, and all keep working:
  * - a Cloudinary image, "cloudinary:v{version}/{public_id}" (every upload since the move to Cloudinary);
  * - a pasted link ("https://…"), shown as it is;
- * - a path from before Cloudinary ("orgs/1/logos/abc.png"), served from LEGACY_MEDIA_URL (the old public bucket's
- *   address) when set, otherwise from the local public disk.
+ * - a path from an earlier setup: while MEDIA_DISK=cloudinary is still set, a path the earlier Cloudinary disk stored
+ *   ("logos/abc.jpg", served from Cloudinary under CLOUDINARY_FOLDER, see LegacyCloudinaryPath) until
+ *   media:convert-legacy-cloudinary has converted it; otherwise a path from before Cloudinary
+ *   ("orgs/1/logos/abc.png"), served from LEGACY_MEDIA_URL (the old public bucket's address) when set, otherwise
+ *   from the local public disk.
  *
  * Uploads go from the browser straight to Cloudinary (see CloudinaryUploads), into a folder per organisation:
  * ticketlab/{APP_ENV}/orgs/{org_id}/...
@@ -84,6 +88,17 @@ final class MediaUrl
             return null;
         }
 
+        // Under the earlier Cloudinary disk every plain path is a Cloudinary image; one that is not a clean path
+        // (e.g. "../x") is never rendered.
+        if (LegacyCloudinaryPath::active()) {
+            $legacy = LegacyCloudinaryPath::fromStored($value);
+            $client = app(CloudinaryClient::class);
+
+            return $legacy !== null && $client->isConfigured()
+                ? $legacy->url($client->cloudName(), $preset->maxWidth())
+                : null;
+        }
+
         return self::legacyUrl($value);
     }
 
@@ -92,7 +107,7 @@ final class MediaUrl
      */
     public static function srcset(?string $value, ImagePreset $preset): ?string
     {
-        $image = CloudinaryImage::fromStored($value);
+        $image = CloudinaryImage::fromStored($value) ?? LegacyCloudinaryPath::fromStored($value);
         $client = app(CloudinaryClient::class);
 
         if ($image === null || !$client->isConfigured()) {
@@ -116,6 +131,11 @@ final class MediaUrl
         }
 
         $image = CloudinaryImage::fromStored($value);
+
+        // An unconverted image from the earlier Cloudinary disk is left in place (the convert command never deletes).
+        if ($image === null && LegacyCloudinaryPath::fromStored($value) !== null) {
+            return;
+        }
 
         if ($image === null) {
             Storage::disk('public')->delete($value);

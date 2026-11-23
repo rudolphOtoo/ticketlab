@@ -71,6 +71,9 @@ timings) without touching real data or real buyers.
 - [ ] Step 6: run the move dry run, then `--execute`. Keep both outputs: the real run's counts should match them.
 - [ ] Step 7: run `zoneless-paid-passes.sql`, and `passes:request-zone-choice` **without** `--send` (a dry run).
 - [ ] Run `php artisan payments:reconcile-pending` (a dry run) and note how many orders are stuck in pending.
+- [ ] Step 11: run `php artisan media:convert-legacy-cloudinary` (a dry run) with the production `CLOUDINARY_URL` and
+      `CLOUDINARY_FOLDER`. It only reads from Cloudinary. Note the images it lists as not converted and the Admin API
+      lookups it needed.
 - [ ] Buy one ticket per zone on the preview with Paystack **test** cards or MoMo, and scan each at its own and another
       zone's gate.
 - [ ] Note how long steps 3–7 took. That's your maintenance-window estimate.
@@ -89,9 +92,16 @@ timings) without touching real data or real buyers.
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, `LOG_LEVEL=info`.
 - [ ] `PAYSTACK_SECRET_KEY=sk_live_…` and `PAYSTACK_PUBLIC_KEY=pk_live_…`.
 - [ ] **Remove** `PAYSTACK_SPLIT_PAYMENTS` and `PAYSTACK_UNROUTED_ZONE_POLICY` (no longer read).
-- [ ] Images: `CLOUDINARY_URL=cloudinary://…`. **Remove** `MEDIA_DISK`, `PRIVATE_DISK`, `LIVEWIRE_DISK`, `R2_*` and
-      `MEDIA_URL` (no longer read). If images were uploaded to R2 before this release, set `LEGACY_MEDIA_URL` to the old
-      `MEDIA_URL` value so they keep loading; re-uploading them moves them to Cloudinary.
+- [ ] Images. Production currently runs the earlier Cloudinary setup (codebar-ag Flysystem disk), whose images are
+      stored as plain paths (`logos/abc.jpg`) and converted in step 11.
+  - **Keep** `CLOUDINARY_URL` (it must have the API key and secret: `cloudinary://<key>:<secret>@<cloud>`, the same
+    cloud as today).
+  - **Keep, until step 11 is done:** `MEDIA_DISK=cloudinary` and `CLOUDINARY_FOLDER`. While both are set, the new
+    code serves the not-yet-converted images from Cloudinary exactly where the old code did.
+  - **Remove** (no longer read): `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`,
+    `CLOUDINARY_SECURE_URL`, `CLOUDINARY_UPLOAD_PRESET`, `PRIVATE_DISK`, `LIVEWIRE_DISK`, `R2_*` and `MEDIA_URL`.
+  - `LEGACY_MEDIA_URL` stays unset. (It is only for images uploaded to R2 before any Cloudinary setup, and is
+    ignored while `MEDIA_DISK=cloudinary`.)
 - [ ] `CACHE_STORE=database` and `SCHEDULER_LOCK_STORE=database` (or `redis`). Never `file`: locks must be shared
       between serverless instances.
 - [ ] Worker queues: nothing to set. The worker runs `transactional,emails,broadcasts,default` from `config/queue.php`,
@@ -241,6 +251,35 @@ Run from your laptop with the same Neon variables as step 3.
      the cron shows 200 again;
   5. remove any old cron that still used `?token=`.
 
+## 11. Convert the earlier Cloudinary images (after step 10, once you will not roll back)
+
+Until now the new code has served images stored by the earlier setup (`logos/abc.jpg`) through `MEDIA_DISK=cloudinary`
+and `CLOUDINARY_FOLDER`. This step rewrites them to `cloudinary:v<version>/<public_id>`, looking up each image with the
+Admin API. It never deletes anything, on Cloudinary or in the database, and it can be run again.
+
+**After `--execute`, the previous deployment can no longer show those images**, so it comes last, once rollback is off
+the table.
+
+- [ ] Dry run (reads only):
+      ```bash
+      DATABASE_URL="…" DB_CONNECTION=pgsql APP_ENV=production CLOUDINARY_URL="cloudinary://…" \
+        CLOUDINARY_FOLDER=ticketlab php artisan media:convert-legacy-cloudinary
+      ```
+      Each image costs 1–4 Admin API lookups (the summary line counts them); Cloudinary's free plan allows about 500 an
+      hour. If it stops on a rate limit, wait and run it again: converted images are skipped.
+- [ ] Anything listed as **not converted** keeps its old value. Look it up in the Cloudinary Media Library, or re-upload
+      it in the studio after this step.
+- [ ] Convert: the same command with `--execute`. Expect the same numbers as the dry run.
+- [ ] **Check on the live event page** (`/<org_slug>`, and the event's own page) in a private window with DevTools →
+      Network → Img:
+  - the organisation logo, the event banner, the speaker photos and the gallery all show;
+  - every image request to `res.cloudinary.com` is **200**, and its URL now has `/v<10 digits>/` (the converted value),
+    not `/v1/`;
+  - no broken-image icons.
+- [ ] Only if the run reported `not converted 0`: **remove** `MEDIA_DISK` and `CLOUDINARY_FOLDER` from Vercel
+      (Production) and redeploy, then repeat the live-page check. If images remain unconverted, leave both set; those
+      images keep showing until they are found or re-uploaded.
+
 ---
 
 ## Rollback
@@ -250,5 +289,7 @@ Run from your laptop with the same Neon variables as step 3.
 - **After step 6** (data has moved): restore the Neon branch from step 1 **and** redeploy the previous Vercel deployment.
   Payments taken since the backup are missing from the restored database. Find them in the Paystack dashboard and
   re-confirm them; the webhook can be re-sent from Paystack.
+- **After step 11** (images converted): the previous deployment shows the converted images as missing. Roll forward
+  instead, or restore the Neon branch from step 1 as above.
 - Note anything unusual in the window: the times, any refused webhooks (they show as "requires review" on orders), and the
   output of every command.

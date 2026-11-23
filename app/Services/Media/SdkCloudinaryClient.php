@@ -65,7 +65,11 @@ final readonly class SdkCloudinaryClient implements CloudinaryClient
             return null;
         }
 
-        return ['bytes' => (int) ($asset['bytes'] ?? 0), 'format' => (string) ($asset['format'] ?? '')];
+        return [
+            'bytes' => (int) ($asset['bytes'] ?? 0),
+            'format' => (string) ($asset['format'] ?? ''),
+            'version' => (int) ($asset['version'] ?? 0),
+        ];
     }
 
     public function rename(string $fromPublicId, string $toPublicId): int

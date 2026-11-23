@@ -30,9 +30,9 @@ interface CloudinaryClient
     public function verifyUploadResponse(string $publicId, int $version, string $signature): bool;
 
     /**
-     * What Cloudinary stores for an image, or null when there is no such image.
+     * What Cloudinary stores for an image (Admin API), or null when there is no such image.
      *
-     * @return array{bytes: int, format: string}|null
+     * @return array{bytes: int, format: string, version: int}|null
      */
     public function image(string $publicId): ?array;
 
