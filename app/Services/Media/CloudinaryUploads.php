@@ -44,7 +44,7 @@ final readonly class CloudinaryUploads
         ];
 
         return [
-            'url' => 'https://api.cloudinary.com/v1_1/' . rawurlencode($this->client->cloudName()) . '/image/upload',
+            'url' => self::origin() . '/v1_1/' . rawurlencode($this->client->cloudName()) . '/image/upload',
             'fields' => [
                 ...$parameters,
                 'api_key' => $this->client->apiKey(),
@@ -98,6 +98,16 @@ final readonly class CloudinaryUploads
         }
 
         return new CloudinaryImage($publicId, $version)->toStored();
+    }
+
+    /**
+     * Base URL browsers upload to (https://api.cloudinary.com); the CSP's connect-src allows its origin.
+     */
+    public static function origin(): string
+    {
+        $base = config('services.cloudinary.upload_base');
+
+        return rtrim(is_string($base) && $base !== '' ? $base : 'https://api.cloudinary.com', '/');
     }
 
     private function discard(string $publicId): void

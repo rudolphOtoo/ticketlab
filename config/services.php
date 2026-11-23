@@ -27,6 +27,8 @@ return [
     // pasted https links still work. Assets live under ticketlab/{APP_ENV}/orgs/{org_id}/...
     'cloudinary' => [
         'url' => env('CLOUDINARY_URL'),
+        // Where browsers post uploads. Only tests change it (to a local stand-in); the CSP allows exactly this origin.
+        'upload_base' => env('CLOUDINARY_UPLOAD_BASE', 'https://api.cloudinary.com'),
     ],
 
     // Shared secret for the serverless cron and migration endpoints; both refuse every request while it is unset.

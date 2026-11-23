@@ -38,6 +38,8 @@
 - [ ] **D-2** Open Graph and WhatsApp previews per organisation and event (name, title, banner), and a single `<title>`
 - [ ] Remove the deprecated `?token=` scheduler fallback after one release (E-2 follow-through)
 - [ ] **Guzzle 7 → 8** as its own task. Laravel 13.43 allows Guzzle 8, but the 2026-11 security update kept 7 (no major upgrades in a security fix). Check every HTTP client use first: Paystack (`Http::` calls and the webhook), Cloudinary (`cloudinary/cloudinary_php` accepts `^7.4.5|^8.0`), any direct Guzzle or PSR-7 use (`guzzlehttp/psr7` and `promises` move 2 → 3), and the `Http::fake()` test setup. Run the full suite, Pest browser tests included.
+- [ ] **Clean up abandoned Cloudinary uploads.** Uploads nobody saves stay on Cloudinary: onboarding logos of an organisation that was never created (`ticketlab/{env}/onboarding/…`), and images uploaded just before a tab was closed. Tag every signed upload `pending` (add `tags` to the signed parameters), remove the tag when the form saves it, and add a daily scheduled job that deletes `pending` images older than 24 hours (Admin API: list by tag, then delete). Must exit at once when there is nothing to delete.
+- [ ] **Empty the old Cloudflare R2 buckets by hand**, after `LEGACY_MEDIA_URL` is no longer needed: re-upload or move any image still served from it, check no page uses an `orgs/…` path, then delete the objects (and the buckets and the R2 API token) in the Cloudflare dashboard. The app can no longer delete R2 files itself (the AWS SDK was removed).
 
 ---
 

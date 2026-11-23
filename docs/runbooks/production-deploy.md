@@ -230,6 +230,9 @@ Run from your laptop with the same Neon variables as step 3.
       the Cloudinary Media Library it sits in `ticketlab/production/orgs/<id>/logos/`. Upload another: the first one is
       deleted there.
 - [ ] **Ledger PDF.** Download one as the GMSU organisation admin. It downloads directly (no link, nothing stored).
+      **Ledgers locked before this release** show their frozen totals (online, cash, attendees) but **no zone
+      breakdown**: that breakdown existed only inside the PDF file stored at the time, and those files are not
+      carried over. Ledgers locked from this release on keep their breakdown in the database.
 - [ ] **Rotate `SCHEDULER_TOKEN`** now that the header-based cron is live:
   1. generate a new long random value;
   2. set it in Vercel (Production) and redeploy;

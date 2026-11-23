@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\ContentSecurityPolicy;
 use App\Http\Middleware\EnsureSubdivisionAccess;
 use App\Http\Middleware\EnsureSuperAdmin;
 use Illuminate\Foundation\Application;
@@ -23,6 +24,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        // Off unless CSP_MODE is "report-only" or "enforce" (config/csp.php).
+        $middleware->web(append: [ContentSecurityPolicy::class]);
         $middleware->encryptCookies(except: [
             'theme',
         ]);

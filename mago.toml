@@ -12,7 +12,8 @@ includes = [
     "vendor/maatwebsite/excel/src/**/*.php",
     "vendor/league/flysystem/src/**/*.php",
     "vendor/phpoffice/phpspreadsheet/src/PhpSpreadsheet/**/*.php",
-    "vendor/cloudinary/cloudinary_php/src/**/*.php"
+    "vendor/cloudinary/cloudinary_php/src/**/*.php",
+    "vendor/symfony/http-foundation/**/*.php"
 ]
 excludes = ["bootstrap/cache/**", "app/EnvKit/**"]
 

@@ -99,6 +99,7 @@ Set in the super admin dashboard (`/platform`):
 | `SCHEDULER_LOCK_STORE` | Cache store for scheduler and command locks: `database` (default) or `redis`. Never `file`, which isn't shared between serverless instances |
 | `CLOUDINARY_URL` | `cloudinary://<api_key>:<api_secret>@<cloud_name>` for image uploads (see [Media (Cloudinary)](#media-cloudinary)). Empty: uploads are refused, pasted https links still work |
 | `LEGACY_MEDIA_URL` | Only if images were uploaded before Cloudinary: the public address of that bucket, so old paths keep loading |
+| `CSP_MODE` | `off` (default), `report-only` or `enforce`: sends the Content-Security-Policy from `config/csp.php`, which already allows Cloudinary (`res.cloudinary.com` images, `api.cloudinary.com` uploads) and Paystack. Try `report-only` on a preview first |
 | `MAIL_*` | Ticket emails, invitations, zone-choice requests and payout alerts |
 | `SMS_ENABLED`, `SMS_DRIVER`, `MNOTIFY_*` | Optional SMS passes |
 
