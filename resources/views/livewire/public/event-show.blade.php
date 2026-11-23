@@ -134,7 +134,9 @@
                     </div>
                 </div>
 
-                <!-- Ticket Tiers Selection Section: chosen in the browser, no server round trip per tap -->
+                <!-- Ticket Tiers Selection Section: chosen in the browser, no server round trip per tap. The cards have no
+                     colour transition: a tap shows the selection in the next frame instead of animating repaints
+                     (on desktop those repaints also covered the sticky order summary, the whole page wide). -->
                 <div id="tickets" class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md sm:p-8 space-y-5">
                     <fieldset>
                         <legend class="text-xl font-bold tracking-tight text-[var(--text-primary)]">Choose your ticket</legend>
@@ -144,7 +146,7 @@
                                 <label
                                     wire:key="ticket-{{ $tier['id'] }}"
                                     data-ticket="{{ $tier['id'] }}"
-                                    class="group block rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)] transition-colors cursor-pointer hover:border-[var(--text-secondary)] has-checked:border-[var(--border-focused)] has-checked:bg-[var(--color-primary)] has-checked:text-[var(--color-primary-fg)] has-checked:shadow-md has-disabled:cursor-not-allowed has-disabled:opacity-50 has-disabled:bg-[var(--bg-subtle)] has-focus-visible:ring-2 has-focus-visible:ring-[var(--border-focused)] has-focus-visible:ring-offset-2"
+                                    class="group block rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)] cursor-pointer hover:border-[var(--text-secondary)] has-checked:border-[var(--border-focused)] has-checked:bg-[var(--color-primary)] has-checked:text-[var(--color-primary-fg)] has-checked:shadow-md has-disabled:cursor-not-allowed has-disabled:opacity-50 has-disabled:bg-[var(--bg-subtle)] has-focus-visible:ring-2 has-focus-visible:ring-[var(--border-focused)] has-focus-visible:ring-offset-2"
                                 >
                                     <input
                                         type="radio"
@@ -198,7 +200,7 @@
                                     <li wire:key="zone-{{ $zone->id }}">
                                         <label
                                             data-zone="{{ $zone->id }}"
-                                            class="group/zone block w-full cursor-pointer rounded-xl border border-[var(--border-hairline)] px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--bg-subtle)] has-checked:border-[var(--border-focused)] has-checked:bg-[var(--bg-subtle)] has-checked:ring-1 has-checked:ring-[var(--border-focused)] has-focus-visible:ring-2 has-focus-visible:ring-[var(--border-focused)]"
+                                            class="group/zone block w-full cursor-pointer rounded-xl border border-[var(--border-hairline)] px-3 py-2 text-left text-xs hover:bg-[var(--bg-subtle)] has-checked:border-[var(--border-focused)] has-checked:bg-[var(--bg-subtle)] has-checked:ring-1 has-checked:ring-[var(--border-focused)] has-focus-visible:ring-2 has-focus-visible:ring-[var(--border-focused)]"
                                         >
                                             <input
                                                 type="radio"
@@ -429,7 +431,9 @@
             </section>
 
             <!-- Order Summary Sticky Card (Right Rail): worked out in the browser from the same fee formula as the server -->
-            <aside class="lg:sticky lg:top-6 lg:self-start">
+            {{-- On desktop the summary is sticky and changes on every tap; containing its layout and paint keeps those
+                 repaints inside it. The padding (offset by the negative margin) leaves room for the card's shadow. --}}
+            <aside class="lg:sticky lg:top-2 lg:self-start lg:-m-4 lg:p-4 lg:[contain:layout_paint]">
                 <div class="rounded-3xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-md space-y-5" data-order-summary>
                     <p class="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">Order Summary</p>
 
@@ -760,22 +764,50 @@
         </div>
     @endif
 
-    <script src="https://js.paystack.co/v2/inline.js"></script>
     <script>
+        // Paystack's popup script is only needed to pay. It used to be a blocking <script src> here, so Livewire and
+        // Alpine (and every tap) waited for Paystack's CDN on each visit. Now it loads without blocking once the page
+        // is idle, and paying waits for it if it hasn't arrived yet.
+        window.loadPaystack ??= () => (window.__paystackLoading ??= new Promise((resolve, reject) => {
+            if (typeof PaystackPop !== 'undefined') {
+                resolve();
+
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://js.paystack.co/v2/inline.js';
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => {
+                window.__paystackLoading = null;
+                reject(new Error('Paystack could not be loaded.'));
+            };
+            document.head.appendChild(script);
+        }));
+
+        (() => {
+            const preload = () => (window.requestIdleCallback ?? setTimeout)(() => window.loadPaystack().catch(() => {}));
+
+            document.readyState === 'complete' ? preload() : window.addEventListener('load', preload, { once: true });
+        })();
+
         document.addEventListener('livewire:init', () => {
             // The transaction (amount, zone payout split) is opened on the server; the popup only resumes it.
             Livewire.on('open-paystack', (event) => {
                 const accessCode = event?.accessCode ?? event?.detail?.accessCode;
 
-                if (! accessCode || typeof PaystackPop === 'undefined') {
+                if (! accessCode) {
                     return;
                 }
 
-                new PaystackPop().resumeTransaction(accessCode, {
-                    onSuccess: (transaction) => Livewire.dispatch('payment-completed', { reference: transaction.reference }),
-                    onCancel: () => Livewire.dispatch('payment-cancelled'),
-                    onError: () => Livewire.dispatch('payment-cancelled'),
-                });
+                window.loadPaystack()
+                    .then(() => new PaystackPop().resumeTransaction(accessCode, {
+                        onSuccess: (transaction) => Livewire.dispatch('payment-completed', { reference: transaction.reference }),
+                        onCancel: () => Livewire.dispatch('payment-cancelled'),
+                        onError: () => Livewire.dispatch('payment-cancelled'),
+                    }))
+                    .catch(() => Livewire.dispatch('payment-cancelled'));
             });
         });
     </script>

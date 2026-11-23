@@ -195,3 +195,6 @@ function upload_image(
         $result['signature'],
     );
 }
+
+/** Browser tests: Livewire update requests the page has sent so far. */
+const LIVEWIRE_REQUESTS = "performance.getEntriesByType('resource').filter(e => /livewire[^/]*\\/update/.test(e.name)).length";

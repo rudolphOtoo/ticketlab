@@ -57,15 +57,10 @@ beforeEach(function (): void {
     ]);
 });
 
-/** Livewire update requests the page has sent so far. */
-const LIVEWIRE_REQUESTS = "performance.getEntriesByType('resource').filter(e => /livewire[^/]*\\/update/.test(e.name)).length";
-
 /** Whether the zone card is drawn as selected (its border uses the focused colour, not the hairline). */
 function zone_card_border(object $page, int $zoneId): string
 {
-    // Let the card's colour transition finish before reading it.
-    $page->wait(0.4);
-
+    // The cards have no colour transition: the selection is drawn in the next frame.
     return (string) $page->script(
         "getComputedStyle(document.querySelector('[data-zone=\"{$zoneId}\"]')).borderTopColor",
     );
