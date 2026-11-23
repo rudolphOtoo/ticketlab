@@ -6,7 +6,7 @@
         "build": "vp build",
         "vercel-build": "npm run build",
         "dev": "vp dev",
-        "test:js": "vp test run tests/js"
+        "test:js": "vp test run --config vitest.config.js"
     },
     "dependencies": {
         "@laravel/passkeys": "^0.2.0",
