@@ -37,6 +37,7 @@
 - [ ] **B-5** Ghana phone validation at checkout and cash desk (normalise to +233, check network prefixes)
 - [ ] **D-2** Open Graph and WhatsApp previews per organisation and event (name, title, banner), and a single `<title>`
 - [ ] Remove the deprecated `?token=` scheduler fallback after one release (E-2 follow-through)
+- [ ] **Guzzle 7 → 8** as its own task. Laravel 13.43 allows Guzzle 8, but the 2026-11 security update kept 7 (no major upgrades in a security fix). Check every HTTP client use first: Paystack (`Http::` calls and the webhook), Cloudinary (`cloudinary/cloudinary_php` accepts `^7.4.5|^8.0`), any direct Guzzle or PSR-7 use (`guzzlehttp/psr7` and `promises` move 2 → 3), and the `Http::fake()` test setup. Run the full suite, Pest browser tests included.
 
 ---
 
