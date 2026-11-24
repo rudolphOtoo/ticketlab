@@ -30,9 +30,12 @@ return [
      | when delivering an email. You may specify which one you're using for
      | your mailers below. You may also add additional mailers if needed.
      |
-     | Supported: "smtp", "sendmail", "mailgun", "ses", "ses-v2",
+     | Supported: "smtp", "brevo", "sendmail", "mailgun", "ses", "ses-v2",
      |            "postmark", "resend", "log", "array",
      |            "failover", "roundrobin"
+     |
+     | "brevo" sends through Brevo's HTTP API with the xkeysib- API key (App\Services\Mail\BrevoApiTransport),
+     | registered in AppServiceProvider. "smtp" is the relay and needs an SMTP key instead.
      |
      */
 
@@ -51,6 +54,18 @@ return [
                 (string) env('APP_URL', 'http://localhost'),
                 PHP_URL_HOST,
             )),
+        ],
+
+        // Brevo's HTTP API (POST /v3/smtp/email): one request, no SMTP handshake, authenticated with the account's
+        // API key (Brevo → SMTP & API → API keys). This is how the earlier conference-platform sent mail.
+        'brevo' => [
+            'transport' => 'brevo',
+            'key' => env('BREVO_API_KEY'),
+            'endpoint' => env('BREVO_API_ENDPOINT', 'https://api.brevo.com/v3/smtp/email'),
+            // Short, so a slow API fails fast inside the serverless request and the retry takes over.
+            'timeout' => (int) env('MAIL_TIMEOUT', 8),
+            // Brevo's API resolves IPv6 first on Vercel, where it is unreachable; pin IPv4.
+            'ipv4' => (bool) env('BREVO_FORCE_IPV4', true),
         ],
 
         'ses' => [

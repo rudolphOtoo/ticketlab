@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Enums\MailCategory;
 use App\Http\Middleware\EnsureSubdivisionAccess;
+use App\Services\Mail\BrevoApiTransport;
 use App\Services\Mail\MailQuota;
 use App\Services\Media\CloudinaryClient;
 use App\Services\Media\SdkCloudinaryClient;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -58,6 +60,14 @@ class AppServiceProvider extends ServiceProvider
 
         // Re-run tenant/role checks on every Livewire update request, not only the initial page load.
         Livewire::addPersistentMiddleware([EnsureSubdivisionAccess::class]);
+
+        // MAIL_MAILER=brevo: Brevo's HTTP API instead of its SMTP relay, so the account's xkeysib- API key is enough.
+        Mail::extend('brevo', static fn(array $config): BrevoApiTransport => new BrevoApiTransport(
+            apiKey: (string) ($config['key'] ?? ''),
+            endpoint: (string) ($config['endpoint'] ?? 'https://api.brevo.com/v3/smtp/email'),
+            timeout: (int) ($config['timeout'] ?? 8),
+            forceIpv4: (bool) ($config['ipv4'] ?? true),
+        ));
 
         // Emails Laravel sends itself (password resets, verification links) also count against the provider's daily
         // cap; they are never held back. Emails behind MailQuotaGate or TicketEmailer already took their slot.
