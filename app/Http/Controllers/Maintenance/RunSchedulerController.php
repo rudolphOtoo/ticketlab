@@ -16,6 +16,9 @@ final class RunSchedulerController
 {
     public function __invoke(SchedulerRunner $runner): JsonResponse
     {
+        // A cron that gives up waiting (its own timeout) must not cut a run short half-way through a task.
+        ignore_user_abort(true);
+
         $report = $runner->run();
         unset($report['error_messages']);
         // Objects in JSON even when empty: "counts": {} and "counts": {"worker": {}}.
