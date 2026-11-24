@@ -101,7 +101,7 @@ Set in the super admin dashboard (`/platform`):
 | `LEGACY_MEDIA_URL` | Only if images were uploaded before Cloudinary: the public address of that bucket, so old paths keep loading |
 | `MEDIA_DISK`, `CLOUDINARY_FOLDER` | Only until `media:convert-legacy-cloudinary --execute` has run: `cloudinary` and the earlier Flysystem disk's folder, so images that setup stored (`logos/abc.jpg`) keep loading from Cloudinary |
 | `CSP_MODE` | `off` (default), `report-only` or `enforce`: sends the Content-Security-Policy from `config/csp.php`, which already allows Cloudinary (`res.cloudinary.com` images, `api.cloudinary.com` uploads) and Paystack. Try `report-only` on a preview first |
-| `MAIL_*` | Brevo SMTP relay for ticket emails, invitations, zone-choice requests, broadcasts and payout alerts (see [Email (Brevo)](#email-brevo)); `MAIL_TIMEOUT` (default 8 s) |
+| `MAIL_*` | Brevo HTTP API for ticket emails, invitations, zone-choice requests, broadcasts and payout alerts (see [Email (Brevo)](#email-brevo)): `MAIL_MAILER=brevo`, `BREVO_API_KEY` (xkeysib-… API key, not an SMTP key), `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME`, `MAIL_TIMEOUT` (default 8 s) |
 | `BREVO_DAILY_LIMIT` | Emails a day the provider allows (default 300, Brevo's free plan); each kind of email may use only its share |
 | `SMS_ENABLED`, `SMS_DRIVER`, `MNOTIFY_*` | Optional SMS passes |
 
@@ -149,7 +149,7 @@ most important first, so a busy run only skips the least important work until th
 | Task | Bound |
 |---|---|
 | `reservations:release-expired` | a few queries |
-| `tickets:email-pending` | at most 20 orders; stops after 6 s; each send is one PDF plus an 8 s SMTP timeout |
+| `tickets:email-pending` | at most 20 orders; stops after 6 s; each send is one PDF plus an 8 s mail timeout |
 | `payments:reconcile-pending` | at most 25 orders, oldest first; stops after 12 s; each Paystack call times out at 8 s |
 | `payouts:recheck-subaccounts` | at most 20 zones; stops after 5 s; each lookup times out at 8 s |
 | queue worker (last) | `--stop-when-empty --max-time=12 --max-jobs=50`; a job cut off by the limit is retried later |
@@ -160,10 +160,11 @@ killed the request holding it.
 
 ## Email (Brevo)
 
-Email goes through **Brevo's SMTP relay** with Laravel's built-in SMTP mailer (no extra package):
-`MAIL_MAILER=smtp`, `MAIL_HOST` (from Brevo → SMTP & API), `MAIL_PORT=587`, `MAIL_USERNAME` (the SMTP login),
-`MAIL_PASSWORD` (the **SMTP key**, not the API key) and `MAIL_TIMEOUT=8`. The short timeout lets a slow relay fail
-fast inside the serverless request, so the retry takes over.
+Email goes through **Brevo's HTTP API** (`POST /v3/smtp/email`) with a custom Laravel mail transport
+(`App\Services\Mail\BrevoApiTransport`), so only the account's **API key** (`xkeysib-…`) is needed — no SMTP login,
+SMTP key, host or port:
+`MAIL_MAILER=brevo`, `BREVO_API_KEY=<xkeysib-…>`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME` and `MAIL_TIMEOUT=8`.
+The short timeout lets a slow request fail fast inside the serverless request, so the retry takes over.
 
 **The ticket page and its PDF are the main way to get a ticket; the email is the backup copy.** After payment the
 buyer lands on `/tickets/{reference}`, which shows the link to keep, a **Download PDF** button, where the email copy

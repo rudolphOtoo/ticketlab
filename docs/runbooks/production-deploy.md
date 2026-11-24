@@ -59,8 +59,10 @@ Do the steps in order. Do not start a step until the previous one has passed its
      dig +short TXT _dmarc.<domain>     # v=DMARC1; p=none; …
      dig +short CNAME brevo1._domainkey.<domain>   # (or the DKIM names Brevo listed)
      ```
-  4. Add the sender `tickets@<domain>` (Senders) and create an **SMTP key** (SMTP & API → SMTP → Generate). Note the
-     SMTP host and login shown on that page.
+  4. Add the sender `tickets@<domain>` (Senders) and create an **API key** (SMTP & API → API keys → Generate). Copy the
+     `xkeysib-…` value into `BREVO_API_KEY`. No SMTP login, host or SMTP key is needed — mail goes through Brevo's
+     HTTP API with this key. Keep the value out of git (it is a secret; set it in Vercel, never in `.env` that is
+     committed).
 - [ ] Find the Methodist event's id and which organisation it is under, and whether a GMSU organisation already exists
       (read-only; run in the Neon SQL editor):
       ```sql
@@ -130,10 +132,10 @@ timings) without touching real data or real buyers.
     `CLOUDINARY_SECURE_URL`, `CLOUDINARY_UPLOAD_PRESET`, `PRIVATE_DISK`, `LIVEWIRE_DISK`, `R2_*` and `MEDIA_URL`.
   - `LEGACY_MEDIA_URL` stays unset. (It is only for images uploaded to R2 before any Cloudinary setup, and is
     ignored while `MEDIA_DISK=cloudinary`.)
-- [ ] Email (Brevo SMTP): `MAIL_MAILER=smtp`, `MAIL_HOST=<host from Brevo>`, `MAIL_PORT=587`,
-      `MAIL_USERNAME=<SMTP login>`, `MAIL_PASSWORD=<SMTP key>`, `MAIL_TIMEOUT=8`,
-      `MAIL_FROM_ADDRESS=tickets@<authenticated domain>`, `MAIL_FROM_NAME=<name buyers recognise>`, and
-      `BREVO_DAILY_LIMIT=300` (or the Starter allowance).
+- [ ] Email (Brevo HTTP API): `MAIL_MAILER=brevo`, `BREVO_API_KEY=<xkeysib-… API key from step 0.4>`,
+      `MAIL_FROM_ADDRESS=tickets@<authenticated domain>`, `MAIL_FROM_NAME=<name buyers recognise>`,
+      `MAIL_TIMEOUT=8`, and `BREVO_DAILY_LIMIT=300` (or the Starter allowance). `MAIL_PASSWORD` / `MAIL_HOST` /
+      `MAIL_PORT` / `MAIL_USERNAME` are no longer used (leave them unset or null).
 - [ ] `CSP_MODE=report-only`. The policy is sent but blocks nothing; step 10 reviews it before it's enforced.
 - [ ] `CACHE_STORE=database` and `SCHEDULER_LOCK_STORE=database` (or `redis`). Never `file`: locks must be shared
       between serverless instances.
@@ -284,7 +286,7 @@ Run from your laptop with the same Neon variables as step 3.
      buyer waiting).
 - [ ] **Email.** On `/platform`, "Emails today" shows the test emails of step 8 against the limit, with
       `0 ticket emails waiting` and `0 given up`. If emails wait or were given up, the order's error is in
-      `orders.ticket_email_error`; fix the cause (usually the SMTP key or sender) and use **Resend** on the Attendee
+      `orders.ticket_email_error`; fix the cause (usually the API key or sender) and use **Resend** on the Attendee
       Roster.
 - [ ] **Stuck payments.** Dry run first, then let the scheduler take over. It runs every 10 minutes with `--execute`,
       at most 25 orders per run:
