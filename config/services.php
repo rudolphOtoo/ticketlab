@@ -27,6 +27,7 @@ return [
     // pasted https links still work. Assets live under ticketlab/{APP_ENV}/orgs/{org_id}/...
     'cloudinary' => [
         'url' => env('CLOUDINARY_URL'),
+        'folder' => env('CLOUDINARY_FOLDER', 'ticketlab_dir'),
         // Where browsers post uploads. Only tests change it (to a local stand-in); the CSP allows exactly this origin.
         'upload_base' => env('CLOUDINARY_UPLOAD_BASE', 'https://api.cloudinary.com'),
         // The earlier Cloudinary setup (codebar-ag Flysystem disk). While MEDIA_DISK=cloudinary is still set, plain

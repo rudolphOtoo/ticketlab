@@ -184,6 +184,12 @@ final class MediaUrl
 
     private static function root(): string
     {
+        $folder = config('services.cloudinary.folder');
+
+        if (is_string($folder) && trim($folder) !== '') {
+            return trim($folder, '/');
+        }
+
         $environment = preg_replace('/[^a-z0-9-]+/', '-', strtolower((string) config('app.env', 'production')));
 
         return 'ticketlab/' . trim((string) $environment, '-');
