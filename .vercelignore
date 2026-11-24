@@ -1,5 +1,6 @@
 .env*
 .neon
+.conscience/
 /vendor
 bootstrap/cache/*.php
 bootstrap/cache/packages.php
