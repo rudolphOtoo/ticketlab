@@ -1,0 +1,51 @@
+name: Deploy production
+
+# Vercel refuses the Git integration for this repository (its GitHub App cannot see
+# rudolphOtoo/ticketlab from the Vercel account), so the CLI does the deploy instead.
+# Pushing to dev is the release: it builds and aliases https://ticketlab-phi.vercel.app.
+# A failed build leaves the previous production deployment serving.
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      VERCEL_ORG_ID: team_zcefCt8uydRUvPIh2NNTCAGO
+      VERCEL_PROJECT_ID: prj_f1JA14GSKi76EVwy9MShHHDL4Izq
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Vercel builds the app itself (npm ci, npm run build, vercel-php). This job only
+      # uploads the tree and waits for the production alias to move.
+      - name: Deploy to Vercel production
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::Add the VERCEL_TOKEN repository secret (Vercel → Account Settings → Tokens)."
+            exit 1
+          fi
+          url="$(npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN")"
+          echo "Deployed: $url"
+          echo "Production: https://ticketlab-phi.vercel.app" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployment: $url" >> "$GITHUB_STEP_SUMMARY"
