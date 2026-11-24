@@ -91,6 +91,8 @@ test('at most 2 calls a minute per IP, so cron retries never stack runs', functi
 });
 
 test('in maintenance mode the endpoint answers 503 in JSON, so the cron shows the call as failed', function () {
+    // Not the default file driver: storage/framework/down is shared by every parallel test process.
+    config(['app.maintenance.driver' => 'cache', 'app.maintenance.store' => 'array']);
     app()->maintenanceMode()->activate([]);
 
     try {

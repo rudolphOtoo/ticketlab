@@ -4,40 +4,23 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Maintenance;
 
-use App\Support\Scheduler\SchedulerBudget;
-use App\Support\Scheduler\SchedulerWork;
+use App\Services\Scheduler\SchedulerRunner;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Artisan;
 
 /**
- * Called by cron-job.org every 5 minutes. Answers at once when nothing is due; otherwise runs `schedule:run` inside
- * a run deadline that keeps the whole request under Vercel's 60-second limit (config/scheduler.php).
+ * Called by cron-job.org every 5 minutes. Always 200 with JSON once authorised (401, 429 and 503 come from the
+ * middleware): {"status": "idle"|"ran"|"locked", "ran": [...], "skipped": [...], "counts": {...}, "errors": n,
+ * "duration_ms": n, "next_due": [...]}. Error details stay in the logs, never in the response a cron service stores.
  */
 final class RunSchedulerController
 {
-    public function __invoke(): JsonResponse
+    public function __invoke(SchedulerRunner $runner): JsonResponse
     {
-        $due = SchedulerWork::due();
+        $report = $runner->run();
+        unset($report['error_messages']);
+        // Objects in JSON even when empty: "counts": {} and "counts": {"worker": {}}.
+        $report['counts'] = (object) array_map(static fn(array $counts): object => (object) $counts, $report['counts']);
 
-        if ($due === []) {
-            return response()->json(['message' => 'Nothing due', 'due' => [], 'output' => ''])->header(
-                'Cache-Control',
-                'no-store',
-            );
-        }
-
-        SchedulerBudget::start((int) config('scheduler.run_budget_seconds'));
-
-        try {
-            Artisan::call('schedule:run');
-        } finally {
-            SchedulerBudget::clear();
-        }
-
-        return response()->json([
-            'message' => 'Scheduler executed',
-            'due' => $due,
-            'output' => Artisan::output(),
-        ])->header('Cache-Control', 'no-store');
+        return response()->json($report)->header('Cache-Control', 'no-store');
     }
 }
