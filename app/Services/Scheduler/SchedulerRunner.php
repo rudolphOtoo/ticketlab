@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Scheduler;
 
+use App\Models\SchedulerRun;
 use App\Services\Scheduler\Tasks\CleanUp;
 use App\Services\Scheduler\Tasks\RecheckPayoutSubaccounts;
 use App\Services\Scheduler\Tasks\ReconcilePendingPayments;
@@ -26,6 +27,7 @@ use Throwable;
  *    run never blocks the next one for long); a second concurrent call answers "locked" at once.
  *  - Tasks run most important first inside one deadline (config/scheduler.php). A task that throws is logged and
  *    counted; the others still run.
+ *  - Every call is recorded in scheduler_runs (SchedulerRunLog), shown on the platform health panel.
  */
 final class SchedulerRunner
 {
@@ -44,12 +46,15 @@ final class SchedulerRunner
     /** @var list<SchedulerTask> */
     private readonly array $tasks;
 
+    private readonly SchedulerRunLog $log;
+
     /**
      * @param list<SchedulerTask>|null $tasks the default list (TASKS) unless a test passes its own
      */
-    public function __construct(?array $tasks = null)
+    public function __construct(?array $tasks = null, ?SchedulerRunLog $log = null)
     {
         $this->tasks = $tasks ?? array_map(static fn(string $class): SchedulerTask => app($class), self::TASKS);
+        $this->log = $log ?? new SchedulerRunLog();
     }
 
     /**
@@ -67,17 +72,20 @@ final class SchedulerRunner
     public function run(): array
     {
         $started = hrtime(true);
+        $startedAt = CarbonImmutable::now();
         $due = $this->due();
 
         if ($due === []) {
-            return self::report('idle', $started);
+            return $this->recorded(null, $startedAt, self::report('idle', $started));
         }
 
         $lock = $this->lockStore()->lock(self::LOCK, (int) config('scheduler.function_max_duration') + 5);
 
         if (!$lock->get()) {
-            return self::report('locked', $started, ['next_due' => $due]);
+            return $this->recorded(null, $startedAt, self::report('locked', $started, ['next_due' => $due]));
         }
+
+        $row = $this->log->start($startedAt);
 
         $budget = max(1, (int) config('scheduler.run_budget_seconds'));
         $deadline = CarbonImmutable::now()->addSeconds($budget);
@@ -119,14 +127,14 @@ final class SchedulerRunner
             $lock->release();
         }
 
-        return self::report('ran', $started, [
+        return $this->recorded($row, $startedAt, self::report('ran', $started, [
             'ran' => $ran,
             'skipped' => $skipped,
             'counts' => $counts,
             'errors' => count($errors),
             'error_messages' => $errors,
             'next_due' => $this->due(),
-        ]);
+        ]));
     }
 
     /**
@@ -153,6 +161,36 @@ final class SchedulerRunner
             (int) config("scheduler.{$name}.time_budget_seconds"),
             $left - (int) config("scheduler.{$name}.overrun_seconds"),
         );
+    }
+
+    /**
+     * @param array{
+     *     status: 'idle'|'ran'|'locked',
+     *     ran: list<string>,
+     *     skipped: list<string>,
+     *     counts: array<string, array<string, int>>,
+     *     errors: int,
+     *     error_messages: list<string>,
+     *     duration_ms: int,
+     *     next_due: list<string>,
+     * } $report
+     *
+     * @return array{
+     *     status: 'idle'|'ran'|'locked',
+     *     ran: list<string>,
+     *     skipped: list<string>,
+     *     counts: array<string, array<string, int>>,
+     *     errors: int,
+     *     error_messages: list<string>,
+     *     duration_ms: int,
+     *     next_due: list<string>,
+     * }
+     */
+    private function recorded(?SchedulerRun $row, CarbonImmutable $startedAt, array $report): array
+    {
+        $this->log->finish($row, $startedAt, $report);
+
+        return $report;
     }
 
     private function runTask(SchedulerTask $task, CarbonImmutable $deadline): TaskResult

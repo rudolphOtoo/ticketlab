@@ -16,7 +16,7 @@ declare(strict_types=1);
  |   ticket_emails        ticket emails still owed (Brevo daily cap respected)
  |   worker               queued jobs: transactional, emails, broadcasts, default
  |   payout_recheck       zones' Paystack subaccounts, about once a day each
- |   cleanup              expired cache rows, old scheduler runs
+ |   cleanup              expired cache rows, scheduler_runs older than 14 days
  |
  | The run has one deadline, run_budget_seconds. Each task gets min(its budget_seconds, time left - its
  | overrun_seconds): budget_seconds is when it stops starting new items, overrun_seconds is the longest one item can
@@ -85,6 +85,8 @@ return [
         'overrun_seconds' => 2,
         // Expired cache rows are deleted once they have been expired this long (so cleanup is rarely due).
         'expired_cache_grace_hours' => 24,
+        // scheduler_runs rows older than this are deleted (the platform health panel reads the recent ones).
+        'keep_runs_days' => 14,
     ],
 
     // Paystack calls made by scheduled tasks never wait longer than this (Guzzle's default is 30 s).

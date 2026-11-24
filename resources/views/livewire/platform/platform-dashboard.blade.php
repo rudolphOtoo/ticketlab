@@ -157,6 +157,35 @@
         </div>
     </div>
 
+    <!-- Scheduler: cron-job.org calls /api/run-scheduler every 5 minutes; each call is a scheduler_runs row -->
+    <div class="rounded-2xl border p-4 shadow-2xs {{ $scheduler['stale'] ? 'border-amber-500/40 bg-amber-500/5' : 'border-[var(--border-hairline)] bg-[var(--bg-surface)]' }}" data-scheduler-health>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold text-[var(--text-secondary)]">Scheduler</p>
+                <p class="mt-1 text-sm font-bold text-[var(--text-primary)]">
+                    @if ($scheduler['recorded'])
+                        Last run {{ $scheduler['last_ago'] }} <span class="font-semibold text-[var(--text-tertiary)]">({{ $scheduler['last_status'] }})</span>
+                    @else
+                        No run recorded yet
+                    @endif
+                </p>
+            </div>
+            <ul class="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                <li class="text-[var(--text-tertiary)]">
+                    Last successful run: <span class="font-semibold text-[var(--text-secondary)]">{{ $scheduler['last_ok_ago'] ?? 'never' }}</span>
+                </li>
+                <li class="{{ $scheduler['errors_today'] > 0 ? 'font-bold text-rose-500' : 'text-[var(--text-tertiary)]' }}">
+                    {{ $scheduler['errors_today'] }} {{ $scheduler['errors_today'] === 1 ? 'error' : 'errors' }} in the last 24 hours
+                </li>
+            </ul>
+        </div>
+        @if ($scheduler['stale'])
+            <p class="mt-2 text-[11px] font-bold text-amber-700 dark:text-amber-400" role="alert">
+                No successful scheduler run in the last {{ $scheduler['stale_after_minutes'] }} minutes: holds, owed ticket emails and stuck payments are waiting. Check the cron-job.org job and its last response.
+            </p>
+        @endif
+    </div>
+
     <!-- Runtime Deployment Engine (Dynamic Dual-Mode Controller) -->
     <div class="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-5 sm:p-6 shadow-2xs space-y-5">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">

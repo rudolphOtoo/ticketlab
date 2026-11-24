@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Scheduler\Tasks;
 
+use App\Models\SchedulerRun;
 use App\Services\Scheduler\SchedulerTask;
 use App\Services\Scheduler\TaskResult;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Housekeeping, last and least important: cache and lock rows of the database cache store that expired more than
- * expired_cache_grace_hours ago (throttle counters, run locks), a bounded batch per run. Due rarely, so an idle call
- * stays idle.
+ * Housekeeping, last and least important, a bounded batch per run: scheduler_runs rows older than keep_runs_days, and
+ * cache and lock rows of the database cache store that expired more than expired_cache_grace_hours ago (throttle
+ * counters, run locks). Due rarely, so an idle call stays idle.
  */
 final class CleanUp implements SchedulerTask
 {
@@ -24,6 +27,10 @@ final class CleanUp implements SchedulerTask
 
     public function isDue(): bool
     {
+        if (self::oldRunsExist()) {
+            return true;
+        }
+
         foreach ($this->expiredCacheRows() as $rows) {
             if ($rows->exists()) {
                 return true;
@@ -35,8 +42,13 @@ final class CleanUp implements SchedulerTask
 
     public function run(CarbonImmutable $deadline): TaskResult
     {
-        $result = new TaskResult(['cache_rows' => 0]);
+        $result = new TaskResult(['scheduler_runs' => 0, 'cache_rows' => 0]);
         $batch = max(1, (int) config('scheduler.cleanup.batch_size'));
+
+        if (self::oldRunsExist()) {
+            $runIds = self::oldRuns()->limit($batch)->pluck('id');
+            $result->add('scheduler_runs', SchedulerRun::query()->whereKey($runIds)->delete());
+        }
 
         foreach ($this->expiredCacheRows() as $rows) {
             if (CarbonImmutable::now()->greaterThanOrEqualTo($deadline)) {
@@ -48,6 +60,28 @@ final class CleanUp implements SchedulerTask
         }
 
         return $result;
+    }
+
+    /** False too while scheduler_runs does not exist yet (deployed before migrating; SchedulerRunLog warns). */
+    private static function oldRunsExist(): bool
+    {
+        try {
+            return self::oldRuns()->exists();
+        } catch (QueryException) {
+            return false;
+        }
+    }
+
+    /**
+     * @return EloquentBuilder<SchedulerRun>
+     */
+    private static function oldRuns(): EloquentBuilder
+    {
+        return SchedulerRun::query()->where(
+            'started_at',
+            '<',
+            now()->subDays((int) config('scheduler.cleanup.keep_runs_days')),
+        );
     }
 
     /**

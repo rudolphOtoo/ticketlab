@@ -11,6 +11,7 @@ use App\Models\Attendee;
 use App\Models\Event;
 use App\Models\Order;
 use App\Models\Organization;
+use App\Models\SchedulerRun;
 use App\Services\Mail\MailQuota;
 use App\Services\Mail\TicketEmailer;
 use Illuminate\Contracts\View\View;
@@ -164,6 +165,57 @@ class PlatformDashboard extends Component
         ];
     }
 
+    /**
+     * The scheduler (cron-job.org → /api/run-scheduler): when it last ran, and a warning once no run has completed for
+     * stale_after_minutes (the cron calls every 5 minutes, so that is three missed calls).
+     *
+     * @return array{
+     *     recorded: bool,
+     *     last_status: string|null,
+     *     last_ago: string|null,
+     *     last_ok_ago: string|null,
+     *     stale: bool,
+     *     stale_after_minutes: int,
+     *     errors_today: int,
+     * }
+     */
+    protected static function schedulerHealth(): array
+    {
+        $staleAfter = 15;
+
+        if (!Schema::hasTable('scheduler_runs')) {
+            return [
+                'recorded' => false,
+                'last_status' => null,
+                'last_ago' => null,
+                'last_ok_ago' => null,
+                'stale' => true,
+                'stale_after_minutes' => $staleAfter,
+                'errors_today' => 0,
+            ];
+        }
+
+        $last = SchedulerRun::query()->latest('started_at')->latest('id')->first();
+        $lastOk = SchedulerRun::query()->completed()->latest('started_at')->latest('id')->first();
+
+        return [
+            'recorded' => $last !== null,
+            'last_status' => $last?->status,
+            'last_ago' => self::ago($last),
+            'last_ok_ago' => self::ago($lastOk),
+            'stale' => $lastOk === null || $lastOk->started_at->lessThan(now()->subMinutes($staleAfter)),
+            'stale_after_minutes' => $staleAfter,
+            'errors_today' => (int) SchedulerRun::query()->where('started_at', '>=', now()->subDay())->sum('errors'),
+        ];
+    }
+
+    private static function ago(?SchedulerRun $run): ?string
+    {
+        $ago = $run?->started_at->diffForHumans();
+
+        return is_string($ago) ? $ago : null;
+    }
+
     public function render(): View
     {
         $totalTenants = Organization::query()->count();
@@ -233,6 +285,7 @@ class PlatformDashboard extends Component
             'platformFeeAccumulator' => $this->platformFeeAccumulator,
             'health' => $this->getSystemHealth(),
             'mail' => self::mailHealth(),
+            'scheduler' => self::schedulerHealth(),
             'tenants' => $tenants,
             'selectedTenant' => $selectedTenant,
             'selectedTenantStats' => $selectedTenantStats,
