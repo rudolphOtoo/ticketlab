@@ -42,8 +42,9 @@ jobs:
       - name: Deploy to Vercel production
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error::Add the VERCEL_TOKEN repository secret (Vercel → Account Settings → Tokens)."
-            exit 1
+            echo "::warning::VERCEL_TOKEN is not set, so production was not deployed. Add it under Settings → Secrets and variables → Actions (create one at vercel.com/account/tokens)."
+            echo "Deploy skipped: VERCEL_TOKEN missing" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           url="$(npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN")"
           echo "Deployed: $url"
