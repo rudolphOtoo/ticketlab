@@ -13,13 +13,16 @@ use App\Services\Media\SdkCloudinaryClient;
 use App\Services\Sms\Contracts\SmsGatewayInterface;
 use App\Services\Sms\SmsManager;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -61,13 +64,22 @@ class AppServiceProvider extends ServiceProvider
         // Re-run tenant/role checks on every Livewire update request, not only the initial page load.
         Livewire::addPersistentMiddleware([EnsureSubdivisionAccess::class]);
 
+        // /api/run-scheduler: a cron's retries (cron-job.org retries failed calls) never stack runs.
+        RateLimiter::for('scheduler', static fn(Request $request): Limit => Limit::perMinute((int) config(
+            'services.scheduler.per_minute',
+            2,
+        ))->by('scheduler|' . (string) $request->ip()));
+
         // MAIL_MAILER=brevo: Brevo's HTTP API instead of its SMTP relay, so the account's xkeysib- API key is enough.
-        Mail::extend('brevo', static fn(array $config): BrevoApiTransport => new BrevoApiTransport(
-            apiKey: (string) ($config['key'] ?? ''),
-            endpoint: (string) ($config['endpoint'] ?? 'https://api.brevo.com/v3/smtp/email'),
-            timeout: (int) ($config['timeout'] ?? 8),
-            forceIpv4: (bool) ($config['ipv4'] ?? true),
-        ));
+        Mail::extend(
+            'brevo',
+            static fn(array $config): BrevoApiTransport => new BrevoApiTransport(
+                apiKey: (string) ($config['key'] ?? ''),
+                endpoint: (string) ($config['endpoint'] ?? 'https://api.brevo.com/v3/smtp/email'),
+                timeout: (int) ($config['timeout'] ?? 8),
+                forceIpv4: (bool) ($config['ipv4'] ?? true),
+            ),
+        );
 
         // Emails Laravel sends itself (password resets, verification links) also count against the provider's daily
         // cap; they are never held back. Emails behind MailQuotaGate or TicketEmailer already took their slot.

@@ -20,7 +20,10 @@ final class RunSchedulerController
         $due = SchedulerWork::due();
 
         if ($due === []) {
-            return response()->json(['message' => 'Nothing due', 'due' => [], 'output' => '']);
+            return response()->json(['message' => 'Nothing due', 'due' => [], 'output' => ''])->header(
+                'Cache-Control',
+                'no-store',
+            );
         }
 
         SchedulerBudget::start((int) config('scheduler.run_budget_seconds'));
@@ -31,6 +34,10 @@ final class RunSchedulerController
             SchedulerBudget::clear();
         }
 
-        return response()->json(['message' => 'Scheduler executed', 'due' => $due, 'output' => Artisan::output()]);
+        return response()->json([
+            'message' => 'Scheduler executed',
+            'due' => $due,
+            'output' => Artisan::output(),
+        ])->header('Cache-Control', 'no-store');
     }
 }

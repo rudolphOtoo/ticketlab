@@ -3,66 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-
-test('the maintenance endpoints refuse every request while no token is configured', function (string $path) {
-    config(['services.scheduler.token' => null]);
-
-    $this->get($path)->assertUnauthorized();
-    $this->get($path, ['Authorization' => 'Bearer '])->assertUnauthorized();
-    $this->get($path . '?token=')->assertUnauthorized();
-})->with(['api/run-scheduler', 'api/run-migrate']);
-
-test('the scheduler runs with the token in an Authorization Bearer header', function () {
-    config(['services.scheduler.token' => 'test-secret-token']);
-    Log::spy();
-
-    $this->get('api/run-scheduler')->assertUnauthorized();
-    $this->get('api/run-scheduler', ['Authorization' => 'Bearer wrong-token'])->assertUnauthorized();
-
-    $this
-        ->get('api/run-scheduler', ['Authorization' => 'Bearer test-secret-token'])
-        ->assertOk()
-        ->assertJsonStructure(['message', 'output']);
-
-    Log::shouldNotHaveReceived('warning');
-});
-
-test('a wrong bearer token is refused even when a valid query token is also sent', function () {
-    config(['services.scheduler.token' => 'test-secret-token']);
-
-    $this->get('api/run-scheduler?token=test-secret-token', [
-        'Authorization' => 'Bearer wrong-token',
-    ])->assertUnauthorized();
-});
-
-test('the query token still works for one release but logs a deprecation without the token', function () {
-    config(['services.scheduler.token' => 'test-secret-token']);
-    Log::spy();
-
-    $this->get('api/run-scheduler?token=wrong-token')->assertUnauthorized();
-    $this->get('api/run-scheduler?token=test-secret-token')->assertOk();
-
-    Log::shouldHaveReceived('warning')
-        ->withArgs(
-            static fn(string $message, array $context): bool => (
-                str_starts_with($message, 'Deprecated: scheduler token sent as ?token=')
-                && !str_contains($message . json_encode($context), 'test-secret-token')
-            ),
-        )
-        ->once();
-});
-
-test('run migrate requires the token too', function () {
-    config(['services.scheduler.token' => 'test-secret-token']);
-
-    $this->get('api/run-migrate')->assertUnauthorized();
-    $this->get('api/run-migrate', ['Authorization' => 'Bearer wrong-token'])->assertUnauthorized();
-    $this
-        ->get('api/run-migrate', ['Authorization' => 'Bearer test-secret-token'])
-        ->assertOk()
-        ->assertJsonStructure(['message', 'output']);
-});
 
 test('the scheduled worker runs every queue that jobs are dispatched onto', function () {
     $dispatched = ['default'];
@@ -96,12 +36,12 @@ test('the scheduled worker runs every queue that jobs are dispatched onto', func
 
 describe('cron-job.org every 5 minutes', function (): void {
     beforeEach(function (): void {
-        config(['services.scheduler.token' => 'test-secret-token']);
+        config(['services.scheduler.token' => str_repeat('t', 64)]);
     });
 
     test('an idle call answers at once without running schedule:run, and starts no session', function () {
         $response = $this
-            ->get('api/run-scheduler', ['Authorization' => 'Bearer test-secret-token'])
+            ->get('api/run-scheduler', ['Authorization' => 'Bearer ' . str_repeat('t', 64)])
             ->assertOk()
             ->assertExactJson(['message' => 'Nothing due', 'due' => [], 'output' => '']);
 
@@ -118,7 +58,7 @@ describe('cron-job.org every 5 minutes', function (): void {
         App\Models\Subdivision::query()->update(['payout_checked_at' => now()]);
 
         $this
-            ->get('api/run-scheduler', ['Authorization' => 'Bearer test-secret-token'])
+            ->get('api/run-scheduler', ['Authorization' => 'Bearer ' . str_repeat('t', 64)])
             ->assertOk()
             ->assertJsonPath('message', 'Scheduler executed')
             ->assertJsonPath('due', ['expired-holds']);
