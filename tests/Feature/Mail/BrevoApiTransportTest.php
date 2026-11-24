@@ -18,7 +18,7 @@ use Symfony\Component\Mime\Email;
 
 function brevo_email(): Email
 {
-    return (new Email())
+    return new Email()
         ->from(new Address('tickets@example.com', 'TicketLab'))
         ->to(new Address('buyer@example.com', 'Buyer Name'))
         ->subject('Your passes · TKT-123')
@@ -36,7 +36,8 @@ it('is the configured mailer, built from the mail config', function (): void {
 
     expect($mailer->getSymfonyTransport())
         ->toBeInstanceOf(BrevoApiTransport::class)
-        ->and((string) $mailer->getSymfonyTransport())->toBe('brevo+api://api.brevo.com');
+        ->and((string) $mailer->getSymfonyTransport())
+        ->toBe('brevo+api://api.brevo.com');
 });
 
 it('posts the message to the Brevo API with the API key and the PDF as base64', function (): void {
@@ -51,7 +52,8 @@ it('posts the message to the Brevo API with the API key and the PDF as base64', 
     Http::assertSent(static function (Request $request): bool {
         $payload = $request->data();
 
-        return $request->method() === 'POST'
+        return (
+            $request->method() === 'POST'
             && $request->url() === 'https://api.brevo.com/v3/smtp/email'
             && $request->hasHeader('api-key', 'xkeysib-test-key')
             && $payload['sender'] === ['name' => 'TicketLab', 'email' => 'tickets@example.com']
@@ -61,7 +63,8 @@ it('posts the message to the Brevo API with the API key and the PDF as base64', 
             && $payload['attachment'] === [[
                 'name' => 'tickets-TKT-123.pdf',
                 'content' => base64_encode('%PDF-1.4 fake ticket bytes'),
-            ]];
+            ]]
+        );
     });
 });
 
