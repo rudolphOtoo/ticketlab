@@ -95,8 +95,10 @@ Set in the super admin dashboard (`/platform`):
 | `DB_CONNECTION`, `DATABASE_URL` | SQLite locally; PostgreSQL (Neon) in production, with `DB_SSLMODE=require` |
 | `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY` | `sk_test_`/`pk_test_` locally, `sk_live_`/`pk_live_` in production |
 | `QUEUE_CONNECTION` | `database` |
-| `SCHEDULER_TOKEN` | Protects `/api/run-scheduler` and `/api/run-migrate`, sent as `Authorization: Bearer <token>`. Both refuse every request while it's unset |
-| `SCHEDULER_LOCK_STORE` | Cache store for scheduler and command locks: `database` (default) or `redis`. Never `file`, which isn't shared between serverless instances |
+| `SCHEDULER_TOKEN` | Protects `/api/run-scheduler` and `/api/run-migrate`. At least 32 characters (`php -r "echo bin2hex(random_bytes(32));"`); empty or shorter refuses every call. See [Scheduler on Vercel](#scheduler-on-vercel) |
+| `SCHEDULER_ALLOW_QUERY_TOKEN` | `true` (default): `/api/run-scheduler` also accepts `?token=<SCHEDULER_TOKEN>` for crons that can't send headers. `false`: header only. `/api/run-migrate` never accepts it |
+| `SCHEDULER_LOCK_STORE` | Cache store for the scheduler's run lock: `database` (default) or `redis`. Never `file`, which isn't shared between serverless instances |
+| `SCHEDULER_RUN_BUDGET` | Seconds one scheduler run may take: `48` on Vercel Hobby (60 s functions), `105` on Pro (120 s) |
 | `CLOUDINARY_URL` | `cloudinary://<api_key>:<api_secret>@<cloud_name>` for image uploads (see [Media (Cloudinary)](#media-cloudinary)). Empty: uploads are refused, pasted https links still work |
 | `LEGACY_MEDIA_URL` | Only if images were uploaded before Cloudinary: the public address of that bucket, so old paths keep loading |
 | `MEDIA_DISK`, `CLOUDINARY_FOLDER` | Only until `media:convert-legacy-cloudinary --execute` has run: `cloudinary` and the earlier Flysystem disk's folder, so images that setup stored (`logos/abc.jpg`) keep loading from Cloudinary |
@@ -109,54 +111,97 @@ Set in the super admin dashboard (`/platform`):
 
 ## Queue worker and scheduler
 
-Jobs go to four queues, and the worker must run all of them, in this priority order (the list lives in
-`config/queue.php` → `worker_queues`, and a test fails if a job uses a queue not listed there):
+Jobs go to four queues, worked in this priority order (the list lives in `config/queue.php` → `worker_queues`, and a
+test fails if a job uses a queue not listed there): `transactional`, `emails`, `broadcasts`, `default`.
+
+The scheduler (`App\Services\Scheduler\SchedulerRunner`) runs these tasks, in this order, each time it is called.
+Each one first checks with a single indexed query whether it has anything to do:
+
+| Task (`config/scheduler.php` key) | What it does | Bound |
+|---|---|---|
+| `release_holds` | Seats of lapsed 15-minute holds go back on sale (checkout also reclaims them itself when stock runs short) | 500 holds; 5 s |
+| `reconcile` | Settles orders pending for 10+ minutes whose webhook never arrived, by asking Paystack | 25 orders, oldest first; 12 s; each Paystack call times out at 8 s |
+| `ticket_emails` | Sends ticket emails still owed, within the tickets' share (90%) of `BREVO_DAILY_LIMIT` | 20 orders; 6 s; each send is one PDF plus `MAIL_TIMEOUT` |
+| `worker` | The queue worker, in this process: invitations, zone-choice emails, broadcasts, payout alerts | 50 jobs; 12 s; stops when the queues are empty |
+| `payout_recheck` | Re-checks zones' Paystack subaccounts not checked for 20 hours | 20 zones; 5 s; each lookup times out at 8 s |
+| `cleanup` | Deletes `scheduler_runs` older than 14 days and cache rows expired over a day ago | 1000 rows each |
+
+Suspended and archived organisations are skipped by every task; their work runs once they are reactivated. Every task
+is safe to re-run: it picks its work from the database each time and never does an item twice.
+
+On a server with a real cron, `* * * * * php artisan schedule:run` runs the same thing through `scheduler:tick` (also
+handy by hand). Outside Vercel you may instead run a long-lived worker:
 
 ```bash
 php artisan queue:work --queue=transactional,emails,broadcasts,default
 ```
 
-The scheduler runs these tasks, in this order, each time it is called (every 5 minutes on Vercel). Each one exits
-after a single query when it has nothing to do:
-- `reservations:release-expired`: puts seats of lapsed 15-minute holds back on sale. Checkout also reclaims a tier's
-  lapsed holds itself when stock runs short, so a sell-out never waits for this run;
-- `tickets:email-pending`: retries ticket emails that are still owed (they are normally sent right after payment);
-- `payments:reconcile-pending --execute --older-than=10`: settles orders whose webhook never arrived;
-- `payouts:recheck-subaccounts`: re-checks the zones not checked for 20 hours, a small batch at a time;
-- the queue worker (invitations, zone-choice emails, broadcasts, payout alerts), last.
-
 ### Scheduler on Vercel
 
-Vercel Hobby only allows daily crons, so an **external cron** (cron-job.org) calls the scheduler **every 5 minutes**:
+Vercel Hobby only allows daily crons, so an **external cron** (cron-job.org) calls the scheduler **every 5 minutes**.
 
-- URL: `https://<your-domain>/api/run-scheduler`, method `GET`, every 5 minutes.
-- Header: `Authorization: Bearer <SCHEDULER_TOKEN>`. The old `?token=` query parameter still works for this release
-  only and logs a deprecation warning. It will be removed, and query strings end up in logs, so don't use it.
+**The endpoint.** `GET` or `POST` `https://<your-domain>/api/run-scheduler`, with the token in one of two ways:
 
-The endpoint runs without the web middleware (no session, cookies or CSP). It first checks with a few `EXISTS`
-queries whether anything is due (`App\Support\Scheduler\SchedulerWork`), and answers `{"message":"Nothing due"}` at
-once when nothing is. Only then does it run `schedule:run`.
+1. **Header (preferred):** `Authorization: Bearer <SCHEDULER_TOKEN>`.
+2. **Query string (fallback):** `https://<your-domain>/api/run-scheduler?token=<SCHEDULER_TOKEN>`, for cron tools that
+   can't send headers. Supported permanently while `SCHEDULER_ALLOW_QUERY_TOKEN=true` (the default). The app removes
+   the token from the request before anything is logged, but Vercel's own request log may still show the URL, so use
+   the header when you can.
 
-Every task is scheduled `everyMinute()`, which here means "on every call". A wall-clock expression such as hourly
-(`0 * * * *`) would be skipped whenever cron-job.org fires a minute late. Each task's own selection decides what is
-really due.
+When a header is sent it decides alone: a wrong header is refused even if the query token is right. Tokens shorter
+than 32 characters are refused. At most **2 calls a minute per IP** (wrong tokens count too), so cron retries never
+stack runs.
 
-All tasks run **inside that one HTTP request**, and `vercel.json` sets the function's `maxDuration` to **60 seconds**.
-The run gets one deadline (`SCHEDULER_RUN_BUDGET`, 50 s), which each task inherits and cuts its own budget to. Tasks run
-most important first, so a busy run only skips the least important work until the next call
-(`config/scheduler.php`, checked by tests):
+**cron-job.org setup.** Create a cronjob:
+- URL: `https://<your-domain>/api/run-scheduler`;
+- Schedule: every 5 minutes;
+- Advanced → Request method: `GET`; Advanced → Headers: add `Authorization` with the value `Bearer <SCHEDULER_TOKEN>`;
+- (only if you cannot add headers: put `?token=<SCHEDULER_TOKEN>` at the end of the URL instead);
+- Advanced → Timeout: the longest it allows. A busy run can take up to about 50 s; if the cron gives up first it shows
+  a timeout, but the run still finishes (the endpoint ignores the caller hanging up) and the next call reports as usual;
+- Notifications: on failure.
 
-| Task | Bound |
+**Reading the response.** Always JSON, never cached (`Cache-Control: no-store`):
+
+| Status | Meaning |
 |---|---|
-| `reservations:release-expired` | a few queries |
-| `tickets:email-pending` | at most 20 orders; stops after 6 s; each send is one PDF plus an 8 s mail timeout |
-| `payments:reconcile-pending` | at most 25 orders, oldest first; stops after 12 s; each Paystack call times out at 8 s |
-| `payouts:recheck-subaccounts` | at most 20 zones; stops after 5 s; each lookup times out at 8 s |
-| queue worker (last) | `--stop-when-empty --max-time=12 --max-jobs=50`; a job cut off by the limit is retried later |
+| `200` `{"status":"idle"}` | Nothing was due; nothing ran. The usual answer |
+| `200` `{"status":"ran"}` | The due tasks ran. `ran` lists them, `counts` says what each did, `errors` counts failures (details are in the logs and on the platform panel, never in the response), `skipped` lists tasks that didn't fit in this run's time and `next_due` the ones with work left. Both wait for the next call |
+| `200` `{"status":"locked"}` | Another run is still going; this call did nothing |
+| `401` | Missing, wrong or too-short token, or `?token=` while `SCHEDULER_ALLOW_QUERY_TOKEN=false` |
+| `429` | More than 2 calls in a minute from one IP |
+| `503` | The app is in maintenance mode (cron-job.org shows the call as failed) |
 
-Each task is `withoutOverlapping()`, with a lock in the shared `SCHEDULER_LOCK_STORE` (database by default) that
-expires after 2–10 minutes. Laravel's default lock lasts 24 hours, which would block a task for a day if the platform
-killed the request holding it.
+Example: `{"status":"ran","ran":["release_holds","ticket_emails"],"skipped":[],"counts":{"release_holds":{"released":3},"ticket_emails":{"sent":2,"deferred":1}},"errors":0,"duration_ms":2140,"next_due":[]}`
+(`deferred`: the day's email share was used up; it goes after midnight).
+
+**How a run works.** The endpoint runs outside the web middleware (no session, cookies, CSRF, CSP or CORS). An idle
+call costs about seven `EXISTS` queries and returns at once: no lock, no worker. Otherwise it takes one run lock in
+`SCHEDULER_LOCK_STORE` (a concurrent call gets `locked`; the lock expires 5 s after the function limit, so a run Vercel
+kills never blocks the next one for long) and runs the due tasks **in this request**, most important first.
+
+The route has its own Vercel function (`api/scheduler.php`) so its `maxDuration` can differ from the pages'. One run
+has one deadline, and each task gets `min(its budget, time left − the longest one of its items can take)`, so the run
+always ends at least 10 s before the limit. A task that doesn't fit waits for the next call:
+
+| Vercel plan | `maxDuration` of `api/scheduler.php` (`vercel.json`) and `function_max_duration` (`config/scheduler.php`) | `SCHEDULER_RUN_BUDGET` |
+|---|---|---|
+| Hobby (now) | 60 | 48 |
+| Pro | 120 | 105 |
+
+Moving to Pro is configuration only: change those three values (a test keeps `vercel.json` and the config in step).
+
+**Health panel.** Every call is a row in `scheduler_runs`. The platform dashboard (`/platform`) shows
+**"Scheduler: Last run X minutes ago (status)"**, the last successful run and the last 24 hours' errors, and turns amber
+with a warning once no run has completed for 15 minutes (three missed calls).
+
+**Rotating `SCHEDULER_TOKEN`.**
+1. Generate a new one: `php -r "echo bin2hex(random_bytes(32));"`.
+2. Vercel → Settings → Environment Variables → Production: replace `SCHEDULER_TOKEN`, then redeploy (environment
+   changes apply to new deployments only).
+3. Once the deploy is live, update the cron-job.org job (the header, or the URL if you use `?token=`). Calls in between
+   get `401`; the next call catches up on everything due.
+4. Check the job's next run shows `200` and the platform panel's "Last run" is recent.
 
 ## Email (Brevo)
 
@@ -263,9 +308,10 @@ codes (see above).
 |---|---|
 | `tenancy:move-event {event} --to-org={slug} [--map="Old=New"] [--with-ledgers] [--execute]` | Moves an event filed under the wrong organisation, with all its rows, mapping zones by name. Dry run by default |
 | `passes:request-zone-choice [--organization=slug] [--send] [--resend]` | Emails buyers of paid passes with no zone a one-time "choose your zone" link. Dry run by default |
-| `payments:reconcile-pending [--older-than=10] [--execute]` | Asks Paystack about orders still pending: confirms paid ones exactly as the webhook would, releases seats of failed or abandoned ones. Dry run by default; every 10 minutes on the scheduler |
-| `payouts:recheck-subaccounts` | Re-verifies zones' subaccounts with Paystack, a batch each hour, so each zone is checked about once a day |
-| `reservations:release-expired` | Returns expired seat holds to stock (every 5 minutes) |
+| `scheduler:tick` | One scheduler run, exactly as `/api/run-scheduler` does it, printing the same JSON |
+| `payments:reconcile-pending [--older-than=10] [--execute]` | Asks Paystack about orders still pending: confirms paid ones exactly as the webhook would, releases seats of failed or abandoned ones. Dry run by default; the scheduler runs it with `--execute` on every call |
+| `payouts:recheck-subaccounts` | Re-verifies one batch of zones' subaccounts with Paystack (the scheduler does this on every call, so each zone is checked about once a day) |
+| `reservations:release-expired` | Returns one batch of expired seat holds to stock (the scheduler does this on every call) |
 
 Read-only data checks live in [`docs/data-repair/`](docs/data-repair/). The production deploy steps are in
 [`docs/runbooks/production-deploy.md`](docs/runbooks/production-deploy.md).

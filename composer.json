@@ -90,7 +90,7 @@
         "post-update-cmd": [
             "@php -r \"copy('vendor/livewire/livewire/dist/livewire.esm.js', 'resources/js/vendor/livewire.esm.js');\"",
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
-            "@php artisan boost:update --ansi"
+            "@php -r \"if (!file_exists('boost.json')) { echo 'Boost is not set up here (no boost.json); skipping boost:update.' . PHP_EOL; exit(0); } passthru(escapeshellarg(PHP_BINARY) . ' artisan boost:update --ansi', \\$code); exit(\\$code);\""
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""

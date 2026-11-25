@@ -10,7 +10,6 @@ use App\Models\Order;
 use App\Models\Organization;
 use App\Models\TicketType;
 use App\Services\Payment\PaystackGateway;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -85,17 +84,19 @@ function verify_calls(): int
 }
 
 test('it runs on every scheduler call (every 5 minutes), executing, for orders pending 10 minutes', function (): void {
-    $event = collect(app(Schedule::class)->events())
-        ->first(static fn($event): bool => str_contains((string) $event->command, 'payments:reconcile-pending'));
+    $task = app(App\Services\Scheduler\Tasks\ReconcilePendingPayments::class);
+    paystack_verifies($this->order, 'success');
 
-    expect($event)
-        ->not
-        ->toBeNull()
-        ->and($event->expression)
-        ->toBe('* * * * *')
-        ->and((string) $event->command)
-        ->toContain('--execute')
-        ->toContain('--older-than=10');
+    expect(App\Services\Scheduler\SchedulerRunner::TASKS)->toContain($task::class)->and($task->isDue())->toBeFalse();
+
+    $this->travel(11)->minutes();
+    $result = $task->run(Carbon\CarbonImmutable::now()->addSeconds(12));
+
+    // Not a dry run: the payment is confirmed.
+    expect($result->counts)
+        ->toBe(['confirmed' => 1])
+        ->and($this->order->fresh()->payment_status)
+        ->toBe(OrderStatus::Paid);
 });
 
 test('orders newer than --older-than are not touched and Paystack is not asked', function (): void {

@@ -30,14 +30,18 @@ Do the steps in order. Do not start a step until the previous one has passed its
       uploads with "missing permissions (actions=["create"])". Check it from your laptop with that `CLOUDINARY_URL`:
       `php artisan media:check-cloudinary` uploads, reads, delivers, renames and deletes one 1×1 test image, and says
       which step fails and why.
-- [ ] **cron-job.org** job (Vercel Hobby only allows daily crons): URL `https://<your-domain>/api/run-scheduler`,
-      method GET, **every 5 minutes**, with a request header `Authorization: Bearer <SCHEDULER_TOKEN>`. Turn on
-      "treat 4xx/5xx as failure" notifications. Keep the job **disabled** until step 3. Ticket emails don't wait for
-      it (they're sent right after payment); it retries owed ticket emails, releases lapsed seat holds, reconciles
-      pending payments, re-checks payouts and runs the queue worker (invitations, zone-choice emails, broadcasts),
-      all inside Vercel's 60-second limit, and answers "Nothing due" at once when there is nothing to do (README).
-      If an older cron calls `?token=…`, it keeps working for this release (with a deprecation warning); it's replaced in
-      step 10.
+- [ ] **cron-job.org** job (Vercel Hobby only allows daily crons). Create a cronjob:
+  - URL `https://<your-domain>/api/run-scheduler`, schedule **every 5 minutes**;
+  - Advanced → Request method `GET`; Advanced → Headers: `Authorization` = `Bearer <SCHEDULER_TOKEN>`;
+  - only if headers are impossible: use `https://<your-domain>/api/run-scheduler?token=<SCHEDULER_TOKEN>` instead
+    (supported while `SCHEDULER_ALLOW_QUERY_TOKEN=true`; Vercel's request log may show that URL, so prefer the header);
+  - Advanced → Timeout: the longest it allows; Notifications: on failure (cron-job.org counts 4xx/5xx as failures).
+
+  Keep the job **disabled** until step 3. Ticket emails don't wait for it (they're sent right after payment); it
+  releases lapsed seat holds, reconciles pending payments, retries owed ticket emails, runs the queue worker
+  (invitations, zone-choice emails, broadcasts) and re-checks payouts, all inside one run budget under Vercel's
+  60-second limit, and answers `{"status":"idle",…}` at once when there is nothing to do (README → Scheduler on
+  Vercel explains every field of the response).
 - [ ] **Brevo** (email), in the account used for YPG or a new one:
   1. **Plan and cap.** The free plan sends 300 emails a day across every kind, reset daily, with no rollover. Ticket
      emails may use 270 of them (the last 30 stay free for invitations and payout alerts). If a big on-sale is
@@ -151,7 +155,7 @@ timings) without touching real data or real buyers.
 
 - [ ] Merge the PR and let Vercel deploy production.
 - [ ] Run the migrations from your laptop against Neon (preferred over the `/api/run-migrate` hook, which is bounded by
-      Vercel's 60-second limit):
+      Vercel's 60-second limit and accepts the token only as an `Authorization: Bearer` header, never `?token=`):
       ```bash
       DATABASE_URL="postgresql://…neon.tech/neondb?sslmode=require" DB_CONNECTION=pgsql APP_ENV=production \
         php artisan migrate --force
@@ -159,11 +163,17 @@ timings) without touching real data or real buyers.
       New in this release: `event_zones`, `audit_logs` (plus zone-assignment columns on `attendees`),
       `ticket_type_zone_capacities`, payout verification columns on `subdivisions`, ticket-email tracking columns on
       `orders`, and `mail_quota_days`. All are additive; no data is changed.
+  New in the scheduler release: `scheduler_runs` (one row per scheduler call, pruned after 14 days). Until it exists
+  the scheduler still runs and logs "Could not record the scheduler run".
+- [ ] **Later:** replace `/api/run-migrate` with a GitHub Actions "migrate" job that runs `php artisan migrate --force`
+      against Neon behind a protected environment with required approval, then remove the hook. Until then it stays
+      header-only and shares `SCHEDULER_TOKEN`.
 - [ ] Check: `php artisan migrate:status` (same environment variables) shows all migrations as Ran. The site loads, and
       `/up` returns 200.
 - [ ] Enable the cron-job.org job from step 0 (Bearer header, every 5 minutes). From now on, the queue worker sends the
-      invitation and zone-choice emails of steps 5 and 7. Check its first runs return 200; when idle the body is
-      `{"message":"Nothing due",…}`.
+      invitation and zone-choice emails of steps 5 and 7. Check its first runs return 200 with `"status":"idle"` or
+      `"status":"ran"` and `"errors":0`, and that `/platform` shows **Scheduler: Last run … minutes ago** without the
+      amber warning. Note the `duration_ms` of an idle call (target: under 300 ms warm).
 
 ## 4. Check and remove the seeded `@ticketlab.test` accounts
 
@@ -266,8 +276,13 @@ Run from your laptop with the same Neon variables as step 3.
 
 ## 10. Post-deploy checks
 
-- [ ] **Scheduler.** The cron-job.org history shows HTTP 200 every 5 minutes since step 3, mostly
-      `"Nothing due"`, and Vercel's logs show no "Deprecated: scheduler token sent as ?token=" warnings.
+- [ ] **Scheduler.** The cron-job.org history shows HTTP 200 every 5 minutes since step 3, mostly `"status":"idle"`.
+      On `/platform` the Scheduler panel shows a recent last run, no amber warning, and `0 errors in the last 24 hours`.
+      If it shows errors, the details are in `scheduler_runs.error_messages` (newest first) and in Vercel's logs
+      ("A scheduled task failed" / "Could not …", with the task, organisation and order reference).
+- [ ] **Scheduler headers.** `curl -si -H "Authorization: Bearer <token>" https://<your-domain>/api/run-scheduler`
+      shows `cache-control: no-store`, and neither `x-powered-by` nor `access-control-allow-origin`. If
+      `x-powered-by` is there, `api/php.ini` was not applied and the middleware fallback did not run: raise it.
 - [ ] **After-response ticket email.** The ticket email is sent after the response has gone out (Laravel's
       `defer()`), and the cron retries it if that never happened. Check which one Vercel's PHP runtime gives us:
   1. Buy one test ticket (step 8's GHS 1 type) and note the time Paystack confirms.
@@ -278,7 +293,7 @@ Run from your laptop with the same Neon variables as step 3.
      FROM orders WHERE reference = 'TKT-…';
      ```
   3. **Within a minute** (`seconds_to_email` under 60, `ticket_email_attempts = 1`): after-response work runs on
-     Vercel. **5–10 minutes**, with the cron log showing `"due":["ticket-emails",…]` at that time: Vercel stops
+     Vercel. **5–10 minutes**, with the cron log showing `"ran":[…,"ticket_emails",…]` at that time: Vercel stops
      after-response work, and the cron is doing the sending. Both deliver the email; the second only means buyers
      rely on the ticket page for the first minutes.
   4. **Write down which one you observed**, with the seconds, here: `Observed on <date>: ______`. If it is the cron,
@@ -288,8 +303,8 @@ Run from your laptop with the same Neon variables as step 3.
       `0 ticket emails waiting` and `0 given up`. If emails wait or were given up, the order's error is in
       `orders.ticket_email_error`; fix the cause (usually the API key or sender) and use **Resend** on the Attendee
       Roster.
-- [ ] **Stuck payments.** Dry run first, then let the scheduler take over. It runs every 10 minutes with `--execute`,
-      at most 25 orders per run:
+- [ ] **Stuck payments.** Dry run first, then let the scheduler take over. It reconciles on every call (every
+      5 minutes) for orders pending 10+ minutes, at most 25 orders per run:
       ```bash
       DATABASE_URL="…" DB_CONNECTION=pgsql APP_ENV=production PAYSTACK_SECRET_KEY=sk_live_… \
         php artisan payments:reconcile-pending
@@ -317,13 +332,15 @@ Run from your laptop with the same Neon variables as step 3.
   follow-up release; ignore browser-extension noise (`chrome-extension://`). Keep `report-only` for a few days of real
   traffic. Then set `CSP_MODE=enforce`, redeploy, repeat the checkout and upload checks, and keep the console open for
   a day. To undo, set `CSP_MODE=report-only` (or `off`) and redeploy; no code change is needed.
-- [ ] **Rotate `SCHEDULER_TOKEN`** now that the header-based cron is live:
-  1. generate a new long random value;
-  2. set it in Vercel (Production) and redeploy;
-  3. update the cron-job.org header to the new token;
-  4. confirm `curl -H "Authorization: Bearer <old token>" https://<your-domain>/api/run-scheduler` returns **401**, and
-     the cron shows 200 again;
-  5. remove any old cron that still used `?token=`.
+- [ ] **Rotate `SCHEDULER_TOKEN`** now that the cron is live (and whenever the token may have leaked, e.g. a URL with
+      `?token=` was shared):
+  1. generate a new value: `php -r "echo bin2hex(random_bytes(32));"` (at least 32 characters, or every call is
+     refused);
+  2. set it in Vercel (Settings → Environment Variables → Production) and redeploy;
+  3. once the deploy is live, update the cron-job.org job: the `Authorization` header, or the URL if it uses `?token=`.
+     Calls in between get 401; the next call catches up on everything due;
+  4. confirm `curl -i -H "Authorization: Bearer <old token>" https://<your-domain>/api/run-scheduler` returns **401**,
+     and the cron's next run shows 200 and `/platform` a recent last run.
 
 ## 11. Earlier Cloudinary images: dry run, then convert only if it finds any (after step 10)
 

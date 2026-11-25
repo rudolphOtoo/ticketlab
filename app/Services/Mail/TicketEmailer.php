@@ -41,9 +41,6 @@ final class TicketEmailer
     /** Attempts before giving up (the ticket page still works; the buyer or an admin can resend). */
     public const int MAX_ATTEMPTS = 5;
 
-    /** Longest one attempt may take: rendering the PDF plus the SMTP timeout. */
-    private const int WORST_CASE_SECONDS = 15;
-
     /** Minutes to wait after the 1st, 2nd, 3rd and 4th failed attempt. */
     private const array BACKOFF_MINUTES = [2, 10, 30, 120];
 
@@ -68,16 +65,13 @@ final class TicketEmailer
                 'ticket_email_error' => null,
             ]);
 
-        defer(
-            function () use ($orderId): void {
-                // Inside a scheduler run (reconcile confirmed the payment) only if one send still fits; otherwise the
-                // owed email goes out on the next run.
-                if (SchedulerBudget::allows(self::WORST_CASE_SECONDS)) {
-                    $this->attempt($orderId);
-                }
-            },
-            'ticket-email-' . $orderId,
-        )->always();
+        // Inside a scheduler run (reconcile confirmed the payment) the ticket_emails task sends it in the same run, inside
+        // the run's deadline; a deferred send would run after the response, past the function's time limit.
+        if (SchedulerBudget::secondsLeft() !== null) {
+            return;
+        }
+
+        defer(fn() => $this->attempt($orderId), 'ticket-email-' . $orderId)->always();
     }
 
     /**

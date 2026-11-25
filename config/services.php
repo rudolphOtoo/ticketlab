@@ -39,7 +39,12 @@ return [
 
     // Shared secret for the serverless cron and migration endpoints; both refuse every request while it is unset.
     'scheduler' => [
+        // At least 32 characters (php -r "echo bin2hex(random_bytes(32));"); shorter or empty refuses every call.
         'token' => env('SCHEDULER_TOKEN'),
+        // "?token=" as a fallback for crons that cannot send an Authorization header (scheduler only).
+        'allow_query_token' => (bool) env('SCHEDULER_ALLOW_QUERY_TOKEN', true),
+        // Calls per minute per IP, so a cron's retries never stack runs.
+        'per_minute' => 2,
     ],
 
     'postmark' => [

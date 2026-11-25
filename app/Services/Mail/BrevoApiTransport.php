@@ -34,6 +34,7 @@ use Symfony\Component\Mime\RawMessage;
 final class BrevoApiTransport implements TransportInterface
 {
     public function __construct(
+        #[\SensitiveParameter]
         private readonly string $apiKey,
         private readonly string $endpoint = 'https://api.brevo.com/v3/smtp/email',
         private readonly int $timeout = 8,
@@ -96,9 +97,11 @@ final class BrevoApiTransport implements TransportInterface
         $copies = ['cc' => $email->getCc(), 'bcc' => $email->getBcc(), 'replyTo' => $email->getReplyTo()];
 
         foreach ($copies as $key => $list) {
-            if ($list !== []) {
-                $payload[$key] = $this->addresses($list);
+            if ($list === []) {
+                continue;
             }
+
+            $payload[$key] = $this->addresses($list);
         }
 
         if (($html = $email->getHtmlBody()) !== null) {
@@ -113,7 +116,9 @@ final class BrevoApiTransport implements TransportInterface
             throw new TransportException('An email needs at least one To address.');
         }
 
-        if ($headers = $this->headers($email->getHeaders())) {
+        $headers = $this->headers($email->getHeaders());
+
+        if ($headers !== []) {
             $payload['headers'] = $headers;
         }
 
@@ -131,7 +136,7 @@ final class BrevoApiTransport implements TransportInterface
      */
     private function address(Address $address): array
     {
-        return ['name' => (string) $address->getName(), 'email' => $address->getAddress()];
+        return ['name' => $address->getName(), 'email' => $address->getAddress()];
     }
 
     /**
@@ -141,10 +146,10 @@ final class BrevoApiTransport implements TransportInterface
      */
     private function addresses(array $addresses): array
     {
-        return array_values(array_map(
-            static fn(Address $address): array => ['name' => (string) $address->getName(), 'email' => $address->getAddress()],
-            $addresses,
-        ));
+        return array_values(array_map(static fn(Address $address): array => [
+            'name' => $address->getName(),
+            'email' => $address->getAddress(),
+        ], $addresses));
     }
 
     /**
@@ -154,7 +159,19 @@ final class BrevoApiTransport implements TransportInterface
      */
     private function headers(Headers $headers): array
     {
-        $skip = ['from', 'to', 'cc', 'bcc', 'reply-to', 'subject', 'date', 'message-id', 'mime-version', 'content-type', 'content-transfer-encoding'];
+        $skip = [
+            'from',
+            'to',
+            'cc',
+            'bcc',
+            'reply-to',
+            'subject',
+            'date',
+            'message-id',
+            'mime-version',
+            'content-type',
+            'content-transfer-encoding',
+        ];
         $mapped = [];
 
         foreach ($headers->all() as $header) {
@@ -190,8 +207,10 @@ final class BrevoApiTransport implements TransportInterface
 
     private function request(): \Illuminate\Http\Client\PendingRequest
     {
-        $request = Http::withHeaders(['api-key' => $this->apiKey, 'accept' => 'application/json'])
-            ->timeout($this->timeout);
+        $request = Http::withHeaders([
+            'api-key' => $this->apiKey,
+            'accept' => 'application/json',
+        ])->timeout($this->timeout);
 
         if ($this->forceIpv4 && extension_loaded('curl') && defined('CURLOPT_IPRESOLVE')) {
             $request = $request->withOptions(['curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]]);

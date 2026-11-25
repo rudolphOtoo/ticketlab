@@ -7,7 +7,6 @@ use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\PayoutAccountRejected;
 use App\Services\Payment\PaystackSubaccountResolver;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -27,11 +26,14 @@ beforeEach(function (): void {
 });
 
 test('the re-check runs on every scheduler call, and only zones due for a check are taken', function (): void {
-    $event = collect(app(Schedule::class)->events())
-        ->first(static fn($event): bool => str_contains((string) $event->command, 'payouts:recheck-subaccounts'));
+    $task = app(App\Services\Scheduler\Tasks\RecheckPayoutSubaccounts::class);
 
-    // Every call (cron-job.org, every 5 minutes): the command's own interval_hours decides which zones are due.
-    expect($event)->not->toBeNull()->and($event->expression)->toBe('* * * * *');
+    // Every call (cron-job.org, every 5 minutes): interval_hours decides which zones are due.
+    expect(App\Services\Scheduler\SchedulerRunner::TASKS)->toContain($task::class)->and($task->isDue())->toBeFalse();
+
+    $this->travel(21)->hours();
+
+    expect($task->isDue())->toBeTrue();
 });
 
 test('a code paystack now rejects stops sales for that zone and alerts the organisation admins once', function (): void {

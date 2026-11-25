@@ -13,7 +13,9 @@ includes = [
     "vendor/league/flysystem/src/**/*.php",
     "vendor/phpoffice/phpspreadsheet/src/PhpSpreadsheet/**/*.php",
     "vendor/cloudinary/cloudinary_php/src/**/*.php",
-    "vendor/symfony/http-foundation/**/*.php"
+    "vendor/symfony/http-foundation/**/*.php",
+    "vendor/symfony/mailer/**/*.php",
+    "vendor/symfony/mime/**/*.php"
 ]
 excludes = ["bootstrap/cache/**", "app/EnvKit/**"]
 

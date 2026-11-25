@@ -8,6 +8,10 @@
         "api/index.php": {
             "runtime": "vercel-php@0.9.0",
             "maxDuration": 60
+        },
+        "api/scheduler.php": {
+            "runtime": "vercel-php@0.9.0",
+            "maxDuration": 60
         }
     },
     "routes": [
@@ -17,6 +21,13 @@
                 "cache-control": "public, max-age=31536000, immutable"
             },
             "continue": true
+        },
+        {
+            "src": "^/api/run-scheduler$",
+            "dest": "/api/scheduler.php",
+            "headers": {
+                "cache-control": "no-store"
+            }
         },
         {
             "src": "^/$",
@@ -35,4 +46,3 @@
         }
     ]
 }
-
